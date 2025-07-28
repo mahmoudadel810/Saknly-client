@@ -29,7 +29,7 @@ export default function ChatbotButton() {
     setLoading(true);
 
     try {
-      const res = await fetch("https://saknly-server-9air.vercel.app/api/saknly/v1/chat", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: userMsg.text })

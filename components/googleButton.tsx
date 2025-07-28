@@ -4,9 +4,7 @@ const GoogleButton = () => {
     return (
         <Button
             onClick={() => {
-                console.log("Redirecting to Google Auth...");
-                window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/google`
-                console.log(process.env.NEXT_PUBLIC_API_URL);
+                window.location.href = `${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/auth/google`
             }}
             variant="outlined"
             sx={{

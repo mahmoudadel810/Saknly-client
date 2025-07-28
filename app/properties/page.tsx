@@ -518,10 +518,8 @@ const SearchPage: React.FC = () => {
       currentSearchParams.set('page', currentPage.toString());
       currentSearchParams.set('limit', limitPerPage.toString());
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/properties/allProperties?${currentSearchParams.toString()}`;
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/properties/allProperties?${currentSearchParams.toString()}`;
       const response = await axios.get(apiUrl);
-
-      console.log("API Response Data:", response.data);
 
       if (response.data.success) {
         setProperties(response.data.data);

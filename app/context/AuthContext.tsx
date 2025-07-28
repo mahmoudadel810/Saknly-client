@@ -39,7 +39,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
 
   const login = async (email: string, password: string) => {
-    const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
+    const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/auth/login`, {
       email,
       password,
     });
@@ -53,7 +53,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const token = localStorage.getItem("token");
     if (token) {
       try {
-        const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/auth/getMe`, {
+        const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/auth/getMe`, {
           headers: {
             Authorization: `Saknly__${token}`,
           },
@@ -78,7 +78,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (token) {
         await axios.post(
-          `${process.env.NEXT_PUBLIC_API_URL}/auth/logout`,
+          `${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/auth/logout`,
           {},
           {
             withCredentials: true,
@@ -110,7 +110,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const token = localStorage.getItem("token");
       if (token) {
         try {
-          const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/auth/getMe`, {
+          const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/auth/getMe`, {
             headers: {
               Authorization: `Saknly__${token}`,
             },

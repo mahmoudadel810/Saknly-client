@@ -36,7 +36,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({
     setError(null);
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/property-comments/${propertyId}`
+        `${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/property-comments/${propertyId}`
       );
       const data = await res.json();
       if (data.success) {
@@ -86,7 +86,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({
       }
 
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/property-comments/${propertyId}`,
+        `${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/property-comments/${propertyId}`,
         {
           method: 'POST',
           headers,

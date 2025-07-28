@@ -13,7 +13,7 @@ const SimilarProperties: React.FC<SimilarPropertiesProps> = ({ propertyId }) => 
   useEffect(() => {
     if (!propertyId) return;
     setLoading(true);
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/properties/similar/${propertyId}`)
+            fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/properties/similar/${propertyId}`)
       .then(res => res.json())
       .then(data => {
         setProperties(data.data || []);

@@ -28,7 +28,7 @@ const InquiriesPage = () => {
     setDeleteError("");
     try {
       const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/contact/delete-contact/${id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/contact/delete-contact/${id}`, {
         method: "DELETE",
         headers: {
           Authorization: `${process.env.TOKEN_PREFIX}${token}`,
@@ -49,7 +49,7 @@ const InquiriesPage = () => {
       setError("");
       try {
         const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/contact/get-all-contacts`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/contact/get-all-contacts`, {
           headers: {
             Authorization: `${process.env.TOKEN_PREFIX}${token}`,
           },

@@ -69,7 +69,7 @@ export default function UserProfilePage() {
       try {
         const token = localStorage.getItem("token");
         const tokenPrefix = process.env.NEXT_PUBLIC_TOKEN_PREFIX || 'Bearer';
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/properties/allProperties`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/properties/allProperties`, {
           headers: {
             Authorization: `${tokenPrefix} ${token}`,
           },
@@ -93,7 +93,7 @@ export default function UserProfilePage() {
       try {
         const token = localStorage.getItem("token");
         const tokenPrefix = process.env.NEXT_PUBLIC_TOKEN_PREFIX || 'Bearer';
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/properties/pending`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/properties/pending`, {
           headers: {
             Authorization: `${tokenPrefix} ${token}`,
           },

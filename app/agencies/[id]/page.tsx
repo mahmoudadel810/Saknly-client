@@ -26,7 +26,7 @@ import AddCommentIcon from '@mui/icons-material/AddComment';
 
 const fetchAgencyById = async (id: string) => {
 
-    const URL = process.env.NEXT_PUBLIC_API_URL;
+    const URL = process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1';
     const res = await fetch(`${URL}/agencies/${id}`);
   if (!res.ok) throw new Error("تعذر تحميل بيانات الوكالة");
   const data = await res.json();
@@ -34,7 +34,7 @@ const fetchAgencyById = async (id: string) => {
 };
 
 const fetchApprovedTestimonials = async (agencyId: string) => {
-  const URL = process.env.NEXT_PUBLIC_API_URL;
+  const URL = process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1';
   const res = await fetch(`${URL}/testimonial?type=agency&agencyId=${agencyId}&status=approved`);
   if (!res.ok) throw new Error("تعذر تحميل آراء العملاء");
   const data = await res.json();
@@ -75,7 +75,7 @@ const AgencyDetailsPage: React.FC = () => {
     setTestimonialSuccess(null);
     setTestimonialError(null);
     try {
-      const URL = process.env.NEXT_PUBLIC_API_URL;
+      const URL = process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1';
       const res = await fetch(`${URL}/testimonial`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

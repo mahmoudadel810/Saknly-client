@@ -31,7 +31,7 @@ export default function FeaturedAgencies() {
 
   const fetchFeaturedAgencies = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1';
       if (!apiUrl) {
         console.error("Error: NEXT_PUBLIC_API_URL is not defined.");
         setLoading(false);

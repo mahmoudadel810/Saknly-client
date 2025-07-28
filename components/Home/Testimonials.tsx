@@ -29,7 +29,7 @@ const Testimonials = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const API_URL = `${process.env.NEXT_PUBLIC_API_URL}/testimonial`;
+    const API_URL = `${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/testimonial`;
 
     // جلب الآراء من الباكند
     useEffect(() => {

@@ -91,7 +91,7 @@ export default function Register() {
       try {
         // مثال: استدعاء API للتسجيل
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/auth/register`,
+          `${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/auth/register`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },

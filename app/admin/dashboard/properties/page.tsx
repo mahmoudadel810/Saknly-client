@@ -71,7 +71,7 @@ interface PropertyTypeConfig {
   gradient: string;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1';
 
 const propertyTypes: PropertyTypeConfig[] = [
   { 

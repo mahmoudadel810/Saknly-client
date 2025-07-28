@@ -20,6 +20,7 @@ import { ToastProvider } from "@/shared/provider/ToastProvider";
 import AuthGuard from "@/shared/components/AuthGuard";
 import ChatbotButton from "@/components/ChatbotButton";
 import BackToTop from "../shared/components/BackToTop";
+import ErrorBoundary from "@/shared/components/ErrorBoundary";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -42,8 +43,8 @@ const sanchez = Sanchez({
 // Performance monitoring
 const reportWebVitals = (metric: any) => {
   if (process.env.NODE_ENV === 'production') {
-    // Send to analytics service
-    console.log('Web Vitals:', metric);
+    // Send to analytics service in production
+    // console.log('Web Vitals:', metric);
   }
 };
 
@@ -52,10 +53,10 @@ if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
       .then((registration) => {
-        console.log('SW registered: ', registration);
+        // console.log('SW registered: ', registration);
       })
       .catch((registrationError) => {
-        console.log('SW registration failed: ', registrationError);
+        // console.log('SW registration failed: ', registrationError);
       });
   });
 }
@@ -146,25 +147,27 @@ export default function RootLayout({
       <body className="bg-white dark:bg-dark-900 text-gray-900 dark:text-gray-100 transition-colors duration-300" suppressHydrationWarning>
         <HydrationCleanup />
         <RootStyleRegistry>
-          <DarkModeProvider>
-            <ToastProvider>
-            <AuthProvider>
-              <AuthGuard>
-              <WishlistProvider>
-              <Navbar />
-              <div id="root" className="relative">
-                {children}
-                <ChatbotButton />
-                <BackToTop />
-              </div>
-                <Footer />
-                <div id="modal-root" />
-                <div id="toast-root" />
-              </WishlistProvider>
-              </AuthGuard>
-            </AuthProvider>
-            </ToastProvider>
-          </DarkModeProvider>
+          <ErrorBoundary>
+            <DarkModeProvider>
+              <ToastProvider>
+                <AuthProvider>
+                  <AuthGuard>
+                    <WishlistProvider>
+                      <Navbar />
+                      <div id="root" className="relative">
+                        {children}
+                        <ChatbotButton />
+                        <BackToTop />
+                      </div>
+                      <Footer />
+                      <div id="modal-root" />
+                      <div id="toast-root" />
+                    </WishlistProvider>
+                  </AuthGuard>
+                </AuthProvider>
+              </ToastProvider>
+            </DarkModeProvider>
+          </ErrorBoundary>
         </RootStyleRegistry>
       </body>
     </html>

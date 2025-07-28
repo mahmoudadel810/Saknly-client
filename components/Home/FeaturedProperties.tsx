@@ -38,7 +38,7 @@ const FeaturedProperties = () => {
     setError(null);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1';
       if (!apiUrl) {
         setError('Error: API URL not defined.');
         setLoading(false);

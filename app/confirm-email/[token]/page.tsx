@@ -19,7 +19,7 @@ export default function EmailConfirmedPage() {
         const verifyEmail = async () => {
             hasVerified.current = true;
             try {
-                const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/confirm-email/${token}`, {
+                const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/auth/confirm-email/${token}`, {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json'

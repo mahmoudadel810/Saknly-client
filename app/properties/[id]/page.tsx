@@ -170,7 +170,7 @@ const PropertyDetailsPage: React.FC = () => {
   const fetchProperty = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/properties/propertyDetails/${id}`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/properties/propertyDetails/${id}`);
       if (!response.ok) throw new Error("فشل في جلب بيانات العقار");
       const data = await response.json();
       if (data.success && data.data) {
@@ -1209,7 +1209,7 @@ const PropertyInquiryForm: React.FC<{ propertyId: string }> = ({ propertyId }) =
     }
     setLoading(true);
     try {
-      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/property-inquiry/add-property-inquiry`, {
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/property-inquiry/add-property-inquiry`, {
         property: propertyId,
         ...form
       });

@@ -244,7 +244,7 @@ const AgenciesPage = () => {
       });
       
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/agencies/featured?${params.toString()}`
+        `${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/agencies/featured?${params.toString()}`
       );
       
       if (!res.ok) throw new Error('فشل في جلب الوكالات');
@@ -268,7 +268,7 @@ const AgenciesPage = () => {
     try {
       const token = localStorage.getItem('token');
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/agencies/${agency._id}`,
+        `${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/agencies/${agency._id}`,
         {
           method: 'PUT',
           headers: {
@@ -301,7 +301,8 @@ const AgenciesPage = () => {
     try {
       const token = localStorage.getItem('token');
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/agencies/${selectedAgency._id}`,
+
+        `${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/agencies/${selectedAgency._id}`,
         {
           method: 'DELETE',
           headers: {

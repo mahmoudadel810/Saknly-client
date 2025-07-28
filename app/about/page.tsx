@@ -107,7 +107,7 @@ export default function AboutPage() {
       setLoadingStats(true);
       setErrorStats('');
       try {
-        const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+        const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1';
         // Fetch property count
         const propertiesRes = await axios.get(`${BASE_URL}/properties/allProperties`);
         setPropertyCount(propertiesRes.data.count || (Array.isArray(propertiesRes.data.data) ? propertiesRes.data.data.length : 0));

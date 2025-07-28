@@ -433,7 +433,7 @@ export default function PropertyFormForSale() {
 
     // Submit to API
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/properties/addProperty`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/properties/addProperty`, {
         method: 'POST',
         headers: { Authorization: `Saknly__${token}` },
         body: formDataToSend

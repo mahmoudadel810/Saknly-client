@@ -97,7 +97,7 @@ const LoginPage = () => {
       setLoading(true); // Start loading
       try {
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/auth/login`,
+          `${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/auth/login`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },

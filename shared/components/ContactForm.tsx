@@ -49,7 +49,7 @@ const ContactForm = () => {
     setStatus({ type: "info", message: "جاري الإرسال..." });
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/contact/contact-us`,
+        `${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/contact/contact-us`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

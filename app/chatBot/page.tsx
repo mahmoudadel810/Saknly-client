@@ -13,7 +13,7 @@ export default function Home() {
 
     const handleAsk = async () => {
         if (!question.trim()) return;
-        const res = await axios.post('https://saknly-server-9air.vercel.app/api/saknly/v1/chat', { question });
+        const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/chat`, { question });
         setAnswer(res.data.answer);
     };
 

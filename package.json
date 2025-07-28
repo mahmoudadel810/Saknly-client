@@ -9,9 +9,6 @@
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
-    "test": "vitest",
-    "test:ui": "vitest --ui",
-    "test:run": "vitest run",
     "vercel-build": "next build"
   },
   "dependencies": {
@@ -78,9 +75,6 @@
     "zustand": "^4.4.7"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^6.6.4",
-    "@testing-library/react": "^16.3.0",
-    "@testing-library/user-event": "^14.6.1",
     "@types/node": "20.2.5",
     "@types/react": "18.2.37",
     "@types/react-dom": "^18.2.18",
@@ -90,11 +84,9 @@
     "depcheck": "^1.4.7",
     "eslint": "^8.54.0",
     "eslint-config-next": "^14.0.0",
-    "jsdom": "^26.1.0",
     "postcss": "^8.4.31",
     "tailwindcss": "^3.3.5",
-    "typescript": "^5.3.3",
-    "vitest": "^3.2.4"
+    "typescript": "^5.3.3"
   },
   "keywords": [
     "real-estate",

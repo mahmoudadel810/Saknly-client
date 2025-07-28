@@ -4,6 +4,9 @@
   "framework": "nextjs",
   "installCommand": "npm install",
   "devCommand": "npm run dev",
+  "env": {
+    "NEXT_PUBLIC_API_URL": "https://saknly-server-9air.vercel.app/api/saknly/v1"
+  },
   "functions": {
     "app/api/**/*.ts": {
       "maxDuration": 30

@@ -129,7 +129,7 @@ const AdminDashboard = () => {
     // Fetch properties count
     const fetchStats = async () => {
       try {
-        const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+        const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1';
         // Properties
         const propertiesRes = await axios.get(`${BASE_URL}/properties/allProperties`);
         setTotalProperties(propertiesRes.data.count || (Array.isArray(propertiesRes.data.data) ? propertiesRes.data.data.length : 0));

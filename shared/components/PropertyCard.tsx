@@ -90,7 +90,7 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
   };
 
   const handleCardClick = () => {
-    console.log('Card clicked!');
+    // Handle card click - navigation will be handled by parent component
   };
 
   const displayImage = (images && images.length > 0) ? images[currentImageIndex] : '/images/placeholder.jpg'; 
