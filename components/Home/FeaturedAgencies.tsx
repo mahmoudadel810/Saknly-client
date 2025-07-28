@@ -265,7 +265,7 @@ export default function FeaturedAgencies() {
           style={{
             padding: "10px 0 30px",
             width: "100%",
-            overflow: "visible",
+            overflow: "hidden",
           }}
         >
           {agencies.map((agency) => (

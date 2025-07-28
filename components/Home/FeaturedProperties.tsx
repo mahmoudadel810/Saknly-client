@@ -327,7 +327,7 @@ const FeaturedProperties = () => {
             style={{
               padding: '10px 0 30px',
               width: '100%',
-              overflow: 'visible',
+              overflow: 'hidden',
             }}
           >
             {properties.map((property: any) => (
