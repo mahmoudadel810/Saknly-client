@@ -12,6 +12,11 @@ import { jwtDecode } from "jwt-decode";
 import { validatePropertyForm, getCurrentAreaConstraints } from "../utils/propertyFormValidation";
 import MapPicker from "./MapPicker";
 import { useToast } from "../provider/ToastProvider";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import { arSA } from 'date-fns/locale/ar-SA';
+import { format } from 'date-fns';
 
 const amenities = [
   "تكييف", "مصعد", "شرفة", "موقف سيارات", "مسموح بالحيوانات الأليفة",
@@ -35,8 +40,10 @@ const areaConstraints = {
 };
 
 const cities = [
-  "شبين الكوم", "منوف", "تلا", "اشمون", "قويسنا", 
-  "بركة السبع", "أشمون", "الباجور"
+  "شبين الكوم", "منوف", "تلا", "أشمون", "قويسنا", 
+  "بركة السبع", "الباجور", "السادات", "الشهداء", "سرس الليان",
+  "الباجور", "منشأة سلطان", "سرس الليان", "بركة السبع", "تلا",
+  "أشمون", "قويسنا", "منوف", "شبين الكوم"
 ];
 
 const studentRoomTypes = [
@@ -650,15 +657,34 @@ export default function PropertyFormForSale() {
               </Box>
             )}
             <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, mt: 2 }}>
-              <TextField 
-                label="تاريخ التسليم" 
-                name="deliveryDate" 
-                type="date" 
-                InputLabelProps={{ shrink: true }} 
-                value={formData.deliveryDate} 
-                onChange={handleInputChange} 
-                fullWidth 
-              />
+              <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={arSA}>
+                <DatePicker
+                  label="تاريخ التسليم"
+                  value={formData.deliveryDate ? new Date(formData.deliveryDate) : null}
+                  onChange={(newValue) => {
+                    const formattedDate = newValue ? format(newValue, 'yyyy-MM-dd') : '';
+                    // Create a proper event-like object with the expected structure
+                    const event = {
+                      target: { 
+                        name: 'deliveryDate', 
+                        value: formattedDate,
+                        // Add required properties to satisfy TypeScript
+                        addEventListener: () => {},
+                        dispatchEvent: () => true,
+                        removeEventListener: () => {}
+                      } as unknown as HTMLInputElement
+                    };
+                    handleInputChange(event as unknown as React.ChangeEvent<HTMLInputElement>);
+                  }}
+                  slotProps={{
+                    textField: {
+                      fullWidth: true,
+                      name: 'deliveryDate',
+                    },
+                  }}
+                  format="dd/MM/yyyy"
+                />
+              </LocalizationProvider>
               <TextField 
                 label="شروط التسليم" 
                 name="deliveryTerms" 
@@ -753,15 +779,34 @@ export default function PropertyFormForSale() {
                 </Select>
                 {errors.leaseDuration && <Typography color="error" variant="caption">{errors.leaseDuration}</Typography>}
               </FormControl>
-              <TextField 
-                label="تاريخ التوفر" 
-                name="availableFrom" 
-                type="date" 
-                InputLabelProps={{ shrink: true }} 
-                value={formData.availableFrom} 
-                onChange={handleInputChange} 
-                fullWidth 
-              />
+              <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={arSA}>
+                <DatePicker
+                  label="تاريخ التوفر"
+                  value={formData.availableFrom ? new Date(formData.availableFrom) : null}
+                  onChange={(newValue) => {
+                    const formattedDate = newValue ? format(newValue, 'yyyy-MM-dd') : '';
+                    // Create a proper event-like object with the expected structure
+                    const event = {
+                      target: { 
+                        name: 'availableFrom', 
+                        value: formattedDate,
+                        // Add required properties to satisfy TypeScript
+                        addEventListener: () => {},
+                        dispatchEvent: () => true,
+                        removeEventListener: () => {}
+                      } as unknown as HTMLInputElement
+                    };
+                    handleInputChange(event as unknown as React.ChangeEvent<HTMLInputElement>);
+                  }}
+                  slotProps={{
+                    textField: {
+                      fullWidth: true,
+                      name: 'availableFrom',
+                    },
+                  }}
+                  format="dd/MM/yyyy"
+                />
+              </LocalizationProvider>
             </Box>
             <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, mt: 2 }}>
               <TextField 

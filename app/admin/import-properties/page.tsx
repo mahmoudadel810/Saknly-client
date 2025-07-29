@@ -199,8 +199,9 @@ export default function AdminImportPropertiesPage() {
 
     // Supported cities list (must match server validation)
     const supportedCities = [
-      "شبين الكوم", "منوف", "تلا", "اشمون", "قويسنا", 
-      "بركة السبع", "أشمون", "الباجور"
+      'شبين الكوم', 'منوف', 'تلا', 'أشمون', 'قويسنا', 
+      'بركة السبع', 'الباجور', 'السادات', 'الشهداء', 'سرس الليان',
+      'منشأة سلطان'
     ];
     
     // Function to find a valid city or return default

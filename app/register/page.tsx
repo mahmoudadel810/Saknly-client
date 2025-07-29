@@ -2,7 +2,8 @@
 
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Player from "lottie-react";
 import registerAnimation from "@/public/images/Reagister-Anmation.json";
@@ -12,6 +13,9 @@ import {
   TextField,
   Button,
   InputAdornment,
+  Snackbar,
+  Alert,
+  AlertColor,
 } from "@mui/material";
 import GoogleIcon from "@mui/icons-material/Google";
 import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
@@ -29,6 +33,24 @@ import { textFieldStyles } from "@/shared/styles/textFieldStyle";
 import { useDarkMode } from "@/app/context/DarkModeContext";
 
 export default function Register() {
+  const router = useRouter();
+  const [openSnackbar, setOpenSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarSeverity, setSnackbarSeverity] = useState<AlertColor>("success");
+
+  const handleCloseSnackbar = () => {
+    setOpenSnackbar(false);
+  };
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (openSnackbar) {
+      timer = setTimeout(() => {
+        router.push('/login');
+      }, 5000);
+    }
+    return () => clearTimeout(timer);
+  }, [openSnackbar, router]);
   // Define validation schema using Yup
   const validationSchema = yup.object({
     userName: yup
@@ -69,10 +91,17 @@ export default function Register() {
       .oneOf([yup.ref("password")], "كلمات المرور غير متطابقة"),
     phone: yup
       .string()
-      .matches(/^[\+]?[1-9][\d]{0,15}$/, " ادخل كود الدولة ثم رقم الهاتف")
+      .matches(/^\d{11}$/, "يجب إدخال 11 رقماً فقط")
       .required("رقم الهاتف مطلوب"),
     address: yup.string().required("العنوان مطلوب"),
   });
+
+  // Show success message and prepare redirect
+  const showSuccessAndRedirect = () => {
+    setSnackbarMessage("تم التسجيل بنجاح! يرجى التحقق من بريدك الإلكتروني لتأكيد الحساب.");
+    setSnackbarSeverity("success");
+    setOpenSnackbar(true);
+  };
 
   // Initialize Formik
   const formik = useFormik({
@@ -104,13 +133,11 @@ export default function Register() {
         }
 
         const data = await res.json();
-
-        // ✅ عرض رسالة نجاح
-        showToast("تم التسجيل بنجاح! افحص بريدك الالكترونى", "success");
-        console.log(data);
+        console.log("Registration successful:", data);
         formik.resetForm();
-
-        // ممكن تعملي redirect أو تفضي الفورم هنا
+        
+        // Show success message and prepare redirect
+        showSuccessAndRedirect();
       } catch (error) {
         console.error("Registration error:", error);
 

@@ -19,11 +19,14 @@ import {
   IconButton,
   Tooltip,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
+  ThemeProvider,
+  createTheme
 } from "@mui/material";
 import { useRouter, useSearchParams } from "next/navigation";
 import axios from "axios";
 import FilterSidebar from "@/shared/components/FilterSidebar";
+import { useDarkMode } from "@/app/context/DarkModeContext";
 import PropertyMap from "@/shared/components/PropertyMap";
 import { Property } from "@/shared/types";
 import Head from "next/head";
@@ -46,7 +49,7 @@ import Snackbar from "@mui/material/Snackbar";
 import { TransitionGroup, CSSTransition } from "react-transition-group";
 
 // Enhanced Property Card Component
-const EnhancedPropertyCard: React.FC<{
+interface EnhancedPropertyCardProps {
   images: string[];
   price: string;
   propertyType: string;
@@ -65,7 +68,9 @@ const EnhancedPropertyCard: React.FC<{
   };
   propertyId: string;
   title: string;
-}> = ({
+}
+
+const EnhancedPropertyCard: React.FC<EnhancedPropertyCardProps> = ({
   images,
   price,
   propertyType,
@@ -88,6 +93,7 @@ const EnhancedPropertyCard: React.FC<{
   const router = useRouter();
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
   const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const { isDarkMode } = useDarkMode();
 
   const formatPrice = (price: string) => {
     const numPrice = parseFloat(price);
@@ -144,22 +150,19 @@ const EnhancedPropertyCard: React.FC<{
   return (
     <Card
       sx={{
-        maxWidth: isMobile ? "100%" : 380,
-        margin: "auto",
-        boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
-        borderRadius: 3,
-        overflow: "hidden",
-        transition: "all 0.3s ease-in-out",
-        "&:hover": {
-          transform: "translateY(-8px)",
-          boxShadow: "0 8px 30px rgba(0,0,0,0.12)"
-        },
-        position: "relative",
-        backgroundColor: "#fff",
-        boxSizing: "content-box",
-        height: 640,
+        height: "100%",
         display: "flex",
-        flexDirection: "column"
+        flexDirection: "column",
+        transition: "all 0.3s ease",
+        bgcolor: isDarkMode ? 'background.paper' : 'background.default',
+        color: isDarkMode ? 'text.primary' : 'text.primary',
+        border: isDarkMode ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid rgba(0, 0, 0, 0.12)',
+        "&:hover": {
+          transform: "translateY(-4px)",
+          boxShadow: isDarkMode ? 6 : 3,
+          borderColor: theme.palette.primary.main,
+        },
+        position: "relative"
       }}>
       {/* Image Section */}
       <Box
@@ -662,7 +665,13 @@ const SearchPage: React.FC = () => {
   };
 
   return (
-    <>
+    <ThemeProvider theme={theme}>
+      <Box sx={{ 
+        bgcolor: 'background.default',
+        color: 'text.primary',
+        minHeight: '100vh',
+        transition: 'background-color 0.3s, color 0.3s',
+      }}>
       <Head>
         <title>عقارات للايجار والبيع في مصر | سكنلي</title>
         <meta
@@ -929,8 +938,9 @@ const SearchPage: React.FC = () => {
             </Box>
           )}
         </Box>
+        </Box>
       </Box>
-    </>
+    </ThemeProvider>
   );
 };
 
