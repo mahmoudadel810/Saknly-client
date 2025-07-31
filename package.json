@@ -33,6 +33,7 @@
     "@types/js-cookie": "^3.0.6",
     "@types/react-dropzone": "^4.2.2",
     "axios": "^1.6.2",
+    "browser-image-compression": "^2.0.2",
     "chart.js": "^4.5.0",
     "clsx": "^2.0.0",
     "critters": "^0.0.23",
@@ -75,18 +76,26 @@
     "zustand": "^4.4.7"
   },
   "devDependencies": {
+    "@eslint/js": "^9.32.0",
     "@types/node": "20.2.5",
     "@types/react": "18.2.37",
     "@types/react-dom": "^18.2.18",
     "@types/react-transition-group": "^4.4.12",
     "@types/react-window": "^1.8.8",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
     "autoprefixer": "^10.4.16",
     "depcheck": "^1.4.7",
     "eslint": "^8.54.0",
+    "eslint-config-airbnb-typescript": "^18.0.0",
     "eslint-config-next": "^14.0.0",
+    "eslint-plugin-react": "^7.37.5",
+    "globals": "^16.3.0",
+    "jiti": "^2.5.1",
     "postcss": "^8.4.31",
     "tailwindcss": "^3.3.5",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "typescript-eslint": "^8.38.0"
   },
   "keywords": [
     "real-estate",

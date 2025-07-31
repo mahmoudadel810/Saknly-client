@@ -17,6 +17,7 @@ import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { arSA } from 'date-fns/locale/ar-SA';
 import { format } from 'date-fns';
+import FileCompressor from "../utils/fileCompression";
 
 const amenities = [
   "تكييف", "مصعد", "شرفة", "موقف سيارات", "مسموح بالحيوانات الأليفة",
@@ -235,33 +236,87 @@ export default function PropertyFormForSale() {
     setFormData(prev => ({ ...prev, amenities: selectedAmenities }));
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
+  const compressImage = async (file: File): Promise<File> => {
+    try {
+      const compressed = await FileCompressor.compressImage(file);
+      return compressed.file;
+    } catch (error) {
+      console.error('Error compressing image:', error);
+      return file; // Return original if compression fails
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+
+    try {
+      setIsSubmitting(true);
       const files = Array.from(e.target.files);
       
-      const isAnyFileTooLarge = files.some(file => file.size > 5 * 1024 * 1024);
-      if (isAnyFileTooLarge) {
-        setErrors(prev => ({ ...prev, images: 'الحد الأقصى لحجم الصورة هو 5MB' }));
+      // Check total files count (reduced from 20 to 8)
+      if (formData.images.length + files.length > 8) {
+        setErrors(prev => ({ ...prev, images: 'الحد الأقصى لعدد الصور هو 8' }));
         return;
       }
 
-      if (formData.images.length + files.length > 20) {
-        setErrors(prev => ({ ...prev, images: 'الحد الأقصى لعدد الصور هو 20' }));
+      // Validate files first
+      for (const file of files) {
+        const validation = FileCompressor.validateFile(file);
+        if (!validation.isValid) {
+          setErrors(prev => ({ ...prev, images: validation.error || 'Invalid file' }));
+          return;
+        }
+      }
+
+      // Check total size
+      const totalSize = FileCompressor.getTotalSize([...formData.images, ...files]);
+      if (totalSize > 32 * 1024 * 1024) { // 32MB total limit
+        setErrors(prev => ({ ...prev, images: 'الحد الأقصى للحجم الإجمالي هو 32MB' }));
         return;
       }
 
-      const newImages = [...formData.images, ...files];
+      // Compress all images in parallel
+      const compressedFiles = await FileCompressor.compressFiles(files);
+      const validFiles = compressedFiles.map(cf => cf.file);
+
+      // Update form data with compressed files
+      const newImages = [...formData.images, ...validFiles];
       setFormData(prev => ({ ...prev, images: newImages }));
-      setPreviewUrls(newImages.map(file => URL.createObjectURL(file)));
+      
+      // Create preview URLs
+      const newPreviewUrls = await Promise.all(
+        validFiles.map(file => {
+          return new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target?.result as string);
+            reader.readAsDataURL(file);
+          });
+        })
+      );
+      
+      setPreviewUrls(prev => [...prev, ...newPreviewUrls]);
+      
+      // Clear any previous errors
       setErrors(prev => {
         const newErrors = { ...prev };
-        if (newImages.length < 1) {
-          newErrors.images = 'يجب تحميل صورة واحدة على الأقل';
-        } else {
-          delete newErrors.images;
-        }
+        delete newErrors.images;
         return newErrors;
       });
+
+      // Show compression info
+      const totalOriginal = compressedFiles.reduce((sum, cf) => sum + cf.originalSize, 0);
+      const totalCompressed = compressedFiles.reduce((sum, cf) => sum + cf.compressedSize, 0);
+      const savings = ((totalOriginal - totalCompressed) / totalOriginal * 100).toFixed(1);
+      
+      if (totalCompressed < totalOriginal) {
+        showSnackbar(`تم ضغط الصور بنجاح. تم توفير ${savings}% من الحجم`, 'success');
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'حدث خطأ أثناء معالجة الصور';
+      setErrors(prev => ({ ...prev, images: errorMessage }));
+      console.error('Error processing images:', error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -330,11 +385,24 @@ export default function PropertyFormForSale() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Use the new validation function
+    // Validate form data
     const { isValid, newErrors } = validatePropertyForm(formData);
     if (!isValid) {
       setErrors(newErrors);
       showSnackbar('يوجد أخطاء في النموذج، يرجى مراجعة الحقول المطلوبة');
+      return;
+    }
+
+    // Validate images
+    if (formData.images.length === 0) {
+      setErrors(prev => ({ ...prev, images: 'يجب تحميل صورة واحدة على الأقل' }));
+      showSnackbar('الرجاء تحميل صورة واحدة على الأقل');
+      return;
+    }
+
+    // Check if any image is still being processed
+    if (isSubmitting) {
+      showSnackbar('جاري معالجة الصور، الرجاء الانتظار...', 'info');
       return;
     }
     
@@ -365,10 +433,16 @@ export default function PropertyFormForSale() {
       return;
     }
 
-    // Prepare form data
-    const formDataToSend = new FormData();
+    try {
+      setIsSubmitting(true);
+      
+      // Prepare form data
+      const formDataToSend = new FormData();
     
-    // Common fields
+    // Add compressed images
+    for (const image of formData.images) {
+      formDataToSend.append('images', image);
+    }
     formDataToSend.append('category', formData.operationType);
     formDataToSend.append('type', formData.type);
     formDataToSend.append('title', formData.title);
@@ -434,12 +508,7 @@ export default function PropertyFormForSale() {
       });
     }
 
-    // Amenities and images
-    formData.amenities.forEach(item => formDataToSend.append('amenities[]', item));
-    formData.images.forEach(file => formDataToSend.append('media', file));
-
-    // Submit to API
-    try {
+      // Submit to API
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/properties/addProperty`, {
         method: 'POST',
         headers: { Authorization: `Saknly__${token}` },
@@ -453,28 +522,28 @@ export default function PropertyFormForSale() {
         return;
       }
 
-      const result = await response.json();
+      const result = await response.json().catch(() => ({
+        message: 'فشل في معالجة الاستجابة من الخادم'
+      }));
 
-      if (response.ok) {
-        try {
-          const decoded: any = jwtDecode(token);
-          if (decoded.role === 'admin') {
-            showSnackbar('تمت إضافة العقار بنجاح وسيظهر مباشرة', 'success');
-            router.push('/properties');
-          } else {
-            setPendingOpen(true);
-          }
-        } catch (err) {
-          console.error('Error decoding token:', err);
-          setPendingOpen(true);
-        }
-        return;
+      if (!response.ok) {
+        throw new Error(result.message || `خطأ من الخادم: ${response.status}`);
       }
-      
-      throw new Error(result.message || `خطأ من الخادم: ${response.status}`);
+
+      // Handle successful response
+      const decoded: any = jwtDecode(token);
+      if (decoded.role === 'admin') {
+        showSnackbar('تمت إضافة العقار بنجاح وسيظهر مباشرة', 'success');
+        router.push('/properties');
+      } else {
+        setPendingOpen(true);
+      }
     } catch (err) {
       console.error('Error submitting form:', err);
-      showSnackbar(`حدث خطأ أثناء إرسال البيانات: ${err instanceof Error ? err.message : 'Unknown error'}`, 'error');
+      showSnackbar(
+        `حدث خطأ أثناء إرسال البيانات: ${err instanceof Error ? err.message : 'خطأ غير معروف'}`,
+        'error'
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -1569,4 +1638,3 @@ export default function PropertyFormForSale() {
     </>
   );
 }
-
