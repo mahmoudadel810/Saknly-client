@@ -419,7 +419,7 @@ const Testimonials = () => {
                 anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
             >
                 <Alert severity="success" sx={{ width: '100%' }}>
-                    تم نشر رأيك بنجاح!
+                    تم استلام رأيك، وسيظهر بعد مراجعته من الإدارة.
                 </Alert>
             </Snackbar>
         </Box>
