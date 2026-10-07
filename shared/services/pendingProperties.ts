@@ -1,15 +1,20 @@
-import { queryOptions } from "@tanstack/react-query";
-import { authHeader } from "@/shared/utils/auth";
-import { API_URL } from "@/shared/services/api";
+import { queryOptions, type QueryClient } from "@tanstack/react-query";
+import { api } from "@/shared/services/api";
 
-/** A listing waiting for moderation, as GET /properties/pending returns it. */
+/** A listing waiting for moderation, as GET /properties/pending returns it (the full document). */
 export interface PendingProperty {
   _id: string;
   title: string;
   description?: string;
-  location?: { address?: string };
+  type?: string;
+  location?: { address?: string; city?: string; district?: string };
   area?: number;
   price?: number;
+  bedrooms?: number;
+  bathrooms?: number;
+  images?: Array<{ url: string; isMain?: boolean; alt?: string }>;
+  /** The owner's notification address; deny and approve emails go here, not to the account email. */
+  contactInfo?: { name?: string; phone?: string; email?: string };
   createdAt: string;
   category: "sale" | "rent" | "student";
   owner?: {
@@ -17,26 +22,23 @@ export interface PendingProperty {
     userName?: string;
     name?: string;
     email?: string;
-  };
+  } | null;
 }
 
 export type PendingPropertiesByCategory = Record<"sale" | "rent" | "student", PendingProperty[]>;
 
+export const PENDING_PROPERTIES_KEY = ["pending-properties"] as const;
+
 /**
- * The moderation queue, shared by the admin properties page and the admin sidebar's pending badge. One key,
- * so both read the same cached request.
+ * The moderation queue, shared by the admin properties page, the dashboard and the admin sidebar's pending
+ * badge. One key, so all three read the same cached request.
  */
 export const pendingPropertiesQuery = queryOptions({
-  queryKey: ["pending-properties"],
+  queryKey: PENDING_PROPERTIES_KEY,
   queryFn: async (): Promise<PendingPropertiesByCategory> => {
-    // One request for every pending listing, grouped here by category
-    // (the endpoint has no pagination, so splitting by category only tripled the calls).
-    const res = await fetch(`${API_URL}/properties/pending`, {
-      headers: authHeader(),
-    });
-    // A 401/500 must not be shown as "no pending properties".
-    if (!res.ok) throw new Error(`Failed to load pending properties (${res.status})`);
-    const body = await res.json();
+    // One request for every pending listing, grouped here by category (the endpoint has no pagination).
+    // A failed request throws, so a 401/500 is never shown as "no pending listings".
+    const { data: body } = await api.get("/properties/pending");
     const all: PendingProperty[] = Array.isArray(body?.data) ? body.data : [];
 
     const grouped: PendingPropertiesByCategory = { sale: [], rent: [], student: [] };
@@ -50,3 +52,13 @@ export const pendingPropertiesQuery = queryOptions({
 
 export const countPending = (grouped: PendingPropertiesByCategory): number =>
   grouped.sale.length + grouped.rent.length + grouped.student.length;
+
+/** Every pending listing, newest first (the server's order within each category is kept). */
+export const flattenPending = (grouped: PendingPropertiesByCategory): PendingProperty[] =>
+  [...grouped.sale, ...grouped.rent, ...grouped.student].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
+
+/** Refreshes the queue and the sidebar badge after an approve or deny. */
+export const invalidatePending = (queryClient: QueryClient) =>
+  queryClient.invalidateQueries({ queryKey: PENDING_PROPERTIES_KEY });

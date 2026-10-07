@@ -1,739 +1,549 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
-import {
-  Box,
-  Typography,
-  Card,
-  CardContent,
-  Button,
-  CircularProgress,
-  Stack,
-  Chip,
-  Divider,
-  Snackbar,
-  Alert,
-  TextField,
-  Avatar,
-  IconButton,
-  Tooltip,
-  Paper,
-  Container,
-  Fade,
-  Grow,
-  Slide
-} from "@mui/material";
-import Collapse from "@mui/material/Collapse";
-import {
-  CheckCircle as ApproveIcon,
-  Cancel as DenyIcon,
-  Home as HomeIcon,
-  Apartment as RentIcon,
-  School as StudentIcon,
-  Info as InfoIcon,
-  LocationOn as LocationIcon,
-  SquareFoot as AreaIcon,
-  AttachMoney as PriceIcon,
-  Schedule as DateIcon
-} from "@mui/icons-material";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
+import React, { useMemo, useState } from "react";
+import Link from "next/link";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useDebounce } from "use-debounce";
+import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
+import MenuItem from "@mui/material/MenuItem";
+import MuiLink from "@mui/material/Link";
+import Tab from "@mui/material/Tab";
+import Tabs from "@mui/material/Tabs";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import CheckCircleOutlineOutlined from "@mui/icons-material/CheckCircleOutlineOutlined";
+import DeleteOutlineOutlined from "@mui/icons-material/DeleteOutlineOutlined";
+import DoneAllOutlined from "@mui/icons-material/DoneAllOutlined";
+import OpenInNewOutlined from "@mui/icons-material/OpenInNewOutlined";
+import TaskAltOutlined from "@mui/icons-material/TaskAltOutlined";
+import UploadFileOutlined from "@mui/icons-material/UploadFileOutlined";
 import ConfirmDialog from "@/shared/components/ConfirmDialog";
-import { format } from "date-fns";
-import { ar } from "date-fns/locale";
-import { useDarkMode } from "@/app/context/DarkModeContext";
-import { authHeader } from "@/shared/utils/auth";
-import { API_URL } from "@/shared/services/api";
-import { pendingPropertiesQuery, type PendingProperty } from "@/shared/services/pendingProperties";
+import { useToast } from "@/shared/provider/ToastProvider";
+import { api } from "@/shared/services/api";
+import {
+  flattenPending,
+  invalidatePending,
+  pendingPropertiesQuery,
+  type PendingProperty,
+} from "@/shared/services/pendingProperties";
+import DataTable, { useDataTableState, type DataTableColumn } from "@/shared/ui/DataTable";
+import ListingTypeTag from "@/shared/ui/ListingTypeTag";
+import PageHeader from "@/shared/ui/PageHeader";
+import Price from "@/shared/ui/Price";
+import StatusBadge from "@/shared/ui/StatusBadge";
+import ListingThumb from "@/shared/ui/admin/ListingThumb";
+import SearchField from "@/shared/ui/admin/SearchField";
+import { adminErrorMessage } from "@/shared/ui/admin/errors";
+import { dateValue, formatCount, formatDate, listingsCount } from "@/shared/ui/admin/format";
+import { publishedPropertiesQuery, type PublishedProperty } from "@/shared/ui/admin/queries";
 
-// Types
-type Property = PendingProperty;
+type Category = "all" | "sale" | "rent" | "student";
+type Busy = "approve" | "deny";
 
-interface PropertyTypeConfig {
-  key: 'sale' | 'rent' | 'student';
-  label: string;
-  icon: React.ReactNode;
-  color: 'primary' | 'success' | 'warning';
-  gradient: string;
-}
-
-const propertyTypes: PropertyTypeConfig[] = [
-  { 
-    key: 'sale', 
-    label: "عقارات للبيع", 
-    icon: <HomeIcon />, 
-    color: 'primary',
-    gradient: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)'
-  },
-  { 
-    key: 'rent', 
-    label: "عقارات للإيجار", 
-    icon: <RentIcon />, 
-    color: 'success',
-    gradient: 'linear-gradient(135deg, #22c55e 0%, #15803d 100%)'
-  },
-  { 
-    key: 'student', 
-    label: "سكن طلابي", 
-    icon: <StudentIcon />, 
-    color: 'warning',
-    gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
-  },
+const CATEGORY_OPTIONS: { value: Category; label: string }[] = [
+  { value: "all", label: "كل الأنواع" },
+  { value: "sale", label: "للبيع" },
+  { value: "rent", label: "للإيجار" },
+  { value: "student", label: "سكن طلابي" },
 ];
 
-// Components
-const PropertyCard = ({ 
-  property,
-  onApprove,
-  onDeny,
-  loading
-}: {
-  property: Property;
-  onApprove: () => void;
-  onDeny: () => void;
-  loading: boolean;
-}) => {
-  const { isDarkMode } = useDarkMode();
-  const [expanded, setExpanded] = useState(false);
+const REASON_MAX = 500; // the server keeps the first 500 characters
 
+const listingHref = (id: string) => `/properties/${id}`;
+const openListing = (id: string) => window.open(listingHref(id), "_blank", "noopener");
+
+/** Title cell: thumbnail and the title, which opens the listing in a new tab. */
+function TitleCell({ id, title, images }: { id: string; title: string; images?: PendingProperty["images"] }) {
   return (
-    <Fade in={true} timeout={600}>
-      <Card sx={{ 
-        borderRadius: 4, 
-        boxShadow: '0 4px 20px rgba(0,0,0,0.08)', 
-        mb: 2,
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        border: isDarkMode ? '1px solid var(--dark-700)' : '1px solid rgba(0,0,0,0.05)',
-        overflow: 'hidden',
-        position: 'relative',
-        '&:hover': {
-          boxShadow: isDarkMode ? '0 8px 30px var(--dark-900)' : '0 8px 30px rgba(0,0,0,0.12)',
-          transform: 'translateY(-4px)'
-        },
-        '&::before': {
-          content: '""',
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: '3px',
-          background: propertyTypes.find(t => t.key === property.category)?.gradient || 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-        },
-        background: isDarkMode ? 'var(--dark-800)' : '#fff',
-        color: isDarkMode ? '#fff' : undefined,
-      }}>
-        <CardContent sx={{ p: 3 }}>
-          <Stack direction="row" spacing={2} alignItems="flex-start">
-            <Avatar 
-              sx={{ 
-                background: propertyTypes.find(t => t.key === property.category)?.gradient || 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-                color: 'white',
-                width: { xs: 52, md: 60 }, 
-                height: { xs: 52, md: 60 },
-                fontSize: { xs: '1.1rem', md: '1.4rem' },
-                boxShadow: '0 4px 15px rgba(59, 130, 246, 0.3)'
-                ,border: isDarkMode ? '2px solid var(--dark-700)' : undefined
-              }}
-            >
-              {propertyTypes.find(t => t.key === property.category)?.icon}
-            </Avatar>
-            
-            <Box flex={1} minWidth={0}>
-              <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-                <Typography 
-                  variant="h6" 
-                  fontWeight={700}
-                  sx={{ 
-                    fontSize: { xs: '1rem', md: '1.125rem' },
-                    color: isDarkMode ? '#fff' : 'text.primary',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    flex: 1,
-                    mr: 1,
-                    lineHeight: 1.3
-                  }}
-                >
-                  {property.title}
-                </Typography>
-                <Tooltip title="معلومات إضافية" arrow>
-                  <IconButton 
-                    size="small" 
-                    onClick={() => setExpanded(!expanded)}
-                    sx={{ 
-                      flexShrink: 0,
-                      bgcolor: isDarkMode ? 'var(--dark-700)' : 'rgba(0,0,0,0.04)',
-                      '&:hover': {
-                        bgcolor: isDarkMode ? 'var(--dark-600)' : 'rgba(0,0,0,0.08)',
-                        transform: 'scale(1.1)'
-                      },
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    <InfoIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-              </Stack>
-
-              <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 0.5 }}>
-                <LocationIcon sx={{ fontSize: 16, color: isDarkMode ? '#fff' : 'text.secondary' }} />
-                <Typography 
-                  variant="body2" 
-                  color={isDarkMode ? '#fff' : 'text.secondary'} 
-                  sx={{ 
-                    fontSize: { xs: '0.8rem', md: '0.875rem' },
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    fontWeight: 500
-                  }}
-                >
-                  {property.location?.address || 'لا يوجد عنوان'}
-                </Typography>
-              </Stack>
-
-              <Collapse in={expanded} timeout="auto">
-                <Box sx={{ mt: 2 }}>
-                  <Paper sx={{ 
-                    p: 2, 
-                    bgcolor: isDarkMode ? 'var(--dark-700)' : 'grey.50', 
-                    borderRadius: 2,
-                    border: isDarkMode ? '1px solid var(--dark-700)' : '1px solid rgba(0,0,0,0.05)'
-                  }}>
-                    {/* Owner Info */}
-                    {property.owner && (
-                      <Box sx={{ mb: 2 }}>
-                        <Typography variant="body2" sx={{ color: isDarkMode ? '#fff' : 'text.primary', fontWeight: 600 }}>
-                          اسم الرافع: {property.owner.userName || property.owner.name || '-'}
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: isDarkMode ? '#fff' : 'text.secondary' }}>
-                          البريد الإلكتروني: {property.owner.email || '-'}
-                        </Typography>
-                      </Box>
-                    )}
-                    <Typography 
-                      variant="body2" 
-                      sx={{ 
-                        fontSize: { xs: '0.8rem', md: '0.875rem' },
-                        color: isDarkMode ? '#fff' : 'text.secondary',
-                        mb: 2,
-                        lineHeight: 1.5
-                      }}
-                    >
-                      {property.description || 'لا يوجد وصف'}
-                    </Typography>
-                    
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mt: 1 }}>
-                      <Box sx={{ flex: '1 1 180px', minWidth: 120, mb: { xs: 1, sm: 0 } }}>
-                        <Stack direction="row" alignItems="center" spacing={1}>
-                          <AreaIcon sx={{ fontSize: 16, color: isDarkMode ? '#fff' : 'text.secondary' }} />
-                          <Typography variant="body2" sx={{ fontSize: { xs: '0.75rem', md: '0.875rem' }, color: isDarkMode ? '#fff' : undefined }}>
-                            المساحة: <strong>{property.area || '--'} م²</strong>
-                          </Typography>
-                        </Stack>
-                      </Box>
-                      <Box sx={{ flex: '1 1 180px', minWidth: 120 }}>
-                        <Stack direction="row" alignItems="center" spacing={1}>
-                          <PriceIcon sx={{ fontSize: 16, color: isDarkMode ? '#fff' : 'text.secondary' }} />
-                          <Typography variant="body2" sx={{ fontSize: { xs: '0.75rem', md: '0.875rem' }, color: isDarkMode ? '#fff' : undefined }}>
-                            السعر: <strong>{property.price ? `${property.price.toLocaleString()} ج.م` : '--'}</strong>
-                          </Typography>
-                        </Stack>
-                      </Box>
-                    </Box>
-                    
-                    <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 1 }}>
-                      <DateIcon sx={{ fontSize: 16, color: isDarkMode ? '#fff' : 'text.secondary' }} />
-                      <Typography 
-                        variant="caption" 
-                        sx={{ 
-                          fontSize: { xs: '0.7rem', md: '0.75rem' },
-                          color: isDarkMode ? '#fff' : 'text.secondary'
-                        }}
-                      >
-                        تاريخ الإضافة: {format(new Date(property.createdAt), 'dd/MM/yyyy', { locale: ar })}
-                      </Typography>
-                    </Stack>
-                  </Paper>
-                </Box>
-              </Collapse>
-
-              <Box 
-                sx={{ 
-                  mt: 2.5,
-                  display: 'flex',
-                  flexDirection: { xs: 'column', sm: 'row' },
-                  gap: 1.5
-                }}
-              >
-                <Button
-                  variant="contained"
-                  color="success"
-                  size="medium"
-                  startIcon={<ApproveIcon />}
-                  onClick={onApprove}
-                  disabled={loading}
-                  sx={{ 
-                    borderRadius: 3,
-                    fontSize: { xs: '0.8rem', md: '0.875rem' },
-                    fontWeight: 600,
-                    py: 1.2,
-                    px: 5.5,
-                    background: 'linear-gradient(135deg, #22c55e 0%, #15803d 100%)',
-                    boxShadow: '0 4px 15px rgba(34, 197, 94, 0.3)',
-                    display: 'flex',
-                    flexDirection: 'row-reverse',
-                    gap: 0.5,
-                    '&:hover': {
-                      background: 'linear-gradient(135deg, #15803d 0%, #14532d 100%)',
-                      boxShadow: '0 6px 20px rgba(34, 197, 94, 0.4)',
-                      transform: 'translateY(-2px)'
-                    },
-                    transition: 'all 0.2s ease',
-                    color: isDarkMode ? '#fff' : undefined,
-                  }}
-                >
-                  موافقة
-                </Button>
-                <Button
-                  variant="outlined"
-                  color="error"
-                  size="medium"
-                  startIcon={<DenyIcon />}
-                  onClick={onDeny}
-                  disabled={loading}
-                  sx={{ 
-                    borderRadius: 3,
-                    fontSize: { xs: '0.8rem', md: '0.875rem' },
-                    fontWeight: 600,
-                    py: 1.2,
-                    px: 4.7,
-                    borderWidth: 2,
-                    display: 'flex',
-                    flexDirection: 'row-reverse',
-                    gap: 1,
-                    '&:hover': {
-                      borderWidth: 2,
-                      transform: 'translateY(-2px)',
-                      boxShadow: '0 4px 15px rgba(239, 68, 68, 0.3)'
-                    },
-                    transition: 'all 0.2s ease',
-                    color: isDarkMode ? '#fff' : undefined,
-                  }}
-                >
-                  رفض
-                </Button>
-              </Box>
-            </Box>
-          </Stack>
-        </CardContent>
-      </Card>
-    </Fade>
-  );
-};
-
-const PropertyTypeSection = ({
-  typeConfig,
-  properties,
-  onApprove,
-  onDeny,
-  isLoading,
-  busyId
-}: {
-  typeConfig: PropertyTypeConfig;
-  properties: Property[];
-  onApprove: (id: string) => void;
-  onDeny: (id: string) => void;
-  isLoading: boolean;
-  /** The listing an approve/deny request is running for; its buttons stay disabled. */
-  busyId: string | null;
-}) => {
-  const { isDarkMode } = useDarkMode();
-  return (
-    <Grow in={true} timeout={800}>
-      <Card sx={{ 
-        borderRadius: 4, 
-        boxShadow: '0 6px 25px rgba(0,0,0,0.1)', 
-        height: '100%',
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        border: isDarkMode ? '1px solid var(--dark-700)' : '1px solid rgba(0,0,0,0.05)',
-        overflow: 'hidden',
-        position: 'relative',
-        '&:hover': {
-          boxShadow: isDarkMode ? '0 12px 40px var(--dark-900)' : '0 12px 40px rgba(0,0,0,0.15)',
-          transform: 'translateY(-2px)'
-        },
-        '&::before': {
-          content: '""',
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: '4px',
-          background: typeConfig.gradient,
-        },
-        background: isDarkMode ? 'var(--dark-800)' : '#fff',
-        color: isDarkMode ? '#fff' : undefined,
-      }}>
-        <CardContent sx={{ p: 3 }}>
-          <Stack direction="row" alignItems="center" spacing={2} mb={3}>
-            <Avatar sx={{ 
-              background: typeConfig.gradient,
-              color: 'white',
-              width: { xs: 48, md: 56 },
-              height: { xs: 48, md: 56 },
-              fontSize: { xs: '1.2rem', md: '1.4rem' },
-              boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
-              ,border: isDarkMode ? '2px solid var(--dark-700)' : undefined
-            }}>
-              {typeConfig.icon}
-            </Avatar>
-            <Box flex={1}>
-              <Typography 
-                variant="h5" 
-                fontWeight={700}
-                sx={{ 
-                  fontSize: { xs: '1.1rem', md: '1.25rem' },
-                  color: isDarkMode ? '#fff' : 'text.primary',
-                  mb: 0.5
-                }}
-              >
-                {typeConfig.label}
-              </Typography>
-              <Chip 
-                label={`${properties.length} عقار`} 
-                sx={{ 
-                  fontSize: { xs: '0.7rem', md: '0.75rem' },
-                  fontWeight: 600,
-                  background: typeConfig.gradient,
-                  color: 'white',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
-                }}
-              />
-            </Box>
-          </Stack>
-          <Divider sx={{ 
-            mb: 3,
-            background: `linear-gradient(90deg, ${typeConfig.gradient})`,
-            height: 2,
-            borderRadius: 1
-          }} />
-          {isLoading ? (
-            <Box display="flex" flexDirection="column" alignItems="center" py={6}>
-              <CircularProgress 
-                size={32} 
-                sx={{ 
-                  color: typeConfig.color === 'primary' ? '#3b82f6' : typeConfig.color === 'success' ? '#22c55e' : '#f59e0b',
-                  mb: 2
-                }} 
-              />
-              <Typography variant="body2" color={isDarkMode ? '#fff' : 'text.secondary'}>
-                جاري التحميل...
-              </Typography>
-            </Box>
-          ) : properties.length === 0 ? (
-            <Paper sx={{ 
-              p: 4, 
-              textAlign: 'center',
-              bgcolor: isDarkMode ? 'var(--dark-700)' : 'grey.50',
-              borderRadius: 3,
-              border: isDarkMode ? '1px solid var(--dark-700)' : '1px solid rgba(0,0,0,0.05)'
-            }}>
-              <Typography 
-                color={isDarkMode ? '#fff' : 'text.secondary'} 
-                sx={{ 
-                  fontSize: { xs: '0.9rem', md: '1rem' },
-                  fontWeight: 500
-                }}
-              >
-                �� لا توجد عقارات معلقة
-              </Typography>
-              <Typography 
-                variant="body2" 
-                color={isDarkMode ? '#fff' : 'text.secondary'}
-                sx={{ mt: 1 }}
-              >
-                جميع العقارات تم مراجعتها
-              </Typography>
-            </Paper>
-          ) : (
-            <Stack spacing={2}>
-              {properties.map((property, index) => (
-                <Slide 
-                  key={property._id} 
-                  direction="right" 
-                  in={true} 
-                  timeout={300 + index * 100}
-                >
-                  <div>
-                    <PropertyCard
-                      property={property}
-                      onApprove={() => onApprove(property._id)}
-                      onDeny={() => onDeny(property._id)}
-                      loading={isLoading || busyId === property._id}
-                    />
-                  </div>
-                </Slide>
-              ))}
-            </Stack>
-          )}
-        </CardContent>
-      </Card>
-    </Grow>
-  );
-};
-
-const PropertiesAdminPage = () => {
-  const { isDarkMode } = useDarkMode();
-  const queryClient = useQueryClient();
-  const [denyDialog, setDenyDialog] = useState<{ open: boolean; id: string | null }>({ 
-    open: false, 
-    id: null 
-  });
-  const [denyReason, setDenyReason] = useState('');
-  const [snackbar, setSnackbar] = useState<{ 
-    open: boolean; 
-    message: string; 
-    severity: 'success' | 'error' 
-  }>({ 
-    open: false, 
-    message: '', 
-    severity: 'success' 
-  });
-
-  // Fetch pending properties (shared with the admin sidebar's pending badge: same key, one request)
-  const { data: pendingProperties, isLoading, isError, refetch, isFetching } = useQuery(pendingPropertiesQuery);
-
-  // Approve mutation
-  const approveMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await fetch(`${API_URL}/properties/${id}/approve`, {
-        method: 'PUT',
-        headers: { 
-          'Content-Type': 'application/json', 
-          ...authHeader()
-        },
-        body: JSON.stringify({ 
-          status: 'available', 
-          isActive: true, 
-          isApproved: true 
-        })
-      });
-      if (!res.ok) throw new Error('Failed to approve property');
-      return res.json();
-    },
-    // Returning the refetch keeps the mutation pending until the approved card is gone,
-    // so its button cannot be clicked again in between.
-    onSuccess: async () => {
-      setSnackbar({ 
-        open: true, 
-        message: 'تمت الموافقة على العقار بنجاح', 
-        severity: 'success' 
-      });
-      await queryClient.invalidateQueries({ queryKey: ['pending-properties'] });
-    },
-    onError: () => {
-      setSnackbar({ 
-        open: true, 
-        message: 'فشل الموافقة على العقار', 
-        severity: 'error' 
-      });
-    }
-  });
-
-  // Deny mutation
-  const denyMutation = useMutation({
-    mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
-      const res = await fetch(`${API_URL}/properties/${id}/deny?reason=${encodeURIComponent(reason)}`, {
-        method: 'DELETE',
-        headers: authHeader(),
-      });
-      if (!res.ok) throw new Error('Failed to deny property');
-      return res.json();
-    },
-    onSuccess: async () => {
-      setSnackbar({ 
-        open: true, 
-        message: 'تم رفض العقار وحذفه', 
-        severity: 'success' 
-      });
-      setDenyDialog({ open: false, id: null });
-      setDenyReason('');
-      await queryClient.invalidateQueries({ queryKey: ['pending-properties'] });
-    },
-    onError: () => {
-      setSnackbar({ 
-        open: true, 
-        message: 'فشل رفض العقار', 
-        severity: 'error' 
-      });
-    }
-  });
-
-  const busyId: string | null = approveMutation.isPending
-    ? approveMutation.variables ?? null
-    : denyMutation.isPending
-      ? denyMutation.variables?.id ?? null
-      : null;
-
-  const handleOpenDenyDialog = (id: string) => {
-    setDenyDialog({ open: true, id });
-  };
-
-  const handleCloseDenyDialog = () => {
-    if (!denyMutation.isPending) {
-      setDenyDialog({ open: false, id: null });
-      setDenyReason('');
-    }
-  };
-
-  const handleDeny = () => {
-    if (denyDialog.id && denyReason.trim() && !denyMutation.isPending) {
-      denyMutation.mutate({ id: denyDialog.id, reason: denyReason });
-    }
-  };
-
-  const totalPendingCount = pendingProperties ? 
-    Object.values(pendingProperties).reduce((sum, properties) => sum + properties.length, 0) : 0;
-
-  return (
-    <Box sx={{ 
-      minHeight: '100vh', 
-      background: isDarkMode ? 'var(--dark-900)' : 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
-      color: isDarkMode ? '#fff' : undefined,
-      py: { xs: 2, md: 4 }
-    }}>
-      <Container maxWidth="xl">
-        {/* Header */}
-        <Fade in={true} timeout={1000}>
-          <Paper sx={{ 
-            p: { xs: 3, md: 4 }, 
-            mb: { xs: 3, md: 4 },
-            textAlign: 'center',
-            borderRadius: 4,
-            background: isDarkMode ? 'var(--dark-800)' : 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-            color: isDarkMode ? '#fff' : 'white',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.15)'
-          }}>
-            <Typography 
-              variant="h3" 
-              fontWeight={800} 
-              gutterBottom
-              sx={{ 
-                fontSize: { xs: '1.8rem', sm: '2.2rem', md: '2.5rem' },
-                mb: 1,
-                textShadow: isDarkMode ? 'none' : '0 2px 4px rgba(0,0,0,0.3)',
-                color: isDarkMode ? '#fff' : undefined,
-              }}
-            >
-              إدارة العقارات المعلقة
-            </Typography>
-            <Typography 
-              variant="h6" 
-              sx={{ 
-                fontSize: { xs: '1rem', md: '1.1rem' },
-                opacity: 0.9,
-                fontWeight: 400,
-                color: isDarkMode ? '#fff' : undefined,
-              }}
-            >
-              مراجعة واعتماد العقارات الجديدة
-            </Typography>
-            {totalPendingCount > 0 && (
-              <Chip 
-                label={`${totalPendingCount} عقار في الانتظار`}
-                sx={{ 
-                  mt: 2,
-                  bgcolor: isDarkMode ? 'var(--dark-700)' : 'rgba(255,255,255,0.2)',
-                  color: isDarkMode ? '#fff' : 'white',
-                  fontWeight: 600,
-                  fontSize: '0.9rem'
-                }}
-              />
-            )}
-          </Paper>
-        </Fade>
-
-        {isError && (
-          <Alert
-            severity="error"
-            sx={{ mb: 3, borderRadius: 2 }}
-            action={
-              <Button color="inherit" size="small" onClick={() => refetch()} disabled={isFetching}>
-                إعادة المحاولة
-              </Button>
-            }
-          >
-            تعذر تحميل العقارات المعلقة.
-          </Alert>
-        )}
-
-        {/* Property Sections (hidden when the first load failed, so an error never reads as "nothing pending") */}
-        {!(isError && !pendingProperties) && (
-        <Box sx={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: { xs: 2, md: 3 } }}>
-          {propertyTypes.map((type) => (
-            <Box key={type.key} sx={{ flex: '1 1 0', minWidth: 0, maxWidth: '100%' }}>
-              <PropertyTypeSection
-                typeConfig={type}
-                properties={pendingProperties?.[type.key] || []}
-                onApprove={approveMutation.mutate}
-                onDeny={handleOpenDenyDialog}
-                isLoading={isLoading}
-                busyId={busyId}
-              />
-            </Box>
-          ))}
-        </Box>
-        )}
-
-        {/* Deny Dialog — the server deletes the listing (DELETE /properties/:id/deny) */}
-        <ConfirmDialog
-          open={denyDialog.open}
-          title="رفض العقار وحذفه"
-          description="سيتم حذف هذا العقار وصوره نهائيًا وإزالته من قوائم المفضلة، ولا يمكن التراجع عن ذلك. يُرسَل السبب إلى المالك بالبريد الإلكتروني إذا كان بريده مسجلًا في بيانات التواصل."
-          confirmLabel="رفض وحذف نهائي"
-          loadingLabel="جاري الرفض..."
-          loading={denyMutation.isPending}
-          confirmDisabled={!denyReason.trim()}
-          onConfirm={handleDeny}
-          onClose={handleCloseDenyDialog}
-        >
-          <TextField
-            autoFocus
-            margin="dense"
-            label="السبب (مطلوب)"
-            fullWidth
-            variant="outlined"
-            value={denyReason}
-            onChange={(e) => setDenyReason(e.target.value)}
-            multiline
-            rows={4}
-            inputProps={{ maxLength: 500 }}
-            sx={{ mt: 2 }}
-          />
-        </ConfirmDialog>
-
-        {/* Snackbar */}
-        <Snackbar
-          open={snackbar.open}
-          autoHideDuration={6000}
-          onClose={() => setSnackbar({ ...snackbar, open: false })}
-          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-        >
-          <Alert 
-            severity={snackbar.severity} 
-            sx={{ 
-              width: '100%',
-              borderRadius: 2,
-              fontWeight: 500
-              ,color: isDarkMode ? '#fff' : undefined
-            }}
-            onClose={() => setSnackbar({ ...snackbar, open: false })}
-          >
-            {snackbar.message}
-          </Alert>
-        </Snackbar>
-      </Container>
+    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, minWidth: 0 }}>
+      <ListingThumb images={images} alt="" />
+      <MuiLink
+        component={Link}
+        href={listingHref(id)}
+        target="_blank"
+        rel="noopener"
+        underline="hover"
+        color="text.primary"
+        sx={{ fontWeight: 600, fontSize: "0.875rem", minWidth: 0, overflowWrap: "anywhere" }}
+      >
+        {title || "إعلان بدون عنوان"}
+      </MuiLink>
     </Box>
   );
-};
+}
 
-export default PropertiesAdminPage;
+function OwnerCell({ name, email }: { name?: string; email?: string }) {
+  return (
+    <Box sx={{ minWidth: 0 }}>
+      <Typography variant="body2" sx={{ fontSize: "0.8125rem" }}>
+        {name || "—"}
+      </Typography>
+      {email && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block", overflowWrap: "anywhere" }}>
+          {email}
+        </Typography>
+      )}
+    </Box>
+  );
+}
+
+const ownerName = (p: PendingProperty) => p.owner?.userName || p.owner?.name || p.contactInfo?.name;
+
+/** The moderation queue: listings waiting for review, plus the published listings for reference. */
+export default function AdminPropertiesPage() {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+  const [tab, setTab] = useState<"pending" | "published">("pending");
+
+  // ---------- pending (client-side: the endpoint is unpaginated) ----------
+  const pending = useQuery(pendingPropertiesQuery);
+  const allPending = useMemo(() => (pending.data ? flattenPending(pending.data) : []), [pending.data]);
+  const [category, setCategory] = useState<Category>("all");
+  const [search, setSearch] = useState("");
+  const table = useDataTableState({ sort: { columnId: "date", direction: "desc" } });
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [busy, setBusy] = useState<Record<string, Busy>>({});
+  const [bulkRunning, setBulkRunning] = useState(false);
+  const [bulkReport, setBulkReport] = useState<{ ok: number; failed: { title: string; reason: string }[] } | null>(
+    null,
+  );
+  const [denyTarget, setDenyTarget] = useState<PendingProperty | null>(null);
+  const [reason, setReason] = useState("");
+  const [reasonTouched, setReasonTouched] = useState(false);
+
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return allPending.filter((p) => {
+      if (category !== "all" && p.category !== category) return false;
+      if (!term) return true;
+      return [p.title, ownerName(p), p.owner?.email, p.location?.city, p.location?.address]
+        .filter(Boolean)
+        .some((text) => String(text).toLowerCase().includes(term));
+    });
+  }, [allPending, category, search]);
+
+  const setRowBusy = (id: string, state: Busy | null) =>
+    setBusy((prev) => {
+      const next = { ...prev };
+      if (state) next[id] = state;
+      else delete next[id];
+      return next;
+    });
+
+  const refreshAfterModeration = async () => {
+    // The row stays busy until the queue (and the sidebar badge) has refetched, so it cannot be acted on twice.
+    await Promise.all([
+      invalidatePending(queryClient),
+      queryClient.invalidateQueries({ queryKey: ["admin", "published-properties"] }),
+      queryClient.invalidateQueries({ queryKey: ["admin", "analytics"] }),
+    ]);
+  };
+
+  const approveRequest = (id: string) =>
+    api.put(`/properties/${id}/approve`, { status: "available", isActive: true, isApproved: true });
+
+  const approve = async (property: PendingProperty) => {
+    if (busy[property._id]) return;
+    setRowBusy(property._id, "approve");
+    try {
+      await approveRequest(property._id);
+      await refreshAfterModeration();
+      setSelectedIds((ids) => ids.filter((id) => id !== property._id));
+      showToast("تم اعتماد الإعلان ونشره.", "success");
+    } catch (err) {
+      showToast(adminErrorMessage(err, "تعذّر اعتماد الإعلان. حاول مرة أخرى."), "error");
+    } finally {
+      setRowBusy(property._id, null);
+    }
+  };
+
+  const denyNeedsReason = Boolean(denyTarget?.contactInfo?.email);
+  const reasonMissing = denyNeedsReason && !reason.trim();
+
+  const closeDeny = () => {
+    if (denyTarget && busy[denyTarget._id]) return;
+    setDenyTarget(null);
+    setReason("");
+    setReasonTouched(false);
+  };
+
+  const deny = async () => {
+    if (!denyTarget) return;
+    if (reasonMissing) {
+      setReasonTouched(true);
+      return;
+    }
+    const target = denyTarget;
+    setRowBusy(target._id, "deny");
+    try {
+      await api.delete(`/properties/${target._id}/deny`, {
+        params: reason.trim() ? { reason: reason.trim().slice(0, REASON_MAX) } : undefined,
+      });
+      await refreshAfterModeration();
+      setSelectedIds((ids) => ids.filter((id) => id !== target._id));
+      setDenyTarget(null);
+      setReason("");
+      setReasonTouched(false);
+      showToast("تم رفض الإعلان وحذفه.", "success");
+    } catch (err) {
+      // The dialog stays open so the admin can retry or cancel.
+      showToast(adminErrorMessage(err, "تعذّر رفض الإعلان. حاول مرة أخرى."), "error");
+    } finally {
+      setRowBusy(target._id, null);
+    }
+  };
+
+  /** Approves the selected listings one at a time and reports each one's result. */
+  const bulkApprove = async (ids: string[]) => {
+    const targets = allPending.filter((p) => ids.includes(p._id) && !busy[p._id]);
+    if (targets.length === 0 || bulkRunning) return;
+    setBulkRunning(true);
+    setBulkReport(null);
+    let ok = 0;
+    const failed: { title: string; reason: string }[] = [];
+    for (const property of targets) {
+      setRowBusy(property._id, "approve");
+      try {
+        await approveRequest(property._id);
+        ok += 1;
+      } catch (err) {
+        failed.push({
+          title: property.title || "إعلان بدون عنوان",
+          reason: adminErrorMessage(err, "تعذّر الاعتماد."),
+        });
+      }
+    }
+    await refreshAfterModeration();
+    setBusy({});
+    setSelectedIds([]);
+    setBulkRunning(false);
+    setBulkReport({ ok, failed });
+    showToast(
+      failed.length
+        ? `اعتُمد ${formatCount(ok)} من ${formatCount(targets.length)}، وتعذّر اعتماد ${formatCount(failed.length)}.`
+        : `تم اعتماد ${listingsCount(ok)}.`,
+      failed.length ? "warning" : "success",
+    );
+  };
+
+  const pendingColumns: DataTableColumn<PendingProperty>[] = [
+    {
+      id: "title",
+      header: "الإعلان",
+      card: "title",
+      cell: (p) => <TitleCell id={p._id} title={p.title} images={p.images} />,
+      sortable: true,
+      sortValue: (p) => p.title,
+    },
+    {
+      id: "owner",
+      header: "المالك",
+      cell: (p) => <OwnerCell name={ownerName(p)} email={p.owner?.email} />,
+      hideBelow: "lg",
+    },
+    { id: "city", header: "المدينة", cell: (p) => p.location?.city || "—", sortable: true, sortValue: (p) => p.location?.city },
+    { id: "type", header: "النوع", cell: (p) => <ListingTypeTag category={p.category} /> },
+    {
+      id: "price",
+      header: "السعر",
+      align: "end",
+      cell: (p) => <Price amount={p.price} category={p.category} size="table" />,
+      sortable: true,
+      sortValue: (p) => p.price,
+    },
+    {
+      id: "status",
+      header: "الحالة",
+      cell: (p) =>
+        busy[p._id] ? (
+          <Box component="span" role="status" sx={{ display: "inline-flex", alignItems: "center", gap: 1, fontSize: "0.8125rem" }}>
+            <CircularProgress size={14} aria-hidden />
+            {busy[p._id] === "approve" ? "جارٍ الاعتماد…" : "جارٍ الحذف…"}
+          </Box>
+        ) : (
+          <StatusBadge status="pending" />
+        ),
+    },
+    {
+      id: "date",
+      header: "تاريخ الإضافة",
+      cell: (p) => formatDate(p.createdAt),
+      sortable: true,
+      sortValue: (p) => dateValue(p.createdAt),
+      hideBelow: "xl",
+    },
+  ];
+
+  // ---------- published (server-side pagination and search) ----------
+  const published = useDataTableState();
+  const [publishedSearch, setPublishedSearch] = useState("");
+  const [debouncedPublishedSearch] = useDebounce(publishedSearch, 400);
+  const publishedParams = {
+    page: published.page + 1,
+    limit: published.pageSize,
+    search: debouncedPublishedSearch.trim(),
+  };
+  const publishedList = useQuery({ ...publishedPropertiesQuery(publishedParams), enabled: tab === "published" });
+
+  const publishedColumns: DataTableColumn<PublishedProperty>[] = [
+    { id: "title", header: "الإعلان", card: "title", cell: (p) => <TitleCell id={p._id} title={p.title} images={p.images} /> },
+    { id: "owner", header: "المالك", cell: (p) => <OwnerCell name={p.owner?.userName} />, hideBelow: "lg" },
+    { id: "city", header: "المدينة", cell: (p) => p.location?.city || "—" },
+    { id: "type", header: "النوع", cell: (p) => <ListingTypeTag category={p.category} /> },
+    { id: "price", header: "السعر", align: "end", cell: (p) => <Price amount={p.price} category={p.category} size="table" /> },
+    { id: "status", header: "الحالة", cell: () => <StatusBadge status="approved" label="منشور" /> },
+    { id: "date", header: "تاريخ الإضافة", cell: (p) => formatDate(p.createdAt), hideBelow: "xl" },
+  ];
+
+  const pendingCount = pending.data ? allPending.length : null;
+
+  return (
+    <>
+      <PageHeader
+        title="العقارات"
+        description="راجع الإعلانات الجديدة واعتمدها قبل ظهورها في الموقع."
+        breadcrumbs={[{ label: "لوحة الإدارة", href: "/admin/dashboard" }, { label: "العقارات" }]}
+        actions={
+          <Button component={Link} href="/admin/import-properties" variant="outlined" startIcon={<UploadFileOutlined />}>
+            استيراد عقارات
+          </Button>
+        }
+      />
+
+      <Tabs
+        value={tab}
+        onChange={(_, value) => setTab(value)}
+        aria-label="حالة الإعلانات"
+        sx={{ mb: 2, borderBottom: 1, borderColor: "divider" }}
+      >
+        <Tab
+          value="pending"
+          id="tab-pending"
+          aria-controls="panel-pending"
+          label={pendingCount === null ? "قيد المراجعة" : `قيد المراجعة (${formatCount(pendingCount)})`}
+        />
+        <Tab value="published" id="tab-published" aria-controls="panel-published" label="المنشورة" />
+      </Tabs>
+
+      {tab === "pending" ? (
+        <Box role="tabpanel" id="panel-pending" aria-labelledby="tab-pending">
+          {bulkReport && (
+            <Alert
+              severity={bulkReport.failed.length ? "warning" : "success"}
+              onClose={() => setBulkReport(null)}
+              sx={{ mb: 2 }}
+            >
+              {bulkReport.failed.length === 0 ? (
+                `تم اعتماد ${listingsCount(bulkReport.ok)}.`
+              ) : (
+                <>
+                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                    اعتُمد {formatCount(bulkReport.ok)}، وتعذّر اعتماد {formatCount(bulkReport.failed.length)}:
+                  </Typography>
+                  <Box component="ul" sx={{ m: 0, paddingInlineStart: 2.5 }}>
+                    {bulkReport.failed.map((f, i) => (
+                      <li key={i}>
+                        <Typography variant="body2">
+                          {f.title}: {f.reason}
+                        </Typography>
+                      </li>
+                    ))}
+                  </Box>
+                </>
+              )}
+            </Alert>
+          )}
+          <DataTable
+            label="إعلانات قيد المراجعة"
+            rows={filtered}
+            columns={pendingColumns}
+            getRowId={(p) => p._id}
+            getRowLabel={(p) => p.title}
+            sort={table.sort}
+            onSortChange={table.setSort}
+            pagination={{
+              page: table.page,
+              pageSize: table.pageSize,
+              onPageChange: table.setPage,
+              onPageSizeChange: table.setPageSize,
+            }}
+            selection={{
+              selectedIds,
+              onChange: setSelectedIds,
+              bulkActions: (ids) => (
+                <Button
+                  size="small"
+                  variant="contained"
+                  startIcon={bulkRunning ? <CircularProgress size={14} color="inherit" aria-hidden /> : <DoneAllOutlined />}
+                  disabled={bulkRunning}
+                  onClick={() => bulkApprove(ids)}
+                >
+                  {bulkRunning ? "جارٍ الاعتماد…" : "اعتماد المحدد"}
+                </Button>
+              ),
+            }}
+            toolbar={
+              <>
+                <SearchField
+                  label="بحث في الإعلانات"
+                  value={search}
+                  onChange={(value) => {
+                    setSearch(value);
+                    table.setPage(0);
+                  }}
+                />
+                <TextField
+                  select
+                  label="نوع الإعلان"
+                  value={category}
+                  onChange={(event) => {
+                    setCategory(event.target.value as Category);
+                    table.setPage(0);
+                  }}
+                  sx={{ minWidth: 160 }}
+                >
+                  {CATEGORY_OPTIONS.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </>
+            }
+            rowActions={(p) => [
+              { label: "عرض الإعلان", icon: <OpenInNewOutlined fontSize="small" />, onClick: () => openListing(p._id) },
+              {
+                label: "اعتماد",
+                icon: <CheckCircleOutlineOutlined fontSize="small" />,
+                onClick: approve,
+                disabled: Boolean(busy[p._id]) || bulkRunning,
+              },
+              {
+                label: "رفض وحذف",
+                icon: <DeleteOutlineOutlined fontSize="small" />,
+                destructive: true,
+                onClick: (row) => setDenyTarget(row),
+                disabled: Boolean(busy[p._id]) || bulkRunning,
+              },
+            ]}
+            loading={pending.isFetching}
+            error={pending.isError}
+            errorTitle="تعذّر تحميل الإعلانات قيد المراجعة"
+            onRetry={() => pending.refetch()}
+            empty={
+              allPending.length === 0
+                ? {
+                    icon: <TaskAltOutlined />,
+                    title: "لا توجد إعلانات قيد المراجعة",
+                    description: "ستظهر هنا الإعلانات الجديدة فور إضافتها.",
+                  }
+                : {
+                    title: "لا توجد نتائج",
+                    description: "جرّب كلمة بحث أخرى أو نوعًا آخر.",
+                    action: (
+                      <Button
+                        variant="outlined"
+                        onClick={() => {
+                          setSearch("");
+                          setCategory("all");
+                        }}
+                      >
+                        مسح عوامل التصفية
+                      </Button>
+                    ),
+                  }
+            }
+          />
+        </Box>
+      ) : (
+        <Box role="tabpanel" id="panel-published" aria-labelledby="tab-published">
+          <DataTable
+            label="الإعلانات المنشورة"
+            mode="server"
+            rows={publishedList.data?.rows ?? []}
+            columns={publishedColumns}
+            getRowId={(p) => p._id}
+            getRowLabel={(p) => p.title}
+            pagination={{
+              page: published.page,
+              pageSize: published.pageSize,
+              onPageChange: published.setPage,
+              onPageSizeChange: published.setPageSize,
+              pageSizeOptions: [10, 25, 50],
+              total: publishedList.data?.total ?? 0,
+            }}
+            toolbar={
+              <SearchField
+                label="بحث في الإعلانات المنشورة"
+                value={publishedSearch}
+                onChange={(value) => {
+                  setPublishedSearch(value);
+                  published.setPage(0);
+                }}
+              />
+            }
+            rowActions={(p) => [
+              { label: "عرض الإعلان", icon: <OpenInNewOutlined fontSize="small" />, onClick: () => openListing(p._id) },
+            ]}
+            loading={publishedList.isFetching}
+            error={publishedList.isError}
+            errorTitle="تعذّر تحميل الإعلانات المنشورة"
+            onRetry={() => publishedList.refetch()}
+            empty={
+              debouncedPublishedSearch.trim()
+                ? { title: "لا توجد نتائج", description: "جرّب كلمة بحث أخرى." }
+                : { title: "لا توجد إعلانات منشورة", description: "تظهر هنا الإعلانات بعد اعتمادها." }
+            }
+          />
+        </Box>
+      )}
+
+      <ConfirmDialog
+        open={Boolean(denyTarget)}
+        title="رفض الإعلان وحذفه"
+        description={
+          <>
+            <Typography component="span" sx={{ display: "block", mb: 1 }}>
+              سيُحذف الإعلان «{denyTarget?.title}» نهائيًا مع صوره وتعليقاته واستفساراته، ويُزال من المفضلة ومن
+              قائمة الوكالة. لا يمكن التراجع عن ذلك.
+            </Typography>
+            <Typography component="span" sx={{ display: "block" }}>
+              {denyNeedsReason
+                ? `سيصل إلى المعلن بريد على ${denyTarget?.contactInfo?.email} يتضمن سبب الرفض.`
+                : "لا يوجد بريد للتواصل في هذا الإعلان، لذلك لن يُبلَّغ المعلن."}
+            </Typography>
+          </>
+        }
+        confirmLabel="رفض وحذف"
+        loadingLabel="جارٍ الحذف…"
+        loading={Boolean(denyTarget && busy[denyTarget._id])}
+        onConfirm={deny}
+        onClose={closeDeny}
+      >
+        {denyNeedsReason && (
+          <TextField
+            label="سبب الرفض"
+            required
+            fullWidth
+            multiline
+            minRows={3}
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            onBlur={() => setReasonTouched(true)}
+            error={reasonTouched && reasonMissing}
+            helperText={
+              reasonTouched && reasonMissing
+                ? "اكتب سبب الرفض ليصل إلى المعلن."
+                : `يُرسل إلى المعلن كما تكتبه. ${REASON_MAX} حرف كحد أقصى.`
+            }
+            slotProps={{ htmlInput: { maxLength: REASON_MAX } }}
+            sx={{ mt: 2 }}
+          />
+        )}
+      </ConfirmDialog>
+    </>
+  );
+}
