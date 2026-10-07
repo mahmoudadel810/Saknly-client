@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import Image from "next/image";
+import Logo from "@/shared/ui/Logo";
 import Box from "@mui/material/Box";
 import MuiLink from "@mui/material/Link";
 import Typography from "@mui/material/Typography";
@@ -44,12 +44,10 @@ export default function Footer() {
             <Box
               component={Link}
               href="/"
-              sx={{ display: "inline-flex", alignItems: "center", gap: 1, color: "text.primary", textDecoration: "none" }}
+              aria-label="سكنلي، الصفحة الرئيسية"
+              sx={{ display: "inline-flex", alignItems: "center", color: "text.primary", textDecoration: "none" }}
             >
-              <Image src="/logo.svg" alt="" width={28} height={28} />
-              <Typography component="span" sx={{ fontSize: "1.125rem", fontWeight: 700 }}>
-                سكنلي
-              </Typography>
+              <Logo size={28} showLatin />
             </Box>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5, maxWidth: "36ch" }}>
               عقارات للبيع والإيجار وسكن الطلاب. ابحث عن العقار المناسب وتواصل مع مالكه مباشرة.

@@ -2,7 +2,7 @@
 
 import React, { Suspense, useEffect, useId, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import Logo from "@/shared/ui/Logo";
 import { usePathname, useSearchParams } from "next/navigation";
 import AppBar from "@mui/material/AppBar";
 import Avatar from "@mui/material/Avatar";
@@ -69,17 +69,15 @@ function QueryAware({ children }: { children: (query: Query) => React.ReactNode 
   );
 }
 
-function Logo() {
+function HomeLogo() {
   return (
     <Box
       component={Link}
       href="/"
-      sx={{ display: "inline-flex", alignItems: "center", gap: 1, color: "text.primary", textDecoration: "none" }}
+      aria-label="سكنلي، الصفحة الرئيسية"
+      sx={{ display: "inline-flex", alignItems: "center", color: "text.primary", textDecoration: "none", borderRadius: "6px" }}
     >
-      <Image src="/logo.svg" alt="" width={32} height={32} priority />
-      <Typography component="span" sx={{ fontSize: "1.125rem", fontWeight: 700 }}>
-        سكنلي
-      </Typography>
+      <Logo size={32} />
     </Box>
   );
 }
@@ -143,7 +141,7 @@ export default function Navbar() {
           px: { xs: 2, md: 3 },
         }}
       >
-        <Logo />
+        <HomeLogo />
 
         <Box
           component="nav"
@@ -309,7 +307,7 @@ export default function Navbar() {
             borderColor: "divider",
           }}
         >
-          <Logo />
+          <HomeLogo />
           <IconButton onClick={() => setDrawerOpen(false)} aria-label="إغلاق القائمة">
             <CloseOutlined />
           </IconButton>

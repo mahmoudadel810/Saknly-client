@@ -68,8 +68,10 @@ export const metadata: Metadata = {
     siteName: "سكنلي",
     images: [
       {
-        url: "/images/skanly.jpeg",
-        alt: "سكنلي - منصة العقارات",
+        url: "/brand/og.png",
+        width: 1200,
+        height: 630,
+        alt: "سكنلي: عقارات للبيع والإيجار وسكن طلابي",
       },
     ],
   },
@@ -77,7 +79,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: SEO_CONFIG.defaultTitle,
     description: SEO_CONFIG.defaultDescription,
-    images: ["/images/skanly.jpeg"],
+    images: ["/brand/og.png"],
     creator: "@saknly",
   },
   robots: {
@@ -105,8 +107,6 @@ export default function RootLayout({
   return (
     <html lang="ar" dir="rtl" className={plexArabic.variable} suppressHydrationWarning>
       <head>
-        <link rel="icon" href="/favicon.ico" sizes="any" />
-        <link rel="icon" href="/icon.svg" type="image/svg+xml" />
         <meta name="theme-color" content="#0E5E57" />
         <meta name="color-scheme" content="light dark" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useId, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import { LogoMark } from "./Logo";
 import { usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Avatar from "@mui/material/Avatar";
@@ -219,7 +219,7 @@ function Brand({ collapsed }: { collapsed: boolean }) {
         borderColor: "divider",
       }}
     >
-      <Image src="/logo.svg" alt="" width={28} height={28} />
+      <LogoMark size={28} />
       {!collapsed && (
         <Box sx={{ minWidth: 0 }}>
           <Typography sx={{ fontSize: "1rem", fontWeight: 700, lineHeight: 1.2 }}>سكنلي</Typography>
