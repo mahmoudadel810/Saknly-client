@@ -1,12 +1,11 @@
-import { Box, CircularProgress } from '@mui/material';
-import React from 'react';
+import Box from "@mui/material/Box";
+import LoadingState from "@/shared/ui/LoadingState";
 
-const Loading: React.FC = () => {
-    return (
-        <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <CircularProgress color="primary" />
-        </Box>
-    );
-};
-
-export default Loading;
+/** The route-level loading state while a page's code loads; pages show their own skeletons for data. */
+export default function Loading() {
+  return (
+    <Box component="main" sx={{ minHeight: "50vh", display: "grid", placeItems: "center" }}>
+      <LoadingState label="جارٍ تحميل الصفحة…" />
+    </Box>
+  );
+}

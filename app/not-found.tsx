@@ -1,49 +1,30 @@
 import Link from "next/link";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import SearchOffOutlined from "@mui/icons-material/SearchOffOutlined";
+import EmptyState from "@/shared/ui/EmptyState";
 
 export default function NotFound() {
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#f8fafc",
-      }}
-    >
-      <h1
-        style={{
-          fontSize: "4rem",
-          fontWeight: "bold",
-          color: "#0284c7",
-          marginBottom: "1rem",
-        }}
-      >
-        404
-      </h1>
-      <h2 style={{ fontSize: "2rem", color: "#333", marginBottom: "0.5rem" }}>
+    <Box component="main" sx={{ maxWidth: 640, mx: "auto", px: 2, py: { xs: 6, md: 10 } }}>
+      <Box component="h1" sx={{ typography: "h3", textAlign: "center" }}>
         الصفحة غير موجودة
-      </h2>
-      <p style={{ color: "#666", marginBottom: "2rem" }}>
-        عذراً، الصفحة التي تبحث عنها غير متوفرة.
-      </p>
-      <Link href="/">
-        <span
-          style={{
-            background: "#0284c7",
-            color: "#fff",
-            padding: "0.75rem 2rem",
-            borderRadius: "8px",
-            fontWeight: "bold",
-            textDecoration: "none",
-            fontSize: "1.1rem",
-            cursor: "pointer",
-          }}
-        >
-          العودة إلى الصفحة الرئيسية
-        </span>
-      </Link>
-    </div>
+      </Box>
+      <EmptyState
+        icon={<SearchOffOutlined />}
+        title="لم نجد هذه الصفحة"
+        description="ربما تغيّر الرابط أو حُذف الإعلان. ابحث في العقارات المتاحة أو ارجع إلى الصفحة الرئيسية."
+        action={
+          <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 1.5 }}>
+            <Button component={Link} href="/properties" variant="contained">
+              تصفّح العقارات
+            </Button>
+            <Button component={Link} href="/" variant="outlined">
+              الصفحة الرئيسية
+            </Button>
+          </Box>
+        }
+      />
+    </Box>
   );
 }
