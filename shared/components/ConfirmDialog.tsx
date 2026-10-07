@@ -1,5 +1,5 @@
 "use client";
-import React, { useId } from 'react';
+import React, { useId, useRef } from 'react';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import Dialog from '@mui/material/Dialog';
@@ -48,6 +48,8 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   children,
 }) => {
   const id = useId();
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const confirmRef = useRef<HTMLButtonElement>(null);
   const titleId = `${id}-title`;
   const descriptionId = `${id}-description`;
 
@@ -59,7 +61,12 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       fullWidth
       aria-labelledby={titleId}
       aria-describedby={descriptionId}
-      slotProps={{ paper: { sx: { m: { xs: 2, sm: 4 }, width: { xs: 'calc(100% - 32px)', sm: undefined } } } }}
+      slotProps={{
+        paper: { sx: { m: { xs: 2, sm: 4 }, width: { xs: 'calc(100% - 32px)', sm: undefined } } },
+        // The focus trap focuses the dialog itself on open, which overrides autoFocus: move focus once the
+        // dialog has entered (Cancel for a destructive action, otherwise the confirm button).
+        transition: { onEntered: () => (destructive ? cancelRef : confirmRef).current?.focus() },
+      }}
     >
       <DialogTitle id={titleId}>{title}</DialogTitle>
       <DialogContent>
@@ -73,6 +80,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           onClick={onClose}
           disabled={loading}
           color="inherit"
+          ref={cancelRef}
           autoFocus={destructive}
           sx={{ color: 'text.secondary' }}
         >
@@ -83,6 +91,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           variant="contained"
           color={destructive ? 'error' : 'primary'}
           disabled={loading || confirmDisabled}
+          ref={confirmRef}
           autoFocus={!destructive}
           aria-busy={loading || undefined}
           startIcon={loading ? <CircularProgress size={16} color="inherit" aria-hidden /> : undefined}
