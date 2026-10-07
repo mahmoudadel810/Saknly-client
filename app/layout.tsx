@@ -14,11 +14,9 @@ import {
 } from "../shared/constants";
 import React from "react";
 import HydrationCleanup from "../shared/components/HydrationCleanup";
-import Navbar from "../shared/components/Navbar";
-import Footer from "../shared/components/Footer";
 import { ToastProvider } from "@/shared/provider/ToastProvider";
 import AuthGuard from "@/shared/components/AuthGuard";
-import ChatbotButton from "@/components/ChatbotButton";
+import PublicShell from "@/shared/ui/PublicShell";
 import ErrorBoundary from "@/shared/components/ErrorBoundary";
 
 // One family for Arabic and Latin (DESIGN-SYSTEM.md, Typography); the theme and Tailwind read --font-sans.
@@ -126,12 +124,7 @@ export default function RootLayout({
               <AuthProvider>
                 <AuthGuard>
                   <WishlistProvider>
-                    <Navbar />
-                    <div id="root" className="relative">
-                      {children}
-                      <ChatbotButton />
-                    </div>
-                    <Footer />
+                    <PublicShell>{children}</PublicShell>
                     <div id="modal-root" />
                     <div id="toast-root" />
                   </WishlistProvider>

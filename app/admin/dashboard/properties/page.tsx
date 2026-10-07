@@ -42,24 +42,10 @@ import { ar } from "date-fns/locale";
 import { useDarkMode } from "@/app/context/DarkModeContext";
 import { authHeader } from "@/shared/utils/auth";
 import { API_URL } from "@/shared/services/api";
+import { pendingPropertiesQuery, type PendingProperty } from "@/shared/services/pendingProperties";
 
 // Types
-interface Property {
-  _id: string;
-  title: string;
-  description?: string;
-  location?: { address?: string };
-  area?: number;
-  price?: number;
-  createdAt: string;
-  category: 'sale' | 'rent' | 'student';
-  owner?: {
-    _id: string;
-    userName?: string;
-    name?: string;
-    email?: string;
-  };
-}
+type Property = PendingProperty;
 
 interface PropertyTypeConfig {
   key: 'sale' | 'rent' | 'student';
@@ -513,28 +499,8 @@ const PropertiesAdminPage = () => {
     severity: 'success' 
   });
 
-  // Fetch pending properties
-  const { data: pendingProperties, isLoading, isError, refetch, isFetching } = useQuery({
-    queryKey: ['pending-properties'],
-    queryFn: async () => {
-      // One request for every pending listing, grouped here by category
-      // (the endpoint has no pagination, so splitting by category only tripled the calls).
-      const res = await fetch(`${API_URL}/properties/pending`, {
-        headers: authHeader(),
-      });
-      // A 401/500 must not be shown as "no pending properties".
-      if (!res.ok) throw new Error(`Failed to load pending properties (${res.status})`);
-      const body = await res.json();
-      const all: Property[] = Array.isArray(body?.data) ? body.data : [];
-
-      const grouped: Record<'sale' | 'rent' | 'student', Property[]> = { sale: [], rent: [], student: [] };
-      for (const property of all) {
-        grouped[property.category]?.push(property);
-      }
-      return grouped;
-    },
-    staleTime: 1000 * 60 * 5 // 5 minutes
-  });
+  // Fetch pending properties (shared with the admin sidebar's pending badge: same key, one request)
+  const { data: pendingProperties, isLoading, isError, refetch, isFetching } = useQuery(pendingPropertiesQuery);
 
   // Approve mutation
   const approveMutation = useMutation({
