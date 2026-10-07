@@ -4,7 +4,7 @@ import Typography from "@mui/material/Typography";
 import HeroSearchBar from "./HeroSearchBar";
 
 /*
- * The photo (public/images/hero/, credits in CREDITS.md): hero.webp for wide screens and a 4:5 crop,
+ * The photo (public/images/hero/, credits in the README): hero.webp for wide screens and a 4:5 crop,
  * hero-mobile.webp, for phones. The owner can replace either file in place. The focal point (the sofa and
  * the painting) sits in the middle, so the picture is centred horizontally and kept slightly below centre.
  * object-position is an inline style: the RTL style cache would mirror a horizontal position written in sx.

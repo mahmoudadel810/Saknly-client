@@ -23,7 +23,7 @@ export interface PageBannerProps extends Omit<PageHeaderProps, "tone"> {
 }
 
 /*
- * The photo (public/images/hero/list-building.webp, credits in CREDITS.md) under a scrim dark enough that
+ * The photo (public/images/hero/list-building.webp, credits in the README) under a scrim dark enough that
  * white text measures 4.5:1 or better on its brightest pixels. object-position is an inline style: the RTL
  * style cache would mirror a horizontal position written in sx.
  */
