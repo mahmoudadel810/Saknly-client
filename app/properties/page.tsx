@@ -89,12 +89,12 @@ function SearchPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [reloadKey, setReloadKey] = useState(0);
   const [view, setView] = useState<"grid" | "map">("grid");
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const currentPage = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
-  const totalPages = Math.ceil(total / PAGE_SIZE);
 
   // A string key: the searchParams object identity changes on every navigation.
   const searchKey = searchParams.toString();
@@ -115,6 +115,8 @@ function SearchPage() {
         if (response.data?.success) {
           setProperties(Array.isArray(response.data.data) ? response.data.data : []);
           setTotal(Number(response.data.pagination?.totalDocs) || 0);
+          // The server's page count follows the limit it applied (a `limit` in the URL, capped at 50).
+          setTotalPages(Number(response.data.pagination?.totalPages) || 0);
         } else {
           setError("تعذر تحميل العقارات");
         }
