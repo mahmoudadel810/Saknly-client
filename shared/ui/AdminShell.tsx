@@ -20,7 +20,7 @@ import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import { useTheme } from "@mui/material/styles";
+import { ThemeProvider, useTheme, type Theme } from "@mui/material/styles";
 import BusinessOutlined from "@mui/icons-material/BusinessOutlined";
 import ChevronLeftOutlined from "@mui/icons-material/ChevronLeftOutlined";
 import ChevronRightOutlined from "@mui/icons-material/ChevronRightOutlined";
@@ -82,6 +82,24 @@ const isActive = (item: NavItem, pathname: string) =>
 
 const pageTitle = (pathname: string) => ALL_ITEMS.find((item) => isActive(item, pathname))?.label ?? "لوحة التحكم";
 
+/**
+ * Admin is a working tool and denser than the public pages (DESIGN-SYSTEM.md, Direction): inside the shell,
+ * fields and selects default to the 40px "small" size and buttons to 36px. Pages can still opt out per control.
+ */
+const adminDensity = (outer: Theme): Theme => {
+  const c = outer.components ?? {};
+  return {
+    ...outer,
+    components: {
+      ...c,
+      MuiTextField: { ...c.MuiTextField, defaultProps: { ...c.MuiTextField?.defaultProps, size: "small" } },
+      MuiFormControl: { ...c.MuiFormControl, defaultProps: { ...c.MuiFormControl?.defaultProps, size: "small" } },
+      MuiInputBase: { ...c.MuiInputBase, defaultProps: { ...c.MuiInputBase?.defaultProps, size: "small" } },
+      MuiButton: { ...c.MuiButton, defaultProps: { ...c.MuiButton?.defaultProps, size: "small" } },
+    },
+  };
+};
+
 const WIDTH = 240;
 const COLLAPSED_WIDTH = 64;
 const STORAGE_KEY = "saknly:admin-sidebar-collapsed";
@@ -129,7 +147,7 @@ function SidebarNav({
                   onClick={onNavigate}
                   sx={{
                     minHeight: 40,
-                    borderRadius: "6px",
+                    borderRadius: "var(--r-inner)",
                     px: collapsed ? 0 : 1.5,
                     justifyContent: collapsed ? "center" : "flex-start",
                     color: active ? "primary.main" : "text.secondary",
@@ -164,7 +182,7 @@ function SidebarNav({
                         minWidth: 24,
                         height: 20,
                         px: 0.75,
-                        borderRadius: "6px",
+                        borderRadius: "8px",
                         display: "inline-grid",
                         placeItems: "center",
                         fontSize: "0.75rem",
@@ -444,7 +462,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           component="main"
           sx={{ flex: 1, width: "100%", maxWidth: 1440, mx: "auto", px: { xs: 2, md: 3 }, py: 3, minWidth: 0 }}
         >
-          {children}
+          <ThemeProvider theme={adminDensity}>{children}</ThemeProvider>
         </Box>
       </Box>
     </Box>

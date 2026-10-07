@@ -16,7 +16,7 @@ export default function AdminGuard({ children }: { children: React.ReactNode }) 
   if (isLoading) return <LoadingState label="جارٍ التحقق من الصلاحيات…" />;
   if (!user || user.role !== "admin") {
     return (
-      <Box sx={{ border: 1, borderColor: "divider", borderRadius: "10px", bgcolor: "background.paper" }}>
+      <Box sx={{ border: 1, borderColor: "divider", borderRadius: "var(--r-card)", bgcolor: "background.paper" }}>
         <EmptyState
           icon={<LockOutlined />}
           title="هذه الصفحة للمشرفين فقط"

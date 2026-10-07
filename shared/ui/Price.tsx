@@ -45,7 +45,15 @@ export default function Price({ amount, category, size = "card", tone = "default
   return (
     <Box
       component="span"
-      sx={{ display: "inline-flex", alignItems: "baseline", flexWrap: "wrap", columnGap: 0.5, color: inverse ? "inherit" : "text.primary" }}
+      sx={{
+        display: "inline-flex",
+        alignItems: "baseline",
+        // In a table cell the price stays on one line, so a column never breaks "950,000 / ج.م".
+        flexWrap: size === "table" ? "nowrap" : "wrap",
+        whiteSpace: size === "table" ? "nowrap" : undefined,
+        columnGap: 0.5,
+        color: inverse ? "inherit" : "text.primary",
+      }}
     >
       <Box
         component="span"

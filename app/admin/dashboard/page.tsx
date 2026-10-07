@@ -76,7 +76,13 @@ function CountValue({
   );
 }
 
-const panelSx = { border: 1, borderColor: "divider", borderRadius: "10px", bgcolor: "background.paper" } as const;
+const panelSx = {
+  border: 1,
+  borderColor: "divider",
+  borderRadius: "var(--r-card)",
+  bgcolor: "background.paper",
+  boxShadow: "var(--c-card-shadow)",
+} as const;
 
 /** One "needs action" item: what is waiting, how many, and the link that deals with it. */
 function AttentionTile({
@@ -108,11 +114,24 @@ function AttentionTile({
         display: "flex",
         flexDirection: "column",
         gap: 0.5,
-        borderColor: waiting ? "color-mix(in srgb, var(--c-warning) 45%, transparent)" : "divider",
       }}
     >
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1, color: waiting ? "var(--c-warning)" : "text.secondary" }}>
-        <Box aria-hidden sx={{ display: "flex", "& svg": { fontSize: 20 } }}>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, mb: 0.5 }}>
+        {/* Waiting work tints the icon tile in the warning colour; nothing waiting stays calm green. */}
+        <Box
+          aria-hidden
+          sx={{
+            width: 36,
+            height: 36,
+            flexShrink: 0,
+            borderRadius: "10px",
+            display: "grid",
+            placeItems: "center",
+            color: waiting ? "var(--c-warning)" : "primary.main",
+            bgcolor: waiting ? "color-mix(in srgb, var(--c-warning) 12%, var(--c-surface))" : "var(--c-primary-soft)",
+            "& svg": { fontSize: 20 },
+          }}
+        >
           {icon}
         </Box>
         <Typography variant="body2" sx={{ fontWeight: 500, color: "text.primary" }}>

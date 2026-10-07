@@ -445,7 +445,8 @@ export default function DataTable<T>({
       sx={{
         border: 1,
         borderColor: "divider",
-        borderRadius: "10px",
+        borderRadius: "var(--r-card)",
+        boxShadow: "var(--c-card-shadow)",
         bgcolor: "background.paper",
         overflow: "hidden",
       }}

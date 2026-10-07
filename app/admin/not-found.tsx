@@ -12,7 +12,7 @@ export default function AdminNotFound() {
   return (
     <>
       <PageHeader title="الصفحة غير موجودة" breadcrumbs={[{ label: "لوحة الإدارة", href: "/admin/dashboard" }, { label: "صفحة غير موجودة" }]} />
-      <Box sx={{ border: 1, borderColor: "divider", borderRadius: "10px", bgcolor: "background.paper" }}>
+      <Box sx={{ border: 1, borderColor: "divider", borderRadius: "var(--r-card)", bgcolor: "background.paper" }}>
         <EmptyState
           icon={<SearchOffOutlined />}
           title="لا توجد صفحة بهذا العنوان في لوحة الإدارة"

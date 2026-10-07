@@ -77,12 +77,13 @@ function TitleCell({ id, title, images }: { id: string; title: string; images?: 
 
 function OwnerCell({ name, email }: { name?: string; email?: string }) {
   return (
-    <Box sx={{ minWidth: 0 }}>
-      <Typography variant="body2" sx={{ fontSize: "0.8125rem" }}>
+    <Box sx={{ minWidth: 0, maxWidth: 220 }}>
+      <Typography variant="body2" noWrap sx={{ fontSize: "0.8125rem" }}>
         {name || "—"}
       </Typography>
       {email && (
-        <Typography variant="caption" color="text.secondary" sx={{ display: "block", overflowWrap: "anywhere" }}>
+        // One line, cut with an ellipsis at the end of the address (LTR); the full address is in the tooltip.
+        <Typography variant="caption" color="text.secondary" noWrap dir="ltr" title={email} sx={{ display: "block", textAlign: "end" }}>
           {email}
         </Typography>
       )}
