@@ -1,5 +1,3 @@
-import React from "react";
-
 /*
  * Checkbox and radio glyphs for the theme (DESIGN-SYSTEM.md v2, "Inputs"): a 20px box with a 6px radius, or a
  * 20px circle, outlined at rest and filled with the primary colour when checked. They are markup only; the
