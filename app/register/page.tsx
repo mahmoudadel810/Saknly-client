@@ -5,8 +5,6 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import Player from "lottie-react";
-import registerAnimation from "@/public/images/Reagister-Anmation.json";
 import {
   Box,
   Typography,
@@ -218,18 +216,6 @@ export default function Register() {
             }}>
             وفّر الوقت، وابحث عن بيتك المثالي بسهولة
           </Typography>
-          <Player
-            autoplay
-            loop
-            animationData={registerAnimation}
-            style={{
-              width: 350,
-              height: 300,
-              maxWidth: "100%",
-              borderRadius: 8,
-              marginTop: "20px",
-            }}
-          />
         </Box>
 
         <Box

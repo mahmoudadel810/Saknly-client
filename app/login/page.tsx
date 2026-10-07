@@ -19,8 +19,6 @@ import * as yup from "yup"; // Import yup
 import { useToast } from "@/shared/provider/ToastProvider";
 import GoogleButton from "@/components/googleButton";
 import { useRouter } from "next/navigation";
-import Player from "lottie-react";
-import homeLoginAnimation from "@/public/images/Homelogin-anmation.json";
 import { useSearchParams } from 'next/navigation';
 import { AuthContext } from "../context/AuthContext";
 import { textFieldStyles } from "@/shared/styles/textFieldStyle";
@@ -258,18 +256,6 @@ const LoginPage = () => {
             }}>
             سجل دخولك الآن!
           </Typography>
-          <Player
-            autoplay
-            loop
-            animationData={homeLoginAnimation}
-            style={{
-              width: 350,
-              height: 300,
-              maxWidth: "100%",
-              borderRadius: 8,
-              marginTop: "20px",
-            }}
-          />
         </Box>
 
         {/* left Side */}
