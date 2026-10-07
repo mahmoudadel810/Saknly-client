@@ -1,4 +1,3 @@
-import React from "react";
 import HeroSection from "@/components/Home/HeroSection";
 import FeaturedProperties from "@/components/Home/FeaturedProperties";
 import HowItWorks from "@/components/Home/HowItWorks";

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import Box from "@mui/material/Box";
 import ButtonBase from "@mui/material/ButtonBase";

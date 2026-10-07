@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import Button from "@mui/material/Button";
 import RateReviewOutlined from "@mui/icons-material/RateReviewOutlined";
 import EmptyState from "@/shared/ui/EmptyState";
