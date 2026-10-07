@@ -22,7 +22,8 @@ export default function ChatbotButton() {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const sendMessage = async () => {
-    if (!input.trim()) return;
+    // One question at a time: the answer to the previous one is still on its way.
+    if (!input.trim() || loading) return;
     const userMsg = { role: "user", text: input };
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
@@ -119,9 +120,10 @@ export default function ChatbotButton() {
               placeholder="اكتب سؤالك هنا..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+              // isComposing: Enter that confirms an IME composition must not send.
+              onKeyDown={(e) => e.key === "Enter" && !e.nativeEvent.isComposing && sendMessage()}
             />
-            <IconButton color="primary" onClick={sendMessage}>
+            <IconButton color="primary" onClick={sendMessage} disabled={loading || !input.trim()} aria-label="إرسال السؤال">
               <SendIcon />
             </IconButton>
           </Box>
