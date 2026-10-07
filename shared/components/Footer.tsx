@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import Link from "next/link";
 import Logo from "@/shared/ui/Logo";
 import Box from "@mui/material/Box";
