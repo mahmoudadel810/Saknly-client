@@ -27,6 +27,48 @@ body::before {
 @tailwind components;
 @tailwind utilities;
 
+/* Design tokens (DESIGN-SYSTEM.md). Mirrored in shared/ui/tokens.ts for the MUI color schemes: change both. */
+:root,
+.light {
+  --c-primary: #0E5E57;
+  --c-primary-hover: #0A4A44;
+  --c-primary-soft: #E3F0EE;
+  --c-on-primary: #FFFFFF;
+  --c-secondary: #3F4A48;
+  --c-bg: #F6F7F7;
+  --c-surface: #FFFFFF;
+  --c-surface-raised: #FFFFFF;
+  --c-border: #DDE2E1;
+  --c-text: #17201F;
+  --c-text-2: #4A5654;
+  --c-muted: #66706E;
+  --c-success: #1E7A46;
+  --c-warning: #A15C07;
+  --c-error: #B42318;
+  --c-info: #1F5F99;
+  --c-student: #6B4FA0;
+}
+
+.dark {
+  --c-primary: #4FB3A6;
+  --c-primary-hover: #6CC4B8;
+  --c-primary-soft: #123A36;
+  --c-on-primary: #0F1413;
+  --c-secondary: #C9D1CF;
+  --c-bg: #0F1413;
+  --c-surface: #161D1C;
+  --c-surface-raised: #1D2625;
+  --c-border: #2A3533;
+  --c-text: #E8EDEC;
+  --c-text-2: #B3BEBC;
+  --c-muted: #82908D;
+  --c-success: #5CC48A;
+  --c-warning: #E3A54A;
+  --c-error: #F07A6E;
+  --c-info: #7FB2E5;
+  --c-student: #B59BE0;
+}
+
 :root {
   /* Primary Colors */
   --primary-50: #f0f9ff;

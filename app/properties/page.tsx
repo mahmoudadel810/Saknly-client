@@ -20,8 +20,6 @@ import {
   Tooltip,
   useTheme,
   useMediaQuery,
-  ThemeProvider,
-  createTheme
 } from "@mui/material";
 import { useRouter, useSearchParams } from "next/navigation";
 import axios from "axios";
@@ -657,7 +655,7 @@ const SearchPage: React.FC = () => {
   };
 
   return (
-    <ThemeProvider theme={theme}>
+    <>
       <Box sx={{ 
         bgcolor: 'background.default',
         color: 'text.primary',
@@ -937,7 +935,7 @@ const SearchPage: React.FC = () => {
         </Box>
         </Box>
       </Box>
-    </ThemeProvider>
+    </>
   );
 };
 

@@ -3,10 +3,10 @@
 import type { Metadata } from "next";
 import { Inter, Cairo, Sanchez } from "next/font/google";
 import "./globals.css";
-import RootStyleRegistry from "./providers";
+import InitColorSchemeScript from "@mui/material/InitColorSchemeScript";
+import AppThemeProvider from "@/shared/ui/AppThemeProvider";
 import { AuthProvider } from "./context/AuthContext";
 import { WishlistProvider } from "./context/WishlistContext";
-import { DarkModeProvider } from "./context/DarkModeContext";
 import {
   SEO_CONFIG,
   ARABIC_CONFIG,
@@ -39,6 +39,10 @@ const sanchez = Sanchez({
   variable: "--font-sanchez",
   weight: ["400"],
 });
+
+// The pre-redesign toggle stored 'true'/'false' under `darkMode`; MUI reads 'light'/'dark' from `mui-mode`.
+const LEGACY_MODE_MIGRATION =
+  "try{var o=localStorage.getItem('darkMode');if(o!==null){if(!localStorage.getItem('mui-mode'))localStorage.setItem('mui-mode',o==='true'?'dark':'light');localStorage.removeItem('darkMode');}}catch(e){}";
 
 // Performance monitoring
 const reportWebVitals = (metric: any) => {
@@ -112,45 +116,42 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html
-      lang={ARABIC_CONFIG.code}
-      dir={ARABIC_CONFIG.direction}
-      suppressHydrationWarning
-    >
+    <html lang="ar" dir="rtl" suppressHydrationWarning>
       <head>
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
-        <meta name="theme-color" content="#3B82F6" />
+        <meta name="theme-color" content="#0E5E57" />
         <meta name="color-scheme" content="light dark" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="language" content={ARABIC_CONFIG.code} />
         <meta name="locale" content={ARABIC_CONFIG.locale} />
       </head>
-      <body className="bg-white dark:bg-dark-900 text-gray-900 dark:text-gray-100 transition-colors duration-300" suppressHydrationWarning>
+      <body suppressHydrationWarning>
+        {/* Before paint: carry the old `darkMode` preference over once, then set .dark/.light on <html>. */}
+        <script dangerouslySetInnerHTML={{ __html: LEGACY_MODE_MIGRATION }} />
+        <InitColorSchemeScript attribute=".%s" defaultMode="system" />
         <HydrationCleanup />
-        <RootStyleRegistry>
+        <AppThemeProvider>
           <ErrorBoundary>
-            <DarkModeProvider>
-              <ToastProvider>
-                <AuthProvider>
-                  <AuthGuard>
-                    <WishlistProvider>
-                      <Navbar />
-                      <div id="root" className="relative">
-                        {children}
-                        <ChatbotButton />
-                        <BackToTop />
-                      </div>
-                      <Footer />
-                      <div id="modal-root" />
-                      <div id="toast-root" />
-                    </WishlistProvider>
-                  </AuthGuard>
-                </AuthProvider>
-              </ToastProvider>
-            </DarkModeProvider>
+            <ToastProvider>
+              <AuthProvider>
+                <AuthGuard>
+                  <WishlistProvider>
+                    <Navbar />
+                    <div id="root" className="relative">
+                      {children}
+                      <ChatbotButton />
+                      <BackToTop />
+                    </div>
+                    <Footer />
+                    <div id="modal-root" />
+                    <div id="toast-root" />
+                  </WishlistProvider>
+                </AuthGuard>
+              </AuthProvider>
+            </ToastProvider>
           </ErrorBoundary>
-        </RootStyleRegistry>
+        </AppThemeProvider>
       </body>
     </html>
   );

@@ -1,60 +1,25 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React from 'react';
+import { useColorScheme } from '@mui/material/styles';
 
 interface DarkModeContextType {
   isDarkMode: boolean;
   toggleDarkMode: () => void;
 }
 
-const DarkModeContext = createContext<DarkModeContextType | undefined>(undefined);
-
-export const useDarkMode = () => {
-  const context = useContext(DarkModeContext);
-  if (context === undefined) {
-    throw new Error('useDarkMode must be used within a DarkModeProvider');
-  }
-  return context;
+/**
+ * Thin wrapper over MUI's color scheme (AppThemeProvider owns the mode, its storage and the `.dark`/`.light`
+ * class on <html>). Kept so existing callers compile; new code should read theme tokens instead.
+ * Before hydration `mode` is undefined, so isDarkMode is false on server and client alike.
+ */
+export const useDarkMode = (): DarkModeContextType => {
+  const { mode, systemMode, setMode } = useColorScheme();
+  const effective = mode === 'system' ? systemMode : mode;
+  const isDarkMode = effective === 'dark';
+  const toggleDarkMode = () => setMode(isDarkMode ? 'light' : 'dark');
+  return { isDarkMode, toggleDarkMode };
 };
 
-export const DarkModeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isDarkMode, setIsDarkMode] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  // Handle hydration
-  useEffect(() => {
-    setMounted(true);
-    const savedMode = localStorage.getItem('darkMode');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    
-    if (savedMode !== null) {
-      setIsDarkMode(savedMode === 'true');
-    } else {
-      setIsDarkMode(prefersDark);
-    }
-  }, []);
-
-  // Apply dark mode class to document
-  useEffect(() => {
-    if (mounted) {
-      if (isDarkMode) {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
-      localStorage.setItem('darkMode', isDarkMode.toString());
-    }
-  }, [isDarkMode, mounted]);
-
-  const toggleDarkMode = () => {
-    setIsDarkMode(prev => !prev);
-  };
-
-  // Always render the provider: before mount isDarkMode is false on both server and client,
-  // so the markup matches during hydration and hooks never run outside the provider.
-  return (
-    <DarkModeContext.Provider value={{ isDarkMode, toggleDarkMode }}>
-      {children}
-    </DarkModeContext.Provider>
-  );
-};
+/** No longer holds state; kept so the existing provider tree compiles. */
+export const DarkModeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => <>{children}</>;

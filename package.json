@@ -54,6 +54,8 @@
     "react-transition-group": "^4.4.5",
     "react-window": "^1.8.11",
     "recharts": "^3.1.0",
+    "stylis": "^4.2.0",
+    "stylis-plugin-rtl": "^2.1.1",
     "swiper": "^11.2.10",
     "tailwind-merge": "^2.0.0",
     "use-debounce": "^10.0.5",
