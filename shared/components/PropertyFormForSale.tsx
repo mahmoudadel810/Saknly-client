@@ -134,7 +134,7 @@ function sessionExpired(): boolean {
  */
 export default function PropertyFormForSale() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, setUser } = useAuth();
   const { showToast } = useToast();
   const isAdmin = user?.role === "admin";
 
@@ -262,6 +262,8 @@ export default function PropertyFormForSale() {
   const reLogin = () => {
     saveDraft(values);
     clearAuthToken();
+    // A client navigation keeps the context's user; clear it so /login shows the form, not "already signed in".
+    setUser(null);
     showToast("انتهت جلستك. سجّل الدخول، وسنعيد إليك ما كتبته عدا الصور.", "warning");
     setLeaving(true);
     router.push(LOGIN_PATH);
