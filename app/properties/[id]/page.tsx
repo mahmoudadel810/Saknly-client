@@ -70,7 +70,6 @@ import BalconyIcon from '@mui/icons-material/Balcony';
 import AcUnitIcon from '@mui/icons-material/AcUnit';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import PropertyCard from '@/shared/components/PropertyCard';
-import propertyService from '@/shared/services/propertyService';
 import { Property as SharedProperty } from '@/shared/types';
 import Rating from '@mui/material/Rating';
 import StarIcon from '@mui/icons-material/Star';
@@ -170,12 +169,20 @@ const PropertyDetailsPage: React.FC = () => {
   const fetchProperty = async () => {
     try {
       setLoading(true);
+      setError(null);
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/properties/propertyDetails/${id}`);
+      if (response.status === 404) {
+        setProperty(null);
+        setError("العقار غير موجود أو غير متاح");
+        return;
+      }
       if (!response.ok) throw new Error("فشل في جلب بيانات العقار");
       const data = await response.json();
-      if (data.success && data.data) {
-        setProperty(data.data);
+      const details = data?.data;
+      if (data?.success && details && typeof details === 'object' && !Array.isArray(details)) {
+        setProperty(details);
       } else {
+        setProperty(null);
         setError("العقار غير موجود أو غير متاح");
       }
     } catch (err) {
@@ -226,7 +233,7 @@ const PropertyDetailsPage: React.FC = () => {
     if (isFavorite) {
       await removeFromWishlist(propertyId);
     } else {
-      const success = await addToWishlist({
+      await addToWishlist({
         id: propertyId,
         title: property.title,
         price: property.price,
@@ -238,9 +245,6 @@ const PropertyDetailsPage: React.FC = () => {
         type: property.type,
         category: property.category
       });
-      if (success) {
-        showToast('تمت الإضافة إلى قائمة الأمنيات!', 'success');
-      }
     }
   };
 
@@ -382,7 +386,7 @@ const PropertyDetailsPage: React.FC = () => {
               <Link color="inherit" href="/properties" sx={{ textDecoration: 'none', '&:hover': { color: '#667eea' } }}>
               العقارات
             </Link>
-              <Link color="inherit" href={`/properties?city=${property.location?.city}`} sx={{ textDecoration: 'none', '&:hover': { color: '#667eea' } }}>
+              <Link color="inherit" href={`/properties?location.city=${encodeURIComponent(property.location?.city || "")}`} sx={{ textDecoration: 'none', '&:hover': { color: '#667eea' } }}>
                 {property.location?.city}
               </Link>
               <Typography color="text.primary" fontWeight="bold">{property.title}</Typography>

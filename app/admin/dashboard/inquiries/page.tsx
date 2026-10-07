@@ -1,9 +1,11 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, CircularProgress, Chip, IconButton, Tooltip } from "@mui/material";
+import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, CircularProgress, Chip, IconButton, Tooltip, Tabs, Tab } from "@mui/material";
 import { Email, Person, Subject, Message, DateRange, Visibility, MailOutline, Check } from "@mui/icons-material";
 import { useAuth } from "../../../context/AuthContext";
 import { useDarkMode } from "@/app/context/DarkModeContext";
+import { API_URL, authHeader } from "@/shared/utils/auth";
+import PropertyInquiriesSection from "@/shared/components/admin/PropertyInquiriesSection";
 
 interface Inquiry {
   _id: string;
@@ -22,17 +24,15 @@ const InquiriesPage = () => {
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState("");
+  const [tab, setTab] = useState(0);
 
   const handleDelete = async (id: string) => {
     setDeletingId(id);
     setDeleteError("");
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/contact/delete-contact/${id}`, {
+      const res = await fetch(`${API_URL}/contact/delete-contact/${id}`, {
         method: "DELETE",
-        headers: {
-          Authorization: `${process.env.TOKEN_PREFIX}${token}`,
-        },
+        headers: authHeader(),
       });
       if (!res.ok) throw new Error("فشل في حذف الاستفسار");
       setInquiries((prev) => prev.filter((inq) => inq._id !== id));
@@ -48,11 +48,8 @@ const InquiriesPage = () => {
       setLoading(true);
       setError("");
       try {
-        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/contact/get-all-contacts`, {
-          headers: {
-            Authorization: `${process.env.TOKEN_PREFIX}${token}`,
-          },
+        const res = await fetch(`${API_URL}/contact/get-all-contacts`, {
+          headers: authHeader(),
         });
         if (!res.ok) throw new Error("فشل في جلب الاستفسارات");
         const data = await res.json();
@@ -167,6 +164,18 @@ const InquiriesPage = () => {
       </Box>
 
 
+      <Tabs
+        value={tab}
+        onChange={(_, value) => setTab(value)}
+        sx={{ mb: 3, "& .MuiTab-root": { fontWeight: 700, color: isDarkMode ? "#cbd5e1" : undefined } }}
+      >
+        <Tab label="رسائل التواصل" />
+        <Tab label="استفسارات العقارات" />
+      </Tabs>
+
+      {tab === 1 && <PropertyInquiriesSection />}
+
+      {tab === 0 && (<>
       {/* Main Table */}
       <Paper 
         elevation={0} 
@@ -453,6 +462,7 @@ const InquiriesPage = () => {
       {deleteError && (
         <Box sx={{ color: "#dc2626", textAlign: "center", mt: 2 }}>{deleteError}</Box>
       )}
+      </>)}
     </Box>
   );
 };

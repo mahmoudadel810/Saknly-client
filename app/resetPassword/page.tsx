@@ -14,6 +14,8 @@ import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import VpnKeyOutlinedIcon from '@mui/icons-material/VpnKeyOutlined';
 import { textFieldStyles } from '@/shared/styles/textFieldStyle';
+import { API_URL } from '@/shared/utils/auth';
+import { passwordSchema, RESET_EMAIL_KEY } from '@/shared/utils/authValidation';
 
 // Dynamically import MUI components with SSR disabled
 const Box = dynamic(() => import('@mui/material/Box'), { ssr: false });
@@ -39,13 +41,7 @@ const resetPasswordValidationSchema = yup.object({
   code: yup
     .string()
     .required('كود التحقق مطلوب'),
-  newPassword: yup
-    .string()
-    .min(6, "كلمة المرور يجب أن تتكون من 6 أحرف على الأقل")
-    .matches(/[A-Z]/, "يجب أن تحتوي كلمة المرور على حرف كبير واحد على الأقل")
-    .matches(/[a-z]/, "يجب أن تحتوي كلمة المرور على حرف صغير واحد على الأقل")
-    .matches(/[0-9]/, "يجب أن تحتوي كلمة المرور على رقم واحد على الأقل")
-    .required("كلمة المرور مطلوبة"),
+  newPassword: passwordSchema,
   confirmNewPassword: yup
     .string()
     .oneOf([yup.ref('newPassword')], 'كلمة المرور غير متطابقة')
@@ -74,7 +70,7 @@ const ResetPasswordPage = () => {
       try {
         setIsSubmitting(true);
 
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/auth/forgot-password`, {
+        const res = await fetch(`${API_URL}/auth/forgot-password`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: values.email }),
@@ -87,6 +83,11 @@ const ResetPasswordPage = () => {
         }
 
         setUserEmail(values.email);
+        try {
+          sessionStorage.setItem(RESET_EMAIL_KEY, values.email);
+        } catch {
+          // sessionStorage unavailable; the email stays in component state
+        }
         showToast('تم إرسال كود التحقق إلى بريدك الإلكتروني', 'success');
         setCurrentStep(2); // Move to reset password step
       } catch (err: any) {
@@ -111,26 +112,32 @@ const ResetPasswordPage = () => {
       try {
         setIsSubmitting(true);
 
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/auth/reset-password`, {
+        const res = await fetch(`${API_URL}/auth/reset-password`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            email: userEmail,
             code: values.code,
             newPassword: values.newPassword,
             confirmNewPassword: values.confirmNewPassword,
           }),
         });
 
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
 
         if (!res.ok) {
-          throw new Error('حدث خطأ أثناء إعادة تعيين كلمة المرور');
+          throw new Error(data.message || 'هناك خطأ في الكود أو كلمة المرور');
         }
 
-        showToast('تم إعادة تعيين كلمة المرور بنجاح', 'success');
+        try {
+          sessionStorage.removeItem(RESET_EMAIL_KEY);
+        } catch {
+          // ignore
+        }
+        showToast(data.message || 'تم إعادة تعيين كلمة المرور بنجاح', 'success');
         router.push('/login');
       } catch (err: any) {
-        showToast('هناك خطأ في الكود أو كلمة المرور', 'error');
+        showToast(err.message || 'هناك خطأ في الكود أو كلمة المرور', 'error');
       } finally {
         setIsSubmitting(false);
       }

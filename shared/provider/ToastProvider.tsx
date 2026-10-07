@@ -1,7 +1,7 @@
 'use client';
 
 import { Snackbar, Alert, AlertColor } from '@mui/material';
-import React, { createContext, useState, useContext, ReactNode } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useCallback, useMemo } from 'react';
 
 // تعريف نوع الـ Context
 interface ToastContextType {
@@ -40,16 +40,18 @@ export const ToastProvider = ({ children }: ToastProviderProps) => {
         severity: 'success',
     });
 
-    const showToast = (message: string, severity: AlertColor = 'success') => {
+    const showToast = useCallback((message: string, severity: AlertColor = 'success') => {
         setToast({ open: true, message, severity });
-    };
+    }, []);
 
     const handleClose = () => {
         setToast((prev) => ({ ...prev, open: false }));
     };
 
+    const contextValue = useMemo(() => ({ showToast }), [showToast]);
+
     return (
-        <ToastContext.Provider value={{ showToast }}>
+        <ToastContext.Provider value={contextValue}>
             {children}
             <Snackbar
                 open={toast.open}

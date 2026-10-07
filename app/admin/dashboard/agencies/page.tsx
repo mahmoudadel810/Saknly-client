@@ -36,6 +36,7 @@ import {
 import { useDebounce } from 'use-debounce';
 import { Agency } from '../../../../shared/types/index';
 import { useDarkMode } from "@/app/context/DarkModeContext";
+import { API_URL, authHeader } from "@/shared/utils/auth";
 
 const PAGE_SIZE = 10;
 
@@ -243,13 +244,14 @@ const AgenciesPage = () => {
         limit: String(PAGE_SIZE),
       });
       
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/agencies/featured?${params.toString()}`
-      );
+      const res = await fetch(`${API_URL}/agencies?${params.toString()}`, {
+        headers: authHeader(),
+      });
       
       if (!res.ok) throw new Error('فشل في جلب الوكالات');
       
       const data = await res.json();
+      setError('');
       setAgencies(data.data || []);
       setTotalPages(data.totalPages || 1);
     } catch (err: any) {
@@ -266,25 +268,22 @@ const AgenciesPage = () => {
   const handleToggleFeatured = async (agency: Agency) => {
     setActionLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/agencies/${agency._id}`,
-        {
-          method: 'PUT',
-          headers: {
-            Authorization: `${process.env.TOKEN_PREFIX}${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ isFeatured: !agency.isFeatured }),
-        }
-      );
+      const res = await fetch(`${API_URL}/agencies/${agency._id}/feature`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...authHeader() },
+        // Sent for servers that read the desired state; a pure toggle ignores it.
+        body: JSON.stringify({ isFeatured: !agency.isFeatured }),
+      });
 
       if (!res.ok) throw new Error('فشل في تحديث حالة الوكالة');
 
+      const data = await res.json().catch(() => ({}));
+      const nextFeatured: boolean =
+        typeof data?.data?.isFeatured === 'boolean' ? data.data.isFeatured : !agency.isFeatured;
       setAgencies((prev) =>
         prev.map((a) =>
           a._id === agency._id
-            ? { ...a, isFeatured: !a.isFeatured }
+            ? { ...a, isFeatured: nextFeatured }
             : a
         )
       );
@@ -299,17 +298,10 @@ const AgenciesPage = () => {
     if (!selectedAgency) return;
     setActionLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(
-
-        `${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/agencies/${selectedAgency._id}`,
-        {
-          method: 'DELETE',
-          headers: {
-            Authorization: `Saknly__${token}`,
-          },
-        }
-      );
+      const res = await fetch(`${API_URL}/agencies/${selectedAgency._id}`, {
+        method: 'DELETE',
+        headers: authHeader(),
+      });
 
       if (!res.ok) throw new Error('فشل حذف الوكالة');
 
@@ -331,7 +323,7 @@ const AgenciesPage = () => {
       label: 'الشعار',
       render: (agency: Agency) => (
         <Avatar 
-          src={agency.logo} 
+          src={agency.logo?.url} 
           alt={agency.name}
           sx={{ 
             width: { xs: 32, sm: 40 }, 
@@ -633,7 +625,7 @@ const AgenciesPage = () => {
               }}
             >
               <Avatar
-                src={selectedAgency.logo}
+                src={selectedAgency.logo?.url}
                 sx={{ 
                   width: { xs: 60, sm: 80 }, 
                   height: { xs: 60, sm: 80 }, 

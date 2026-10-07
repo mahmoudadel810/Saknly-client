@@ -1,7 +1,6 @@
 import axios from 'axios';
 import { Property, PropertyFilters, PaginatedResponse } from '../types';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1';
+import { API_URL as API_BASE_URL, AUTH_PREFIX } from '../utils/auth';
 
 // Create axios instance with base configuration
 const apiClient = axios.create({
@@ -16,7 +15,7 @@ apiClient.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     if (token) {
-      config.headers.Authorization = `Saknly__${token}`;
+      config.headers.Authorization = `${AUTH_PREFIX}${token}`;
     }
   }
   return config;
@@ -42,18 +41,6 @@ export const propertyService = {
 
     const response = await apiClient.get(`/properties/search?${params.toString()}`);
     return response.data;
-  },
-
-  // Get all properties
-  getAllProperties: async (page = 1, limit = 12): Promise<PaginatedResponse<Property>> => {
-    const response = await apiClient.get(`/properties?page=${page}&limit=${limit}`);
-    return response.data;
-  },
-
-  // Get property by ID
-  getPropertyById: async (id: string): Promise<Property> => {
-    const response = await apiClient.get(`/properties/${id}`);
-    return response.data.data;
   },
 
   // Get featured properties

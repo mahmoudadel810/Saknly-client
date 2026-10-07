@@ -1,21 +1,8 @@
 "use client";
 
-import { useContext } from "react";
-import { AuthContext } from "@/app/context/AuthContext";
-import Loading from "@/app/loading";
-
+// Route protection lives in middleware.ts (cookie based) and in the pages that need a user.
+// This wrapper always renders its children so public pages are server-rendered with content
+// instead of a loading spinner while the session is being checked.
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
-    const context = useContext(AuthContext);
-    
-    if (!context) {
-        return <Loading />;
-    }
-    
-    const { isLoading } = context;
-
-    if (isLoading) {
-        return <Loading />;
-    }
-
     return <>{children}</>;
 }

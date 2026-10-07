@@ -31,6 +31,8 @@ import { useToast } from "@/shared/provider/ToastProvider";
 import GoogleButton from "@/components/googleButton";
 import { textFieldStyles } from "@/shared/styles/textFieldStyle";
 import { useDarkMode } from "@/app/context/DarkModeContext";
+import { API_URL } from "@/shared/utils/auth";
+import { emailSchema, passwordSchema, phoneSchema } from "@/shared/utils/authValidation";
 
 export default function Register() {
   const router = useRouter();
@@ -68,31 +70,13 @@ export default function Register() {
         /^[a-zA-Z\u0600-\u06FF][a-zA-Z\u0600-\u06FF0-9 ]*$/,
         "غير مسموح بأي رموز غريبة"
       ),
-    email: yup
-      .string()
-      .email("صيغة البريد الإلكتروني غير صحيحة")
-      .required("البريد الإلكتروني مطلوب")
-      .matches(
-        // /^[a-zA-Z0-9._%+-]+@gmail\.com$/,
-        /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
-        // "يجب أن يكون البريد الإلكتروني من نطاق @gmail.com فقط"
-        "ادخل بريد الكترونى صالح"
-      ),
-    password: yup
-      .string()
-      .min(6, "كلمة المرور يجب أن تتكون من 6 أحرف على الأقل")
-      .matches(/[A-Z]/, "يجب أن تحتوي كلمة المرور على حرف كبير واحد على الأقل")
-      .matches(/[a-z]/, "يجب أن تحتوي كلمة المرور على حرف صغير واحد على الأقل")
-      .matches(/[0-9]/, "يجب أن تحتوي كلمة المرور على رقم واحد على الأقل")
-      .required("كلمة المرور مطلوبة"),
+    email: emailSchema,
+    password: passwordSchema,
     confirmPassword: yup
       .string()
       .required("تأكيد كلمة المرور مطلوب")
       .oneOf([yup.ref("password")], "كلمات المرور غير متطابقة"),
-    phone: yup
-      .string()
-      .matches(/^\d{11}$/, "يجب إدخال 11 رقماً فقط")
-      .required("رقم الهاتف مطلوب"),
+    phone: phoneSchema,
     address: yup.string().required("العنوان مطلوب"),
   });
 
@@ -120,7 +104,7 @@ export default function Register() {
       try {
         // مثال: استدعاء API للتسجيل
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/auth/register`,
+          `${API_URL}/auth/register`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -128,11 +112,12 @@ export default function Register() {
           }
         );
 
+        const data = await res.json().catch(() => ({}));
+
         if (!res.ok) {
-          throw new Error("خطأ فى تسجيل الدخول, هذا الايميل موجود بالفعل");
+          throw new Error(data?.message || data?.error || "تعذر إنشاء الحساب، حاول مرة أخرى");
         }
 
-        const data = await res.json();
         console.log("Registration successful:", data);
         formik.resetForm();
         
@@ -141,8 +126,11 @@ export default function Register() {
       } catch (error) {
         console.error("Registration error:", error);
 
-        // ❌ عرض رسالة خطأ
-        showToast("خطأ فى تسجيل الدخول, هذا الايميل موجود بالفعل", "error");
+        // ❌ عرض رسالة الخطأ القادمة من السيرفر
+        showToast(
+          error instanceof Error && error.message ? error.message : "تعذر إنشاء الحساب، حاول مرة أخرى",
+          "error"
+        );
       }
     },
   });

@@ -1,10 +1,11 @@
 // context/AuthContext.tsx
 "use client";
 
-import { createContext, useState, useEffect, ReactNode, useContext, useRef } from "react";
+import { createContext, useState, useEffect, ReactNode, useContext, useCallback } from "react";
 import Cookies from "js-cookie";
 import axios from "axios";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { API_URL, authHeader, clearAuthToken, getToken, setAuthToken } from "@/shared/utils/auth";
 
 // Define the User type
 interface User {
@@ -28,6 +29,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   isLoading: boolean;
   fetchUser: () => Promise<void>;
+  setSession: (token: string) => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -35,105 +37,77 @@ export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const justLoggedIn = useRef(false);
   const router = useRouter();
 
-  const login = async (email: string, password: string) => {
-    const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/auth/login`, {
-      email,
-      password,
-    });
-    Cookies.set("token", res.data.token);
-    localStorage.setItem("token", res.data.token);
-
-    setUser(res.data.user);
-  };
-
-  const fetchUser = async () => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      try {
-        const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/auth/getMe`, {
-          headers: {
-            Authorization: `Saknly__${token}`,
-          },
-        });
-        if (res.data.success && res.data.data?.user) {
-          setUser(res.data.data.user);
-          justLoggedIn.current = true;
-        } else {
-          logout();
-        }
-      } catch (error) {
-        console.error("Failed to fetch user:", error);
-        logout();
-      }
+  // Loads the current user for the stored token. An invalid or rejected token clears
+  // both the cookie and localStorage; a network failure keeps the token for a later retry.
+  const fetchUser = useCallback(async () => {
+    const token = getToken();
+    if (!token) {
+      setUser(null);
+      setIsLoading(false);
+      return;
     }
-    setIsLoading(false);
-  };
-
-  const logout = async () => {
     try {
-      const token = localStorage.getItem("token");
-
-      if (token) {
-        await axios.post(
-          `${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/auth/logout`,
-          {},
-          {
-            withCredentials: true,
-            headers: {
-              Authorization: `Saknly__${token}`,
-            },
-          }
-        );
+      const res = await axios.get(`${API_URL}/auth/getMe`, { headers: authHeader(token) });
+      const fetched = res.data?.data?.user;
+      if (res.data?.success && fetched && fetched.isLoggedIn !== false) {
+        setUser(fetched);
+      } else {
+        clearAuthToken();
+        setUser(null);
       }
-      console.log("Logout successful");
-      router.push('/');
+    } catch (error) {
+      console.error("Failed to fetch user:", error);
+      if (axios.isAxiosError(error) && error.response) {
+        clearAuthToken();
+      }
+      setUser(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
+  const setSession = useCallback(async (token: string) => {
+    setAuthToken(token);
+    await fetchUser();
+  }, [fetchUser]);
+
+  const login = useCallback(async (email: string, password: string) => {
+    const res = await axios.post(`${API_URL}/auth/login`, { email, password });
+    await setSession(res.data.token);
+  }, [setSession]);
+
+  const logout = useCallback(async () => {
+    try {
+      const token = getToken();
+      if (token) {
+        await axios.post(`${API_URL}/auth/logout`, {}, { withCredentials: true, headers: authHeader(token) });
+      }
     } catch (error) {
       console.error("Logout failed:", error);
     } finally {
-      localStorage.removeItem("token");
+      clearAuthToken();
       setUser(null);
+      router.push('/');
     }
-  };
+  }, [router]);
 
+  // Check the stored token once on mount (not on every navigation).
   useEffect(() => {
-    const checkLoggedInUser = async () => {
-      if (justLoggedIn.current) {
-        justLoggedIn.current = false;
-        setIsLoading(false);
-        return;
-      }
-
-      const token = localStorage.getItem("token");
-      if (token) {
-        try {
-          const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/auth/getMe`, {
-            headers: {
-              Authorization: `Saknly__${token}`,
-            },
-          });
-          if (res.data.success && res.data.data?.user?.isLoggedIn) {
-            const userData = res.data.data.user;
-            setUser(userData);
-          } else {
-            logout();
-          }
-        } catch (error) {
-          console.error("Failed to check user:", error);
-          logout();
-        }
-      }
-      setIsLoading(false);
-    };
-
-    checkLoggedInUser();
-  }, [usePathname()]);
+    const token = getToken();
+    // Older sessions only stored the token in localStorage; mirror it into the cookie
+    // so the middleware route guards see it.
+    if (token && !Cookies.get("token")) {
+      setAuthToken(token);
+    } else if (!token && Cookies.get("token")) {
+      clearAuthToken();
+    }
+    fetchUser();
+  }, [fetchUser]);
 
   return (
-    <AuthContext.Provider value={{ user, setUser, login, logout, isLoading, fetchUser }}>
+    <AuthContext.Provider value={{ user, setUser, login, logout, isLoading, fetchUser, setSession }}>
       {children}
     </AuthContext.Provider>
   );

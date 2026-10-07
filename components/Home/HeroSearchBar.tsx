@@ -18,21 +18,16 @@ import {
   useTheme,
 } from "@mui/material";
 import { useRouter } from "next/navigation";
+import { CITY_OPTIONS, PROPERTY_TYPE_VALUES } from "@/shared/constants/property";
 
-const propertyTypes = ["شقة", "فيلا", "محلات", "عماره"];
-const offerTypes = ["بيع", "إيجار"];
-const locations = [
-  "المنوفية",
-  "شبين الكوم",
-  "تلا", 
-  "أشمون",
-  "منوف",
-  "السادات",
-  "بركة السبع",
-  "قويسنا",
-  "الشهداء",
-  "الباجور",
+// Values must match the server enums (PROPERTY_TYPES, CITIES, category).
+const propertyTypes = PROPERTY_TYPE_VALUES;
+const offerTypes = [
+  { value: "sale", label: "بيع" },
+  { value: "rent", label: "إيجار" },
+  { value: "student", label: "سكن طلبة" },
 ];
+const locations = CITY_OPTIONS;
 
 const areaMinOptions = [50, 100, 150, 200, 250, 300];
 const areaMaxOptions = [300, 350, 400, 450, 500, 600];
@@ -223,7 +218,7 @@ export default function HeroSearchBar() {
                   </span>
                 );
               }
-              return value;
+              return offerTypes.find((type) => type.value === value)?.label ?? value;
             }}
             sx={{
               borderRadius: 2,
@@ -238,11 +233,11 @@ export default function HeroSearchBar() {
           >
             {offerTypes.map((type) => (
               <MenuItem
-                key={type}
-                value={type}
+                key={type.value}
+                value={type.value}
                 sx={{ fontSize: { xs: "0.8rem", sm: "0.875rem" } }}
               >
-                {type}
+                {type.label}
               </MenuItem>
             ))}
           </Select>

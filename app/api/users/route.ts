@@ -19,8 +19,9 @@ export async function GET(request: NextRequest) {
     // Get the authorization header from the request
     const authHeader = request.headers.get('authorization');
 
+    const query = new URLSearchParams({ page, limit, search });
     const response = await fetch(
-      `${BACKEND_URL}/users/get-all-users?page=${page}&limit=${limit}&search=${search}`,
+      `${BACKEND_URL}/users/get-all-users?${query.toString()}`,
       {
         method: 'GET',
         headers: {
@@ -30,13 +31,10 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    if (!response.ok) {
-      throw new Error(`Backend responded with status: ${response.status}`);
-    }
+    const data = await response.json().catch(() => ({}));
 
-    const data = await response.json();
-    
-    return NextResponse.json(data, { headers: corsHeaders });
+    // Pass the backend status through (e.g. 401/403 for a missing or non-admin token).
+    return NextResponse.json(data, { status: response.status, headers: corsHeaders });
   } catch (error) {
     console.error('Error fetching users:', error);
     return NextResponse.json(

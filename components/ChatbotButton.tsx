@@ -35,9 +35,11 @@ export default function ChatbotButton() {
         body: JSON.stringify({ question: userMsg.text })
       });
 
-      const data = await res.json();
-      const botMsg = { role: "bot", text: data.answer };
-      setMessages((prev) => [...prev, botMsg]);
+      const data = await res.json().catch(() => ({}));
+      const text = res.ok && data.answer
+        ? data.answer
+        : data.message || data.error || "حدث خطأ، حاول مرة أخرى";
+      setMessages((prev) => [...prev, { role: "bot", text }]);
     } catch (err) {
       setMessages((prev) => [...prev, { role: "bot", text: "حدث خطأ، حاول مرة أخرى." }]);
     } finally {

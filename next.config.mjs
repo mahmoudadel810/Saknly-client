@@ -17,61 +17,18 @@ const nextConfig = {
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
   },
-  // Enhanced webpack configuration
-  webpack: (config, { isServer, dev }) => {
-    if (!isServer) {
-      // Optimize CSS loading for client-side
-      config.optimization.splitChunks = {
-        ...config.optimization.splitChunks,
-        chunks: 'all',
-        cacheGroups: {
-          ...config.optimization.splitChunks.cacheGroups,
-          styles: {
-            name: 'styles',
-            test: /\.(css|scss|sass)$/,
-            chunks: 'all',
-            enforce: true,
-          },
-          // Separate vendor chunks for better caching
-          vendor: {
-            test: /[\\/]node_modules[\\/]/,
-            name: 'vendors',
-            chunks: 'all',
-            priority: 10,
-          },
-          // Separate MUI components
-          mui: {
-            test: /[\\/]node_modules[\\/]@mui[\\/]/,
-            name: 'mui',
-            chunks: 'all',
-            priority: 20,
-          },
-        },
-      };
-    }
-    
-    // Optimize images
-    config.module.rules.push({
-      test: /\.(png|jpe?g|gif|svg)$/i,
-      use: [
-        {
-          loader: 'url-loader',
-          options: {
-            limit: 8192,
-            fallback: 'file-loader',
-          },
-        },
-      ],
-    });
-
-    return config;
-  },
   // Image optimization configuration
   images: {
     remotePatterns: [
       {
         protocol: 'https',
         hostname: 'res.cloudinary.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
         port: '',
         pathname: '/**',
       },

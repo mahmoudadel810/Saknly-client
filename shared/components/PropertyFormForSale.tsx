@@ -18,19 +18,12 @@ import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { arSA } from 'date-fns/locale/ar-SA';
 import { format } from 'date-fns';
 import FileCompressor from "../utils/fileCompression";
+import { AMENITIES, CITY_OPTIONS, PROPERTY_TYPE_OPTIONS } from "../constants/property";
+import { API_URL, authHeader, clearAuthToken } from "../utils/auth";
 
-const amenities = [
-  "تكييف", "مصعد", "شرفة", "موقف سيارات", "مسموح بالحيوانات الأليفة",
-  "مفروشة جزئياً", "أمن", "نظام كهرباء ذكي", "مطبخ مجهز", "مخزن"
-];
+const amenities = AMENITIES;
 
-const propertyTypes = [
-  { value: 'شقة', label: 'شقة' },
-  { value: 'فيلا', label: 'فيلا' },
-  { value: 'محل', label: 'محل' },
-  { value: 'استوديو', label: 'استوديو' },
-  { value: 'دوبلكس', label: 'دوبلكس' },
-];
+const propertyTypes = PROPERTY_TYPE_OPTIONS;
 
 const areaConstraints = {
   'شقة': { min: 60, max: 220 },
@@ -40,12 +33,7 @@ const areaConstraints = {
   'فيلا': { min: 250, max: 600 },
 };
 
-const cities = [
-  "شبين الكوم", "منوف", "تلا", "أشمون", "قويسنا", 
-  "بركة السبع", "الباجور", "السادات", "الشهداء", "سرس الليان",
-  "الباجور", "منشأة سلطان", "سرس الليان", "بركة السبع", "تلا",
-  "أشمون", "قويسنا", "منوف", "شبين الكوم"
-];
+const cities = CITY_OPTIONS;
 
 const studentRoomTypes = [
   { value: 'private', label: 'غرفة خاصة' },
@@ -426,7 +414,7 @@ export default function PropertyFormForSale() {
         throw new Error('توكن غير صالح');
       }
     } catch (err) {
-      localStorage.removeItem('token');
+      clearAuthToken();
       showSnackbar('جلسة العمل منتهية، يرجى تسجيل الدخول مرة أخرى', 'error');
       router.push('/login');
       setIsSubmitting(false);
@@ -463,6 +451,8 @@ export default function PropertyFormForSale() {
     if (formData.contactInfo.whatsapp) formDataToSend.append('contactInfo[whatsapp]', formData.contactInfo.whatsapp);
     formDataToSend.append('isNegotiable', String(formData.isNegotiable));
     if (formData.floor) formDataToSend.append('floor', formData.floor);
+    // multer parses repeated `amenities[]` fields into an array
+    formData.amenities.forEach((amenity) => formDataToSend.append('amenities[]', amenity));
 
     // Sale fields
     if (formData.operationType === 'sale') {
@@ -495,9 +485,9 @@ export default function PropertyFormForSale() {
     if (formData.operationType === 'student') {
       formDataToSend.append('isStudentFriendly', String(formData.isStudentFriendly));
       formDataToSend.append('studentHousingDetails[isEnabled]', 'true');
-      formDataToSend.append('studentHousingDetails[roomType]', formData.studentRoomType);
-      formDataToSend.append('studentHousingDetails[studentsPerRoom]', formData.studentsPerRoom);
-      formDataToSend.append('studentHousingDetails[genderPolicy]', formData.studentGenderPolicy);
+      if (formData.studentRoomType) formDataToSend.append('studentHousingDetails[roomType]', formData.studentRoomType);
+      if (formData.studentsPerRoom) formDataToSend.append('studentHousingDetails[studentsPerRoom]', formData.studentsPerRoom);
+      if (formData.studentGenderPolicy) formDataToSend.append('studentHousingDetails[genderPolicy]', formData.studentGenderPolicy);
       formDataToSend.append('studentHousingDetails[academicYearOnly]', String(formData.academicYearOnly));
       if (formData.semester) formDataToSend.append('studentHousingDetails[semester]', formData.semester);
       formData.nearbyUniversities.forEach((uni, idx) => {
@@ -509,14 +499,14 @@ export default function PropertyFormForSale() {
     }
 
       // Submit to API
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/properties/addProperty`, {
+      const response = await fetch(`${API_URL}/properties/addProperty`, {
         method: 'POST',
-        headers: { Authorization: `Saknly__${token}` },
+        headers: authHeader(token),
         body: formDataToSend
       });
 
       if (response.status === 401) {
-        localStorage.removeItem('token');
+        clearAuthToken();
         showSnackbar('انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى', 'error');
         router.push('/login');
         return;

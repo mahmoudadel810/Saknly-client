@@ -85,7 +85,7 @@ const teamMembers = [
   {
     name: "Tasbih Attia",
     role: "Marketing Specialist",
-    image: "/images/team/Profile.jpg",
+    image: "",
     linkedin: "https://www.linkedin.com/in/tasbih-attia-899575308/",
     github: "https://github.com/Tasbih-Attia",
     email: "tasbih@saknly.com",
@@ -97,7 +97,7 @@ const teamMembers = [
 
 export default function AboutPage() {
   const [propertyCount, setPropertyCount] = React.useState(0);
-  const [userCount, setUserCount] = React.useState(0);
+  const [userCount, setUserCount] = React.useState<number | null>(null);
   const [agencyCount, setAgencyCount] = React.useState(0); // For agency count
   const [loadingStats, setLoadingStats] = React.useState(true);
   const [errorStats, setErrorStats] = React.useState('');
@@ -108,26 +108,32 @@ export default function AboutPage() {
       setErrorStats('');
       try {
         const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1';
-        // Fetch property count
-        const propertiesRes = await axios.get(`${BASE_URL}/properties/allProperties`);
-        setPropertyCount(propertiesRes.data.count || (Array.isArray(propertiesRes.data.data) ? propertiesRes.data.data.length : 0));
+        // Each stat is fetched independently so one failing endpoint does not hide the others.
+        const [propertiesRes, usersRes, agenciesRes] = await Promise.allSettled([
+          axios.get(`${BASE_URL}/properties/allProperties`, { params: { limit: 1 } }),
+          // Admin-only on the server: anonymous visitors get 401 and the stat is hidden.
+          axios.get(`${BASE_URL}/users/get-all-users`, { params: { limit: 1 } }),
+          axios.get(`${BASE_URL}/agencies/featured`),
+        ]);
 
-        // Fetch user count (clients)
-        const usersRes = await axios.get(`${BASE_URL}/users/get-all-users`);
-        let userCountValue = 0;
-        if (Array.isArray(usersRes.data.data)) {
-          userCountValue = usersRes.data.data.length;
-        } else if (Array.isArray(usersRes.data.users)) {
-          userCountValue = usersRes.data.users.length;
-        } else if (usersRes.data.data && Array.isArray(usersRes.data.data.users)) {
-          userCountValue = usersRes.data.data.users.length;
+        if (propertiesRes.status === 'fulfilled') {
+          const data = propertiesRes.value.data;
+          setPropertyCount(data?.pagination?.totalDocs ?? data?.count ?? (Array.isArray(data?.data) ? data.data.length : 0));
         }
-        setUserCount(userCountValue);
 
-        // Fetch agency count - requires new API or modification of existing one
-        // For now, setting a placeholder or fetching all featured agencies if that's acceptable
-        const agenciesRes = await axios.get(`${BASE_URL}/agencies/featured`); // Adjust if a 'getAllAgencies' is added
-        setAgencyCount(agenciesRes.data.data.length || 0);
+        if (usersRes.status === 'fulfilled') {
+          const data = usersRes.value.data;
+          setUserCount(data?.pagination?.totalDocs ?? (Array.isArray(data?.users) ? data.users.length : null));
+        }
+
+        if (agenciesRes.status === 'fulfilled') {
+          const data = agenciesRes.value.data;
+          setAgencyCount(Array.isArray(data?.data) ? data.data.length : 0);
+        }
+
+        if ([propertiesRes, agenciesRes].every((r) => r.status === 'rejected')) {
+          throw new Error('stats unavailable');
+        }
 
       } catch (err) {
         console.error('Error fetching stats:', err);
@@ -141,7 +147,7 @@ export default function AboutPage() {
 
   const stats = [
     { number: propertyCount, label: "عقار متاح" },
-    { number: userCount, label: "عميل راضي" },
+    ...(userCount !== null ? [{ number: userCount, label: "عميل راضي" }] : []),
     { number: agencyCount, label: "وكالة عقارية" },
     { number: "24/7", label: "دعم فني" }
   ];

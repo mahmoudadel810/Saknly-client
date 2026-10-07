@@ -2,7 +2,7 @@
 
 "use client";
 
-import React, { useEffect, useState, useContext } from "react"; // Add useState for password
+import React, { useEffect, useState, useContext, Suspense } from "react"; // Add useState for password
 import Link from "next/link";
 import {
   Box,
@@ -28,6 +28,7 @@ import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import { useDarkMode } from "@/app/context/DarkModeContext";
+import { API_URL } from "@/shared/utils/auth";
 
 
 // Add color and font constants (move above component for scope)
@@ -47,12 +48,41 @@ type LoginFormData = {
 const LoginPage = () => {
   const router = useRouter();
   const context = useContext(AuthContext) as any || {};
-  const { user, logout } = context;
+  const { user, logout, setSession } = context;
   const [showPassword, setShowPassword] = useState(false); // State for password visibility
   const [loading, setLoading] = useState(false); // Add loading state
   const { showToast } = useToast();
   const searchParams = useSearchParams();
   const errorParam = searchParams.get('error');
+  const redirectParam = searchParams.get('redirect');
+  // Only allow same-site relative redirects.
+  const safeRedirect = redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//') ? redirectParam : null;
+  const [unconfirmedEmail, setUnconfirmedEmail] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
+
+  const handleResendConfirmation = async () => {
+    if (!unconfirmedEmail) return;
+    setResending(true);
+    try {
+      const res = await fetch(`${API_URL}/auth/resend-confirmation`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: unconfirmedEmail }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        showToast(data.message || "تم إرسال رسالة التأكيد إلى بريدك الإلكتروني", "success");
+        setUnconfirmedEmail(null);
+      } else {
+        showToast(data.message || "تعذر إرسال رسالة التأكيد", "error");
+      }
+    } catch {
+      showToast("تعذر إرسال رسالة التأكيد", "error");
+    } finally {
+      setResending(false);
+    }
+  };
   const theme = useTheme();
   const { isDarkMode } = useDarkMode();
 
@@ -70,17 +100,11 @@ const LoginPage = () => {
     email: yup
       .string()
       .email("صيغة البريد الإلكتروني غير صحيحة")
-      .required("البريد الإلكتروني مطلوب")
-      .matches(
-        /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
-        "ادخل بريد الكترونى صالح"
-      ),
+      .required("البريد الإلكتروني مطلوب"),
     password: yup
       .string()
-      .min(6, "كلمة المرور يجب أن تتكون من 6 أحرف على الأقل")
-      .matches(/[A-Z]/, "يجب أن تحتوي كلمة المرور على حرف كبير واحد على الأقل")
-      .matches(/[a-z]/, "يجب أن تحتوي كلمة المرور على حرف صغير واحد على الأقل")
-      .matches(/[0-9]/, "يجب أن تحتوي كلمة المرور على رقم واحد على الأقل")
+      .min(5, "كلمة المرور يجب أن تتكون من 5 أحرف على الأقل")
+      .max(30, "كلمة المرور يجب ألا تزيد عن 30 حرفًا")
       .required("كلمة المرور مطلوبة"),
   });
 
@@ -97,7 +121,7 @@ const LoginPage = () => {
       setLoading(true); // Start loading
       try {
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/auth/login`,
+          `${API_URL}/auth/login`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -106,12 +130,18 @@ const LoginPage = () => {
           }
         );
 
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-          if (res.status === 400) {
+          const serverMessage: string = typeof data?.message === "string" ? data.message : "";
+          if (/confirm|verif|تأكيد/i.test(serverMessage)) {
+            setUnconfirmedEmail(values.email);
+            showToast("لم يتم تأكيد البريد الإلكتروني بعد. يمكنك إعادة إرسال رسالة التأكيد.", "error");
+          } else if (res.status === 400) {
             showToast("خطأ في البريد الإلكتروني أو كلمة المرور", "error");
           } else if (res.status === 401 || res.status === 404) {
             showToast("الحساب غير موجود أو لم يتم تأكيد البريد الإلكتروني", "error");
+          } else if (serverMessage) {
+            showToast(serverMessage, "error");
           } else {
             showToast("حدث خطأ غير متوقع أثناء تسجيل الدخول", "error");
           }
@@ -119,7 +149,8 @@ const LoginPage = () => {
         }
 
 
-        localStorage.setItem("token", data.token);
+        setRedirecting(true);
+        await setSession(data.token);
 
         try {
           const decoded = JSON.parse(atob(data.token.split('.')[1]));
@@ -128,7 +159,9 @@ const LoginPage = () => {
           showToast("تم التسجيل بنجاح", "success");
 
           setTimeout(() => {
-            if (role === "admin") {
+            if (safeRedirect) {
+              router.push(safeRedirect);
+            } else if (role === "admin") {
               router.push("/admin/dashboard");
             } else {
               router.push("/");
@@ -154,7 +187,7 @@ const LoginPage = () => {
     router.push('/resetPassword');
   };
 
-  if (user) {
+  if (user && !redirecting) {
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: 2 }}>
         <Typography variant="h5" color="primary" sx={{ mb: 2, fontWeight: 700 }}>
@@ -364,6 +397,21 @@ const LoginPage = () => {
               }}>
               هل نسيت كلمة المرور؟
             </Typography>
+            {unconfirmedEmail && (
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+                <Typography variant="body2">
+                  لم تستلم رسالة تأكيد البريد الإلكتروني؟
+                </Typography>
+                <Button
+                  variant="text"
+                  size="small"
+                  onClick={handleResendConfirmation}
+                  disabled={resending}
+                  sx={{ color: PRIMARY, textTransform: "none", fontWeight: 600 }}>
+                  {resending ? "جاري الإرسال..." : "إعادة إرسال رسالة التأكيد"}
+                </Button>
+              </Box>
+            )}
 
             <Button
               type="submit"
@@ -435,5 +483,10 @@ const LoginPage = () => {
     </Box>
   );
 };
-//  try
-export default LoginPage;
+export default function LoginPageWithSuspense() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPage />
+    </Suspense>
+  );
+}

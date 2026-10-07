@@ -15,6 +15,8 @@ import AdminIcon from '@mui/icons-material/AdminPanelSettings';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ImportProperties from '../../../shared/components/ImportProperties';
 import { useToast } from '../../../shared/provider/ToastProvider';
+import { CITY_OPTIONS, normalizeCity } from '../../../shared/constants/property';
+import { API_URL, authHeader } from '../../../shared/utils/auth';
 
 const colors = {
   primary: {
@@ -197,19 +199,15 @@ export default function AdminImportPropertiesPage() {
       return;
     }
 
-    // Supported cities list (must match server validation)
-    const supportedCities = [
-      'شبين الكوم', 'منوف', 'تلا', 'أشمون', 'قويسنا', 
-      'بركة السبع', 'الباجور', 'السادات', 'الشهداء', 'سرس الليان',
-      'منشأة سلطان'
-    ];
+    // Supported cities list (shared constant identical to the server enum)
+    const supportedCities = CITY_OPTIONS;
     
     // Function to find a valid city or return default
     const getValidCity = (inputCity: string) => {
       if (!inputCity) return supportedCities[0]; // Default to first city
       
-      // Check if input city is in supported list
-      const exactMatch = supportedCities.find(city => city === inputCity.trim());
+      // Exact enum value or a known alias (e.g. 'السادات' → 'مدينة السادات')
+      const exactMatch = normalizeCity(inputCity);
       if (exactMatch) return exactMatch;
       
       // Try partial matching
@@ -272,9 +270,9 @@ export default function AdminImportPropertiesPage() {
         });
       }
 
-              const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/properties/addProperty`, {
+      const response = await fetch(`${API_URL}/properties/addProperty`, {
         method: 'POST',
-        headers: { Authorization: `Saknly__${token}` },
+        headers: authHeader(token),
         body: formDataToSend
       });
 

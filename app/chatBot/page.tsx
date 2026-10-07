@@ -13,8 +13,13 @@ export default function Home() {
 
     const handleAsk = async () => {
         if (!question.trim()) return;
-        const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/chat`, { question });
-        setAnswer(res.data.answer);
+        try {
+            const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/chat`, { question });
+            setAnswer(res.data?.answer || 'حدث خطأ، حاول مرة أخرى');
+        } catch (err) {
+            const data = axios.isAxiosError(err) ? err.response?.data : undefined;
+            setAnswer(data?.message || data?.error || 'حدث خطأ، حاول مرة أخرى');
+        }
     };
 
     return (

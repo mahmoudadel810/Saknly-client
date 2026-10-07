@@ -26,6 +26,7 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import { useDarkMode } from "@/app/context/DarkModeContext";
+import { authHeader } from "@/shared/utils/auth";
 
 interface User {
   _id: string;
@@ -55,13 +56,10 @@ interface UsersResponse {
 const fetchUsers = async (page = 1, limit = 20, search = "", token: string): Promise<UsersResponse> => {
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
+    ...authHeader(token || null),
   };
-  
-  if (token) {
-    headers['Authorization'] = `${process.env.TOKEN_PREFIX}${token}`;
-  }
 
-  const res = await fetch(`/api/users?page=${page}&limit=${limit}&search=${search}`, {
+  const res = await fetch(`/api/users?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}`, {
     headers
   });
   

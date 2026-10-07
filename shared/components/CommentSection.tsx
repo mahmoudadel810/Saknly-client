@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Box, Typography, TextField, Button, CircularProgress, Avatar, Alert } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import Rating from '@mui/material/Rating';
+import { authHeader } from '@/shared/utils/auth';
 
 interface Comment {
   _id: string;
@@ -81,9 +82,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
       };
-      if (token) {
-        headers['Authorization'] = `Saknly__${token}`;
-      }
+      Object.assign(headers, authHeader(token));
 
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/property-comments/${propertyId}`,

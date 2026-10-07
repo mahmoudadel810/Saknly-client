@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useRef, Suspense } from 'react';
 import {
   Box,
   Typography,
@@ -19,6 +19,22 @@ import {
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { AMENITIES, CITY_OPTIONS, PROPERTY_TYPE_OPTIONS } from '../constants/property';
+
+// URL keys this sidebar owns; every other key (category, isStudentFriendly, page, ...) is preserved.
+const OWNED_KEYS = [
+  'search',
+  'price[gte]',
+  'price[lte]',
+  'location.city',
+  'type',
+  'bedrooms',
+  'bathrooms',
+  'area',
+  'amenities',
+  'downPayment',
+  'installmentPeriodInYears',
+];
 
 interface FilterSidebarProps { }
 
@@ -50,34 +66,29 @@ const FilterSidebar: React.FC<FilterSidebarProps> = () => {
   );
 
   // Constants for filter options
-  const PROPERTY_TYPES_OPTIONS = [
-    { value: 'شقة', label: 'شقة' },
-    { value: 'فيلا', label: 'فيلا' },
-    { value: 'محل', label: 'محل' },
-    { value: 'استوديو', label: 'استوديو' },
-    { value: 'دوبلكس', label: 'دوبلكس' },
-  ];
+  const PROPERTY_TYPES_OPTIONS = PROPERTY_TYPE_OPTIONS;
 
-  const CITIES_OPTIONS = [
-    'شبين الكوم', 'منوف', 'تلا', 'أشمون', 'قويسنا', 
-    'بركة السبع', 'الباجور', 'السادات', 'الشهداء', 'سرس الليان',
-    'منشأة سلطان'
-  ];
+  const CITIES_OPTIONS = CITY_OPTIONS;
 
-  const AMENITIES_OPTIONS = [
-    'تكييف', 'مصعد', 'شرفة', 'موقف سيارات', 'مسموح بالحيوانات الأليفة', 'مفروشة جزئياً', 'أمن', 'نظام كهرباء ذكي', 'مطبخ مجهز', 'مخزن'
-  ];
+  const AMENITIES_OPTIONS = AMENITIES;
 
   const bedroomOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
   const bathroomOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
   const installmentYearsOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
-  const updateURL = useCallback((newFilters: URLSearchParams) => {
-    router.push(`?${newFilters.toString()}`);
-  }, [router]);
+  const isFirstRun = useRef(true);
 
   useEffect(() => {
-    const newFilters = new URLSearchParams();
+    // The initial state is read from the URL, so there is nothing to write on mount.
+    if (isFirstRun.current) {
+      isFirstRun.current = false;
+      return;
+    }
+
+    // Start from the current params and only rewrite the keys this sidebar owns.
+    const currentFilters = new URLSearchParams(window.location.search);
+    const newFilters = new URLSearchParams(currentFilters);
+    OWNED_KEYS.forEach((key) => newFilters.delete(key));
 
     if (searchQuery) {
       newFilters.set('search', searchQuery);
@@ -113,7 +124,17 @@ const FilterSidebar: React.FC<FilterSidebarProps> = () => {
       newFilters.set('installmentPeriodInYears', installmentPeriodInYears.toString());
     }
 
-    updateURL(newFilters);
+    const ownedState = (params: URLSearchParams) =>
+      OWNED_KEYS.map((key) => `${key}=${params.get(key) ?? ''}`).join('&');
+    if (ownedState(currentFilters) === ownedState(newFilters)) {
+      return;
+    }
+    // A filter change invalidates the current page number.
+    newFilters.delete('page');
+
+    const query = newFilters.toString();
+    router.replace(query ? `?${query}` : window.location.pathname, { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     searchQuery,
     priceRange,
@@ -125,7 +146,6 @@ const FilterSidebar: React.FC<FilterSidebarProps> = () => {
     selectedAmenities,
     downPayment,
     installmentPeriodInYears,
-    updateURL
   ]);
 
 
@@ -200,8 +220,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = () => {
     setSelectedAmenities([]);
     setDownPayment('');
     setInstallmentPeriodInYears(null);
-
-    router.push('');
+    // The URL sync effect removes the owned keys and keeps category and other params.
   };
 
   const handleClearFilter = (filterName: string) => {
@@ -251,7 +270,8 @@ const FilterSidebar: React.FC<FilterSidebarProps> = () => {
       default:
         break;
     }
-    updateURL(newFilters);
+    newFilters.delete('page');
+    router.replace(`?${newFilters.toString()}`, { scroll: false });
   };
 
   return (
@@ -550,4 +570,11 @@ const FilterSidebar: React.FC<FilterSidebarProps> = () => {
   );
 };
 
-export default FilterSidebar;
+// useSearchParams requires a Suspense boundary for static rendering.
+const FilterSidebarWithSuspense: React.FC<FilterSidebarProps> = (props) => (
+  <Suspense fallback={null}>
+    <FilterSidebar {...props} />
+  </Suspense>
+);
+
+export default FilterSidebarWithSuspense;

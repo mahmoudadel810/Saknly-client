@@ -6,45 +6,6 @@ import { PropertyType, PropertyCategory, Currency, AreaUnit } from "../types";
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "https://saknly-server-9air.vercel.app/api/saknly/v1";
 
-export const API_ENDPOINTS = {
-  // Auth endpoints
-  AUTH: {
-    LOGIN: "/auth/login",
-    REGISTER: "/auth/register",
-    LOGOUT: "/auth/logout",
-    ME: "/auth/me",
-    VERIFY_EMAIL: "/auth/verify",
-    FORGOT_PASSWORD: "/auth/forgot-password",
-    RESET_PASSWORD: "/auth/reset-password",
-    CHANGE_PASSWORD: "/auth/change-password",
-    REFRESH_TOKEN: "/auth/refresh-token",
-    RESEND_VERIFICATION: "/auth/resend-verification",
-  },
-
-  // User endpoints
-  USERS: {
-    LIST: "/users",
-    PROFILE: "/users/profile",
-    UPDATE_PROFILE: "/users/profile",
-    UPDATE_AVATAR: "/users/avatar",
-    DELETE_AVATAR: "/users/avatar",
-    STATS: "/users/stats",
-    BY_ID: (id: string) => `/users/${id}`,
-  },
-
-  // Property endpoints
-  PROPERTIES: {
-    LIST: "/properties",
-    CREATE: "/properties",
-    BY_ID: (id: string) => `/properties/${id}`,
-    UPDATE: (id: string) => `/properties/${id}`,
-    DELETE: (id: string) => `/properties/${id}`,
-    USER_PROPERTIES: "/properties/user/my-properties",
-    TOGGLE_FAVORITE: (id: string) => `/properties/${id}/favorite`,
-    STATS: "/properties/stats",
-  },
-} as const;
-
 // Property Constants
 export const PROPERTY_TYPES: Array<{
   value: PropertyType;

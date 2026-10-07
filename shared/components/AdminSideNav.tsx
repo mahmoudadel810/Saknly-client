@@ -49,6 +49,11 @@ const navLinks = [
     label: "الاستفسارات", 
     icon: <MailOutline /> 
   },
+  { 
+    href: "/admin/dashboard/testimonials", 
+    label: "آراء العملاء", 
+    icon: <RateReview /> 
+  },
 ];
 
 const AdminSideNav = () => {

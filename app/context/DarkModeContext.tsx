@@ -50,11 +50,8 @@ export const DarkModeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setIsDarkMode(prev => !prev);
   };
 
-  // Prevent hydration mismatch
-  if (!mounted) {
-    return <>{children}</>;
-  }
-
+  // Always render the provider: before mount isDarkMode is false on both server and client,
+  // so the markup matches during hydration and hooks never run outside the provider.
   return (
     <DarkModeContext.Provider value={{ isDarkMode, toggleDarkMode }}>
       {children}

@@ -48,19 +48,6 @@ const reportWebVitals = (metric: any) => {
   }
 };
 
-// Service Worker registration
-if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then((registration) => {
-        // console.log('SW registered: ', registration);
-      })
-      .catch((registrationError) => {
-        // console.log('SW registration failed: ', registrationError);
-      });
-  });
-}
-
 export const metadata: Metadata = {
   title: {
     default: SEO_CONFIG.defaultTitle,
@@ -76,9 +63,7 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_APP_URL || "https://saknly-client.vercel.app"
-  ),
+  metadataBase: new URL("https://saknly-ruddy.vercel.app"),
   alternates: {
     canonical: "/",
     languages: SEO_CONFIG.alternateLanguages,
@@ -92,9 +77,7 @@ export const metadata: Metadata = {
     siteName: "سكنلي",
     images: [
       {
-        url: "/images/og-image.jpg",
-        width: 1200,
-        height: 630,
+        url: "/images/skanly.jpeg",
         alt: "سكنلي - منصة العقارات",
       },
     ],
@@ -103,7 +86,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: SEO_CONFIG.defaultTitle,
     description: SEO_CONFIG.defaultDescription,
-    images: ["/images/twitter-image.jpg"],
+    images: ["/images/skanly.jpeg"],
     creator: "@saknly",
   },
   robots: {
@@ -137,7 +120,6 @@ export default function RootLayout({
       <head>
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <meta name="theme-color" content="#3B82F6" />
         <meta name="color-scheme" content="light dark" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />

@@ -5,14 +5,18 @@ interface DecodedToken {
     role: string;
 }
 
+// صفحات تحتاج تسجيل دخول
+const protectedPaths = ['/uploadProperty', '/userProfile', '/wishlist'];
+
+const redirectToLogin = (request: NextRequest, pathname: string) => {
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(loginUrl);
+};
+
 export function middleware(request: NextRequest) {
     const token = request.cookies.get('token')?.value;
     const pathname = request.nextUrl.pathname;
-    
-    // Remove console.log for production
-    if (process.env.NODE_ENV === 'development') {
-        console.log('Token from cookie:', token);
-    }
 
     // صفحات عامة مفيش حماية عليها
     const publicPaths = ['/', '/login', '/register', '/about', '/contact', '/faq', '/privacy-policy'];
@@ -21,9 +25,14 @@ export function middleware(request: NextRequest) {
         return NextResponse.next();
     }
 
+    const isProtected = protectedPaths.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+    if (isProtected && !token) {
+        return redirectToLogin(request, pathname);
+    }
+
     // لو بيحاول يدخل صفحة أدمن وهو مش معاه توكن
     if (pathname.startsWith('/admin')) {
-        if (!token) return NextResponse.redirect(new URL('/login', request.url));
+        if (!token) return redirectToLogin(request, pathname);
 
         try {
             const decoded = jwtDecode<DecodedToken>(token);
@@ -32,7 +41,7 @@ export function middleware(request: NextRequest) {
             }
         } catch (err) {
             console.error('Invalid token for admin page');
-            return NextResponse.redirect(new URL('/login', request.url));
+            return redirectToLogin(request, pathname);
         }
     }
 

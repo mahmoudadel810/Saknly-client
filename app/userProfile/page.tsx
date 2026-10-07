@@ -34,87 +34,57 @@ import { AuthContext } from "../context/AuthContext";
 import { useWishlist } from "../context/WishlistContext";
 import { useRouter } from "next/navigation";
 import { useDarkMode } from "../context/DarkModeContext";
+import { API_URL, authHeader } from "@/shared/utils/auth";
 
 export default function UserProfilePage() {
   const authContext = useContext(AuthContext);
   const isMobile = useMediaQuery((theme: Theme) => theme.breakpoints.down("sm"));
   const { isDarkMode } = useDarkMode();
-  
-  if (!authContext) {
-    return <Typography>Loading...</Typography>;
-  }
-
-  const { user, logout } = authContext;
   const { wishlist, removeFromWishlist, removeAllFromWishlist } = useWishlist();
   const router = useRouter();
 
-  const [userProperties, setUserProperties] = useState<any[]>([]);
+  const [myProperties, setMyProperties] = useState<any[]>([]);
   const [loadingProperties, setLoadingProperties] = useState(true);
-  const [pendingCount, setPendingCount] = useState(0);
   
   // Pagination state
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
 
-  // Only show properties where owner._id === user._id
-  const myProperties = user && user._id
-    ? userProperties.filter(
-        (p) => p.owner && (p.owner._id === user._id || p.owner === user._id)
-      )
-    : [];
+  const userId = authContext?.user?._id;
 
   useEffect(() => {
+    if (!userId) {
+      setMyProperties([]);
+      setLoadingProperties(false);
+      return;
+    }
     const fetchUserProperties = async () => {
       setLoadingProperties(true);
       try {
-        const token = localStorage.getItem("token");
-        const tokenPrefix = process.env.NEXT_PUBLIC_TOKEN_PREFIX || 'Bearer';
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/properties/allProperties`, {
-          headers: {
-            Authorization: `${tokenPrefix} ${token}`,
-          },
-          credentials: "include",
+        const res = await fetch(`${API_URL}/properties/myProperties`, {
+          headers: authHeader(),
         });
         const data = await res.json();
-        if (data.success) {
-          setUserProperties(data.data);
-        }
+        setMyProperties(res.ok && data.success && Array.isArray(data.data) ? data.data : []);
       } catch (err) {
-        setUserProperties([]);
+        setMyProperties([]);
       } finally {
         setLoadingProperties(false);
       }
     };
     fetchUserProperties();
-  }, []);
+  }, [userId]);
 
-  useEffect(() => {
-    const fetchPendingCount = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        const tokenPrefix = process.env.NEXT_PUBLIC_TOKEN_PREFIX || 'Bearer';
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/properties/pending`, {
-          headers: {
-            Authorization: `${tokenPrefix} ${token}`,
-          },
-          credentials: "include",
-        });
-        const data = await res.json();
-        if (data.success && Array.isArray(data.data)) {
-          setPendingCount(data.data.length);
-        } else {
-          setPendingCount(0);
-        }
-      } catch {
-        setPendingCount(0);
-      }
-    };
-    fetchPendingCount();
-  }, []);
+  if (!authContext) {
+    return <Typography>Loading...</Typography>;
+  }
+
+  const { user, logout } = authContext;
 
   // Calculate stats
   const savedCount = wishlist.length;
   const acceptedCount = myProperties.filter(p => p.isApproved).length;
+  const pendingCount = myProperties.length - acceptedCount;
 
   const performanceStats = [
     { 
@@ -142,7 +112,6 @@ export default function UserProfilePage() {
 
   const handleLogout = () => {
     logout();
-    router.push("/login");
   };
 
   // Pagination handlers

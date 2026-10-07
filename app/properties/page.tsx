@@ -2,7 +2,7 @@
 
 "use client";
 
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback, useRef, Suspense } from "react";
 import {
   Box,
   Typography,
@@ -944,4 +944,10 @@ const SearchPage: React.FC = () => {
   );
 };
 
-export default SearchPage;
+export default function SearchPageWithSuspense() {
+  return (
+    <Suspense fallback={null}>
+      <SearchPage />
+    </Suspense>
+  );
+}

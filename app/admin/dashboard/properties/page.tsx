@@ -44,6 +44,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ar } from "date-fns/locale";
 import { useDarkMode } from "@/app/context/DarkModeContext";
+import { authHeader } from "@/shared/utils/auth";
 
 // Types
 interface Property {
@@ -518,17 +519,16 @@ const PropertiesAdminPage = () => {
   const { data: pendingProperties, isLoading } = useQuery({
     queryKey: ['pending-properties'],
     queryFn: async () => {
-      const token = localStorage.getItem('token') || '';
       const responses = await Promise.all(
         propertyTypes.map(type => 
           fetch(`${API_URL}/properties/pending?category=${type.key}`, {
-            headers: { Authorization: `${process.env.TOKEN_PREFIX}${token}` },
+            headers: authHeader(),
           }).then(res => res.json())
         )
       );
       
       return propertyTypes.reduce((acc, type, index) => {
-        acc[type.key] = responses[index].data || [];
+        acc[type.key] = Array.isArray(responses[index]?.data) ? responses[index].data : [];
         return acc;
       }, {} as Record<'sale' | 'rent' | 'student', Property[]>);
     },
@@ -538,12 +538,11 @@ const PropertiesAdminPage = () => {
   // Approve mutation
   const approveMutation = useMutation({
     mutationFn: async (id: string) => {
-      const token = localStorage.getItem('token') || '';
       const res = await fetch(`${API_URL}/properties/${id}/approve`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json', 
-          Authorization: `Saknly__${token}` 
+          ...authHeader()
         },
         body: JSON.stringify({ 
           status: 'available', 
@@ -574,10 +573,9 @@ const PropertiesAdminPage = () => {
   // Deny mutation
   const denyMutation = useMutation({
     mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
-      const token = localStorage.getItem('token') || '';
       const res = await fetch(`${API_URL}/properties/${id}/deny?reason=${encodeURIComponent(reason)}`, {
         method: 'DELETE',
-        headers: { Authorization: `Saknly__${token}` },
+        headers: authHeader(),
       });
       if (!res.ok) throw new Error('Failed to deny property');
       return res.json();

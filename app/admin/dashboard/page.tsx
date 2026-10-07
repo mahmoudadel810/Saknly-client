@@ -13,6 +13,7 @@ import {
 import axios from "axios";
 import { useMediaQuery } from "@mui/material";
 import { useDarkMode } from "@/app/context/DarkModeContext";
+import { API_URL, authHeader } from "@/shared/utils/auth";
 
 // Type definitions
 interface StatCardProps {
@@ -96,19 +97,17 @@ const AdminDashboard = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [totalProperties, setTotalProperties] = useState(0);
   const [totalAgencies, setTotalAgencies] = useState(0);
+  const [analyticsUserCount, setAnalyticsUserCount] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchUsers = async () => {
       setIsLoading(true);
       setError(null);
       try {
-        const token = localStorage.getItem("token") || "";
         const res = await fetch(
-          `${USERS_API}?page=${currentPage}&limit=${usersPerPage}&search=${searchTerm}`,
+          `${USERS_API}?page=${currentPage}&limit=${usersPerPage}&search=${encodeURIComponent(searchTerm)}`,
           {
-            headers: {
-              Authorization: `${process.env.TOKEN_PREFIX}${token}`,
-            },
+            headers: authHeader(),
           }
         );
         if (!res.ok) throw new Error("Failed to fetch users");
@@ -126,16 +125,14 @@ const AdminDashboard = () => {
   }, [currentPage, searchTerm]);
 
   useEffect(() => {
-    // Fetch properties count
+    // Totals from the admin analytics endpoint
     const fetchStats = async () => {
       try {
-        const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1';
-        // Properties
-        const propertiesRes = await axios.get(`${BASE_URL}/properties/allProperties`);
-        setTotalProperties(propertiesRes.data.count || (Array.isArray(propertiesRes.data.data) ? propertiesRes.data.data.length : 0));
-        // Agencies
-        const agenciesRes = await axios.get(`${BASE_URL}/agencies/featured`);
-        setTotalAgencies(agenciesRes.data.data.length || 0);
+        const res = await axios.get(`${API_URL}/admin/analytics`, { headers: authHeader() });
+        const analytics = res.data?.data ?? res.data ?? {};
+        setAnalyticsUserCount(typeof analytics.userCount === 'number' ? analytics.userCount : null);
+        setTotalProperties(analytics.propertyCount || 0);
+        setTotalAgencies(analytics.agencyCount || 0);
       } catch (err) {
         setTotalProperties(0);
         setTotalAgencies(0);
@@ -145,7 +142,7 @@ const AdminDashboard = () => {
   }, []);
 
   const stats = {
-    totalUsers: totalUsers,
+    totalUsers: analyticsUserCount ?? totalUsers,
     totalProperties: totalProperties,
     totalAgencies: totalAgencies
   };
