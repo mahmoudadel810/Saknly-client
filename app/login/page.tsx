@@ -207,7 +207,7 @@ const LoginPage = () => {
         alignItems: "center",
         minHeight: "100vh",
         backgroundColor: isDarkMode ? "var(--dark-800)" : BG,
-        color: isDarkMode ? "var(--dark-text-900)" : undefined,
+        color: isDarkMode ? "var(--c-text)" : undefined,
         padding: { xs: "1rem", md: "2rem" },
         boxSizing: "border-box",
       }}>
@@ -277,7 +277,7 @@ const LoginPage = () => {
           sx={{
             flex: { xs: "none", md: "2" },
             backgroundColor: isDarkMode ? "var(--dark-700)" : CARD_BG,
-            color: isDarkMode ? "var(--dark-text-900)" : undefined,
+            color: isDarkMode ? "var(--c-text)" : undefined,
             display: "flex",
             flexDirection: "column",
             justifyContent: "center",
@@ -441,7 +441,7 @@ const LoginPage = () => {
                 sx={{
                   padding: "0 1rem",
                   whiteSpace: "nowrap",
-                  color: isDarkMode ? "var(--dark-text-500)" : "#555",
+                  color: isDarkMode ? "var(--c-muted)" : "#555",
                 }}>
                 أو
               </Typography>

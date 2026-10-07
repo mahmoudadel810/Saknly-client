@@ -388,7 +388,7 @@ const UsersPage = () => {
             p: 3, 
             mb: 3, 
             textAlign: 'center',
-            backgroundColor: isDarkMode ? 'var(--error-900)' : '#fee2e2',
+            backgroundColor: isDarkMode ? 'color-mix(in srgb, var(--c-error) 20%, var(--c-surface))' : '#fee2e2',
             borderColor: isDarkMode ? 'var(--error-700)' : '#fecaca',
             border: isDarkMode ? '1px solid var(--error-700)' : '1px solid',
             borderRadius: 3,
@@ -541,7 +541,7 @@ const UsersPage = () => {
                                 fontWeight: 600,
                                 borderRadius: 2,
                                 backgroundColor: isDarkMode
-                                  ? user.role === 'admin' ? 'var(--error-900)' : user.role === 'moderator' ? 'var(--warning-900)' : 'var(--primary-900)'
+                                  ? user.role === 'admin' ? 'color-mix(in srgb, var(--c-error) 20%, var(--c-surface))' : user.role === 'moderator' ? 'color-mix(in srgb, var(--c-warning) 20%, var(--c-surface))' : 'var(--primary-900)'
                                   : user.role === 'admin' ? '#fee2e2' : user.role === 'moderator' ? '#fef3c7' : '#dbeafe',
                                 color: isDarkMode ? '#fff' : user.role === 'admin' ? '#dc2626' : user.role === 'moderator' ? '#d97706' : '#2563eb',
                                 border: isDarkMode
@@ -557,7 +557,7 @@ const UsersPage = () => {
                                 fontWeight: 600,
                                 borderRadius: 2,
                                 backgroundColor: isDarkMode
-                                  ? user.status === 'active' ? 'var(--success-900)' : user.status === 'inactive' ? 'var(--error-900)' : 'var(--warning-900)'
+                                  ? user.status === 'active' ? 'color-mix(in srgb, var(--c-success) 20%, var(--c-surface))' : user.status === 'inactive' ? 'color-mix(in srgb, var(--c-error) 20%, var(--c-surface))' : 'color-mix(in srgb, var(--c-warning) 20%, var(--c-surface))'
                                   : user.status === 'active' ? '#dcfce7' : user.status === 'inactive' ? '#fee2e2' : '#fef3c7',
                                 color: isDarkMode ? '#fff' : user.status === 'active' ? '#16a34a' : user.status === 'inactive' ? '#dc2626' : '#d97706',
                                 border: isDarkMode

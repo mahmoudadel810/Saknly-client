@@ -165,7 +165,7 @@ export default function Register() {
         boxSizing: "border-box",
         ...(isDarkMode && {
           backgroundColor: "var(--dark-800)",
-          color: "var(--dark-text-900)",
+          color: "var(--c-text)",
         }),
       }}>
       {/* Registration Card: The main container for the form and image sections */}
@@ -244,7 +244,7 @@ export default function Register() {
             width: { xs: "100%", lg: "unset" },
             ...(isDarkMode && {
               backgroundColor: "var(--dark-700)",
-              color: "var(--dark-text-900)",
+              color: "var(--c-text)",
             }),
           }}>
           <Typography
@@ -526,7 +526,7 @@ export default function Register() {
               textAlign: "center",
               margin: "1.5rem 0",
               ...(isDarkMode && {
-                color: "var(--dark-text-500)",
+                color: "var(--c-muted)",
               }),
             }}>
             <Box sx={{ flex: 1, height: "1px", backgroundColor: "#ccc" }} />
@@ -536,7 +536,7 @@ export default function Register() {
                 whiteSpace: "nowrap",
                 color: "#555",
                 ...(isDarkMode && {
-                  color: "var(--dark-text-500)",
+                  color: "var(--c-muted)",
                 }),
               }}>
               أو

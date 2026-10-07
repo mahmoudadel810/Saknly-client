@@ -469,7 +469,7 @@ const AgenciesPage = () => {
           <Box sx={{ 
             mb: 3, 
             p: 2, 
-            backgroundColor: isDarkMode ? 'var(--error-900)' : colors.error + '20',
+            backgroundColor: isDarkMode ? 'color-mix(in srgb, var(--c-error) 20%, var(--c-surface))' : colors.error + '20',
             borderRadius: 2,
             border: isDarkMode ? '1px solid var(--error-700)' : `1px solid ${colors.error}40`
           }}>
@@ -758,7 +758,7 @@ const AgenciesPage = () => {
             size="small"
             sx={{ 
               fontSize: { xs: '0.8rem', sm: '0.875rem' },
-              backgroundColor: isDarkMode ? 'var(--error-900)' : colors.error,
+              backgroundColor: isDarkMode ? 'color-mix(in srgb, var(--c-error) 20%, var(--c-surface))' : colors.error,
               color: isDarkMode ? '#fff' : undefined,
               '&:hover': {
                 backgroundColor: isDarkMode ? 'var(--error-700)' : colors.error + 'dd',

@@ -306,7 +306,7 @@ const InquiriesPage = () => {
                       alignItems: "center", 
                       gap: 2,
                       p: 4,
-                      backgroundColor: isDarkMode ? 'var(--error-900)' : "#fee2e2",
+                      backgroundColor: isDarkMode ? 'color-mix(in srgb, var(--c-error) 20%, var(--c-surface))' : "#fee2e2",
                       borderRadius: 2,
                       border: isDarkMode ? '1px solid var(--error-700)' : "1px solid #fca5a5"
                     }}>

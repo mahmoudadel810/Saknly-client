@@ -200,7 +200,7 @@ const AdminDashboard = () => {
       className="min-h-screen"
       style={{
         background: isDarkMode ? 'var(--dark-800)' : undefined,
-        color: isDarkMode ? 'var(--dark-text-900)' : undefined,
+        color: isDarkMode ? 'var(--c-text)' : undefined,
       }}
     >
       {/* Header */}
@@ -216,13 +216,13 @@ const AdminDashboard = () => {
             <div className="text-center">
               <h1
                 className="text-3xl font-bold"
-                style={{ color: isDarkMode ? 'var(--dark-text-900)' : undefined }}
+                style={{ color: isDarkMode ? 'var(--c-text)' : undefined }}
               >
                 لوحة تحكم المشرف
               </h1>
               <p
                 className="mt-1"
-                style={{ color: isDarkMode ? 'var(--dark-text-500)' : undefined }}
+                style={{ color: isDarkMode ? 'var(--c-muted)' : undefined }}
               >
                 إدارة شاملة لجميع عمليات الموقع
               </p>
@@ -278,7 +278,7 @@ const AdminDashboard = () => {
         {/* Activity counts — straight from /admin/analytics (no invented chart data) */}
         <h3
           className="text-lg font-semibold mb-4"
-          style={{ color: isDarkMode ? 'var(--dark-text-900)' : undefined }}
+          style={{ color: isDarkMode ? 'var(--c-text)' : undefined }}
         >
           النشاط الحالي
         </h3>
@@ -316,7 +316,7 @@ const AdminDashboard = () => {
         ) : (
           <p
             className="mb-8 text-sm"
-            style={{ color: isDarkMode ? 'var(--dark-text-500)' : undefined }}
+            style={{ color: isDarkMode ? 'var(--c-muted)' : undefined }}
           >
             {statsError ? 'بيانات النشاط غير متاحة حاليًا.' : 'جاري تحميل بيانات النشاط...'}
           </p>
@@ -328,7 +328,7 @@ const AdminDashboard = () => {
           style={{
             background: isDarkMode ? 'var(--dark-700)' : '#fff',
             borderColor: isDarkMode ? 'var(--dark-600)' : undefined,
-            color: isDarkMode ? 'var(--dark-text-900)' : undefined,
+            color: isDarkMode ? 'var(--c-text)' : undefined,
           }}
         >
           <div
@@ -338,7 +338,7 @@ const AdminDashboard = () => {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <h3
                 className="text-lg font-semibold"
-                style={{ color: isDarkMode ? 'var(--dark-text-900)' : undefined }}
+                style={{ color: isDarkMode ? 'var(--c-text)' : undefined }}
               >
                 أحدث المستخدمون
               </h3>
@@ -358,19 +358,19 @@ const AdminDashboard = () => {
                     key={user._id}
                     className="rounded-lg border p-4 flex flex-col gap-2"
                     style={{
-                      background: isDarkMode ? 'var(--dark-800)' : 'var(--secondary-50)',
+                      background: isDarkMode ? 'var(--dark-800)' : 'var(--c-bg)',
                       borderColor: isDarkMode ? 'var(--dark-600)' : undefined,
-                      color: isDarkMode ? 'var(--dark-text-900)' : undefined,
+                      color: isDarkMode ? 'var(--c-text)' : undefined,
                     }}
                   >
                     <div className="flex flex-col items-end">
-                      <span className="text-base font-bold" style={{ color: isDarkMode ? 'var(--dark-text-900)' : undefined }}>{user.userName.split('@')[0]}</span>
-                      <span className="text-xs" style={{ color: isDarkMode ? 'var(--dark-text-500)' : undefined }}>{user.email}</span>
+                      <span className="text-base font-bold" style={{ color: isDarkMode ? 'var(--c-text)' : undefined }}>{user.userName.split('@')[0]}</span>
+                      <span className="text-xs" style={{ color: isDarkMode ? 'var(--c-muted)' : undefined }}>{user.email}</span>
                     </div>
                     <div className="flex flex-row-reverse items-center gap-2 mt-1">
                       <StatusBadge status={user.status} />
-                      <span className="text-xs" style={{ color: isDarkMode ? 'var(--dark-text-500)' : undefined }}>{formatDate(user.lastLoginAt || user.createdAt)}</span>
-                      <span className="text-xs" style={{ color: isDarkMode ? 'var(--dark-text-700)' : undefined }}>{formatTime(user.lastLoginAt || user.createdAt)}</span>
+                      <span className="text-xs" style={{ color: isDarkMode ? 'var(--c-muted)' : undefined }}>{formatDate(user.lastLoginAt || user.createdAt)}</span>
+                      <span className="text-xs" style={{ color: isDarkMode ? 'var(--c-text-2)' : undefined }}>{formatTime(user.lastLoginAt || user.createdAt)}</span>
                     </div>
                     <div className="flex flex-row-reverse items-center gap-2 mt-1 text-success-600 text-xs">
                       <div className="h-2 w-2 bg-success-400 rounded-full"></div>
@@ -382,19 +382,19 @@ const AdminDashboard = () => {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full" style={{ background: isDarkMode ? 'var(--dark-800)' : undefined, color: isDarkMode ? 'var(--dark-text-900)' : undefined }}>
+              <table className="min-w-full" style={{ background: isDarkMode ? 'var(--dark-800)' : undefined, color: isDarkMode ? 'var(--c-text)' : undefined }}>
                 <thead className="bg-secondary-50" style={{ background: isDarkMode ? 'var(--dark-700)' : undefined }}>
                   <tr>
-                    <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: isDarkMode ? 'var(--dark-text-500)' : undefined }}>
+                    <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: isDarkMode ? 'var(--c-muted)' : undefined }}>
                       اسم المستخدم
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: isDarkMode ? 'var(--dark-text-500)' : undefined }}>
+                    <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: isDarkMode ? 'var(--c-muted)' : undefined }}>
                       الحالة
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: isDarkMode ? 'var(--dark-text-500)' : undefined }}>
+                    <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: isDarkMode ? 'var(--c-muted)' : undefined }}>
                       تاريخ آخر تسجيل دخول
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: isDarkMode ? 'var(--dark-text-500)' : undefined }}>
+                    <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: isDarkMode ? 'var(--c-muted)' : undefined }}>
                       النشاط الأخير
                     </th>
                   </tr>
@@ -408,25 +408,25 @@ const AdminDashboard = () => {
                      <tr><td colSpan={4} className="text-center py-8">لا يوجد مستخدمون</td></tr>
                    ) : (
                      users.slice(0, 5).map((user) => (
-                       <tr key={user._id} className="hover:bg-secondary-50 transition-colors" style={{ background: isDarkMode ? 'var(--dark-800)' : undefined, color: isDarkMode ? 'var(--dark-text-900)' : undefined }}>
+                       <tr key={user._id} className="hover:bg-secondary-50 transition-colors" style={{ background: isDarkMode ? 'var(--dark-800)' : undefined, color: isDarkMode ? 'var(--c-text)' : undefined }}>
                          <td className="px-6 py-4 whitespace-nowrap text-right">
-                           <div className="text-sm font-medium" style={{ color: isDarkMode ? 'var(--dark-text-900)' : undefined }}>
+                           <div className="text-sm font-medium" style={{ color: isDarkMode ? 'var(--c-text)' : undefined }}>
                              {user.userName.split('@')[0]}
                            </div>
-                           <div className="text-sm" style={{ color: isDarkMode ? 'var(--dark-text-500)' : undefined }}>
+                           <div className="text-sm" style={{ color: isDarkMode ? 'var(--c-muted)' : undefined }}>
                              {user.email}
                            </div>
                          </td>
                          <td className="px-6 py-4 whitespace-nowrap">
                            <StatusBadge status={user.status} />
                          </td>
-                         <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: isDarkMode ? 'var(--dark-text-500)' : undefined }}>
+                         <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: isDarkMode ? 'var(--c-muted)' : undefined }}>
                            <div className="flex flex-col">
                              <span className="font-medium">{formatDate(user.lastLoginAt || user.createdAt)}</span>
-                             <span className="text-xs" style={{ color: isDarkMode ? 'var(--dark-text-700)' : undefined }}>{formatTime(user.lastLoginAt || user.createdAt)}</span>
+                             <span className="text-xs" style={{ color: isDarkMode ? 'var(--c-text-2)' : undefined }}>{formatTime(user.lastLoginAt || user.createdAt)}</span>
                            </div>
                          </td>
-                         <td className="px-6 py-4 whitespace-nowrap text-sm text-right" style={{ color: isDarkMode ? 'var(--dark-text-500)' : undefined }}>
+                         <td className="px-6 py-4 whitespace-nowrap text-sm text-right" style={{ color: isDarkMode ? 'var(--c-muted)' : undefined }}>
                            <div className="flex items-center gap-2 justify-end">
                              <div className="h-2 w-2 bg-success-400 rounded-full"></div>
                              تسجيل دخول جديد
