@@ -19,6 +19,7 @@ import {
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useDebounce, useDebouncedCallback } from 'use-debounce';
 import { AMENITIES, CITY_OPTIONS, PROPERTY_TYPE_OPTIONS } from '../constants/property';
 
 // URL keys this sidebar owns; every other key (category, isStudentFriendly, page, ...) is preserved.
@@ -36,6 +37,8 @@ const OWNED_KEYS = [
   'installmentPeriodInYears',
 ];
 
+const SEARCH_DEBOUNCE_MS = 400;
+
 interface FilterSidebarProps { }
 
 const FilterSidebar: React.FC<FilterSidebarProps> = () => {
@@ -48,6 +51,12 @@ const FilterSidebar: React.FC<FilterSidebarProps> = () => {
     Number(searchParams.get('price[gte]')) || 500000,
     Number(searchParams.get('price[lte]')) || 20000000
   ]);
+  // priceRange follows the slider/inputs live; appliedPrice is what reaches the URL (and so the API):
+  // the slider commits on release, typed values after a pause.
+  const [appliedPrice, setAppliedPrice] = useState<number[]>(priceRange);
+  const applyTypedPrice = useDebouncedCallback((value: number[]) => setAppliedPrice(value), SEARCH_DEBOUNCE_MS);
+  // Typing in the search box updates the URL only after a pause, not per keystroke.
+  const [appliedSearch] = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
   const [selectedAreas, setSelectedAreas] = useState<string[]>(searchParams.get('location.city')?.split(',') || []);
   const [selectedPropertyTypes, setSelectedPropertyTypes] = useState<string[]>(searchParams.get('type')?.split(',') || []);
   const [selectedBedrooms, setSelectedBedrooms] = useState<number | null>(
@@ -90,14 +99,14 @@ const FilterSidebar: React.FC<FilterSidebarProps> = () => {
     const newFilters = new URLSearchParams(currentFilters);
     OWNED_KEYS.forEach((key) => newFilters.delete(key));
 
-    if (searchQuery) {
-      newFilters.set('search', searchQuery);
+    if (appliedSearch) {
+      newFilters.set('search', appliedSearch);
     }
-    if (priceRange[0] !== 500000) {
-      newFilters.set('price[gte]', priceRange[0].toString());
+    if (appliedPrice[0] !== 500000) {
+      newFilters.set('price[gte]', appliedPrice[0].toString());
     }
-    if (priceRange[1] !== 20000000) {
-      newFilters.set('price[lte]', priceRange[1].toString());
+    if (appliedPrice[1] !== 20000000) {
+      newFilters.set('price[lte]', appliedPrice[1].toString());
     }
     if (selectedAreas.length > 0) {
       newFilters.set('location.city', selectedAreas.join(','));
@@ -136,8 +145,8 @@ const FilterSidebar: React.FC<FilterSidebarProps> = () => {
     router.replace(query ? `?${query}` : window.location.pathname, { scroll: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    searchQuery,
-    priceRange,
+    appliedSearch,
+    appliedPrice,
     selectedAreas,
     selectedPropertyTypes,
     selectedBedrooms,
@@ -157,14 +166,27 @@ const FilterSidebar: React.FC<FilterSidebarProps> = () => {
     setPriceRange(newValue as number[]);
   };
 
+  const handlePriceCommitted = (event: React.SyntheticEvent | Event, newValue: number | number[]) => {
+    applyTypedPrice.cancel();
+    setAppliedPrice(newValue as number[]);
+  };
+
   const handleMinPriceChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = Number(event.target.value);
-    setPriceRange([value, priceRange[1]]);
+    const next = [Number(event.target.value), priceRange[1]];
+    setPriceRange(next);
+    applyTypedPrice(next);
   };
 
   const handleMaxPriceChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = Number(event.target.value);
-    setPriceRange([priceRange[0], value]);
+    const next = [priceRange[0], Number(event.target.value)];
+    setPriceRange(next);
+    applyTypedPrice(next);
+  };
+
+  const resetPrice = () => {
+    applyTypedPrice.cancel();
+    setPriceRange([500000, 20000000]);
+    setAppliedPrice([500000, 20000000]);
   };
 
   const handleAreaChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -211,7 +233,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = () => {
 
   const handleClearAll = () => {
     setSearchQuery('');
-    setPriceRange([500000, 20000000]);
+    resetPrice();
     setSelectedAreas([]);
     setSelectedPropertyTypes([]);
     setSelectedBedrooms(null);
@@ -231,7 +253,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = () => {
         newFilters.delete('search');
         break;
       case 'price':
-        setPriceRange([500000, 20000000]);
+        resetPrice();
         newFilters.delete('price[gte]');
         newFilters.delete('price[lte]');
         break;
@@ -331,6 +353,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = () => {
         <Slider
           value={priceRange}
           onChange={handlePriceChange}
+          onChangeCommitted={handlePriceCommitted}
           valueLabelDisplay="auto"
           min={500000}
           max={20000000}

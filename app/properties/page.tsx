@@ -554,9 +554,6 @@ const SearchPage: React.FC = () => {
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState<string>(
-    searchParams.get("search") || ""
-  );
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
 
   const [showFilters, setShowFilters] = useState<boolean>(true);
@@ -584,11 +581,15 @@ const SearchPage: React.FC = () => {
     router.push(`/properties?${newSearchParams.toString()}`, { scroll: false });
   };
 
-  const fetchProperties = useCallback(async () => {
+  // A string key: the searchParams object identity changes on every navigation.
+  const searchKey = searchParams.toString();
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const fetchProperties = useCallback(async (signal: AbortSignal) => {
     setLoading(true);
     setError(null);
     try {
-      const currentSearchParams = new URLSearchParams(searchParams.toString());
+      const currentSearchParams = new URLSearchParams(searchKey);
       const page = currentSearchParams.get("page") || "1";
       const limit = currentSearchParams.get("limit") || limitPerPage.toString();
 
@@ -599,7 +600,8 @@ const SearchPage: React.FC = () => {
       const apiUrl = `${
         process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'
       }/properties/allProperties?${currentSearchParams.toString()}`;
-      const response = await axios.get(apiUrl);
+      const response = await axios.get(apiUrl, { signal });
+      if (signal.aborted) return;
 
       if (response.data.success) {
         setProperties(response.data.data);
@@ -608,30 +610,18 @@ const SearchPage: React.FC = () => {
         setError(response.data.message || "Failed to fetch properties.");
       }
     } catch (err) {
-      console.error("Error fetching properties:", err);
-      setError("An error occurred while fetching properties.");
-    } finally {
-      setLoading(false);
+      // A newer filter state superseded this request; its result must not overwrite the newer one.
+      if (axios.isCancel(err)) return;
+      setError("تعذر تحميل العقارات. تحقق من الاتصال ثم أعد المحاولة.");
     }
-  }, [searchParams, limitPerPage]);
+    if (!signal.aborted) setLoading(false);
+  }, [searchKey, limitPerPage]);
 
   useEffect(() => {
-    // setCurrentPage(1);
-    fetchProperties();
-  }, [fetchProperties, searchParams]);
-
-  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = event.target.value;
-    setSearchQuery(value);
-
-    const newSearchParams = new URLSearchParams(searchParams.toString());
-    if (value) {
-      newSearchParams.set("search", value);
-    } else {
-      newSearchParams.delete("search");
-    }
-    router.push(`/properties?${newSearchParams.toString()}`, { scroll: false });
-  };
+    const controller = new AbortController();
+    fetchProperties(controller.signal);
+    return () => controller.abort();
+  }, [fetchProperties, reloadKey]);
 
   const handlePropertySelect = (property: Property | null) => {
     setSelectedProperty(property);
@@ -645,6 +635,8 @@ const SearchPage: React.FC = () => {
 
     current.delete("category");
     current.delete("isStudentFriendly");
+    // A different category has different pages.
+    current.delete("page");
 
     if (category) {
       current.set("category", category);
@@ -810,7 +802,12 @@ const SearchPage: React.FC = () => {
                 mb: 3,
                 borderRadius: 2,
                 fontSize: "1rem"
-              }}>
+              }}
+              action={
+                <Button color="inherit" size="small" onClick={() => setReloadKey((k) => k + 1)}>
+                  إعادة المحاولة
+                </Button>
+              }>
               {error}
             </Alert>
           )}
