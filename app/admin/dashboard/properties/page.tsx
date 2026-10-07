@@ -711,10 +711,10 @@ const PropertiesAdminPage = () => {
         <ConfirmDialog
           open={denyDialog.open}
           title="رفض العقار وحذفه"
-          message="سيتم حذف هذا العقار وصوره نهائيًا وإزالته من قوائم المفضلة، ولا يمكن التراجع عن ذلك. يُرسَل السبب إلى المالك بالبريد الإلكتروني إذا كان بريده مسجلًا في بيانات التواصل."
+          description="سيتم حذف هذا العقار وصوره نهائيًا وإزالته من قوائم المفضلة، ولا يمكن التراجع عن ذلك. يُرسَل السبب إلى المالك بالبريد الإلكتروني إذا كان بريده مسجلًا في بيانات التواصل."
           confirmLabel="رفض وحذف نهائي"
-          pendingLabel="جاري الرفض..."
-          pending={denyMutation.isPending}
+          loadingLabel="جاري الرفض..."
+          loading={denyMutation.isPending}
           confirmDisabled={!denyReason.trim()}
           onConfirm={handleDeny}
           onClose={handleCloseDenyDialog}

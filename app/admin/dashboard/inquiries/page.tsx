@@ -468,10 +468,10 @@ const InquiriesPage = () => {
       <ConfirmDialog
         open={!!confirmTarget}
         title="إنهاء الاستفسار وحذفه"
-        message={`سيتم حذف رسالة "${confirmTarget?.name ?? ""}" نهائيًا من قائمة الاستفسارات، ولا يمكن التراجع عن ذلك.`}
+        description={`سيتم حذف رسالة "${confirmTarget?.name ?? ""}" نهائيًا من قائمة الاستفسارات، ولا يمكن التراجع عن ذلك.`}
         confirmLabel="حذف نهائي"
-        pendingLabel="جاري الحذف..."
-        pending={!!confirmTarget && deletingId === confirmTarget._id}
+        loadingLabel="جاري الحذف..."
+        loading={!!confirmTarget && deletingId === confirmTarget._id}
         onConfirm={() => confirmTarget && handleDelete(confirmTarget._id)}
         onClose={() => { setConfirmTarget(null); setDeleteError(""); }}
       >

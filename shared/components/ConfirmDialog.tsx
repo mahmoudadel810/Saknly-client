@@ -15,12 +15,12 @@ interface ConfirmDialogProps {
   open: boolean;
   title: string;
   /** What will actually happen, stated plainly (irreversible? who is notified?). */
-  message: React.ReactNode;
+  description: React.ReactNode;
   confirmLabel: string;
-  pendingLabel?: string;
+  loadingLabel?: string;
   cancelLabel?: string;
   /** While true the dialog cannot be dismissed and both buttons are disabled. */
-  pending?: boolean;
+  loading?: boolean;
   confirmDisabled?: boolean;
   destructive?: boolean;
   onConfirm: () => void;
@@ -32,11 +32,11 @@ interface ConfirmDialogProps {
 const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   open,
   title,
-  message,
+  description,
   confirmLabel,
-  pendingLabel,
+  loadingLabel,
   cancelLabel = 'إلغاء',
-  pending = false,
+  loading = false,
   confirmDisabled = false,
   destructive = true,
   onConfirm,
@@ -48,7 +48,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   return (
     <Dialog
       open={open}
-      onClose={() => !pending && onClose()}
+      onClose={() => !loading && onClose()}
       maxWidth="xs"
       fullWidth
       aria-labelledby="confirm-dialog-title"
@@ -66,22 +66,22 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       </DialogTitle>
       <DialogContent>
         <DialogContentText component="div" sx={{ color: isDarkMode ? '#e5e7eb' : undefined }}>
-          {message}
+          {description}
         </DialogContentText>
         {children}
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={onClose} disabled={pending} color="inherit">
+        <Button onClick={onClose} disabled={loading} color="inherit">
           {cancelLabel}
         </Button>
         <Button
           onClick={onConfirm}
           variant="contained"
           color={destructive ? 'error' : 'primary'}
-          disabled={pending || confirmDisabled}
-          startIcon={pending ? <CircularProgress size={16} color="inherit" /> : undefined}
+          disabled={loading || confirmDisabled}
+          startIcon={loading ? <CircularProgress size={16} color="inherit" /> : undefined}
         >
-          {pending ? pendingLabel ?? confirmLabel : confirmLabel}
+          {loading ? loadingLabel ?? confirmLabel : confirmLabel}
         </Button>
       </DialogActions>
     </Dialog>

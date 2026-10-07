@@ -774,10 +774,10 @@ const AgenciesPage = () => {
       <ConfirmDialog
         open={deleteDialog}
         title="حذف الوكالة"
-        message={`سيتم حذف الوكالة "${selectedAgency?.name ?? ''}" وشعارها نهائيًا، ولا يمكن التراجع عن ذلك. عقاراتها تبقى منشورة ولكن بدون وكالة.`}
+        description={`سيتم حذف الوكالة "${selectedAgency?.name ?? ''}" وشعارها نهائيًا، ولا يمكن التراجع عن ذلك. عقاراتها تبقى منشورة ولكن بدون وكالة.`}
         confirmLabel="تأكيد الحذف"
-        pendingLabel="جاري الحذف..."
-        pending={actionLoading}
+        loadingLabel="جاري الحذف..."
+        loading={actionLoading}
         onConfirm={handleDeleteAgency}
         onClose={() => setDeleteDialog(false)}
       />
