@@ -232,7 +232,6 @@ function LoginPage() {
           disabled={formik.isSubmitting || redirecting}
           aria-busy={formik.isSubmitting || undefined}
           startIcon={formik.isSubmitting ? <CircularProgress size={16} color="inherit" aria-hidden /> : undefined}
-          sx={{ height: 44 }}
         >
           {formik.isSubmitting ? "جارٍ تسجيل الدخول…" : "تسجيل الدخول"}
         </Button>

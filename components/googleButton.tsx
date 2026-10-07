@@ -28,7 +28,8 @@ export default function GoogleButton({ redirect }: { redirect?: string | null })
       variant="outlined"
       color="inherit"
       fullWidth
-      sx={{ height: 44, borderColor: "var(--c-border-strong)", color: "text.primary", gap: 0.5 }}
+      size="large"
+      sx={{ borderColor: "var(--c-border)", color: "text.primary", gap: 0.5 }}
       startIcon={
         <SvgIcon viewBox="0 0 48 48" aria-hidden sx={{ "&&": { fontSize: 20 } }}>
           <path
