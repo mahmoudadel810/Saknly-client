@@ -421,7 +421,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                 <ListItemIcon>
                   <PersonOutlineOutlined fontSize="small" />
                 </ListItemIcon>
-                الملف الشخصي
+                حسابي
               </MenuItem>
               <Divider />
               <MenuItem

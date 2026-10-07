@@ -227,7 +227,7 @@ export default function Navbar() {
                     <ListItemIcon>
                       <PersonOutlineOutlined fontSize="small" />
                     </ListItemIcon>
-                    الملف الشخصي
+                    حسابي
                   </MenuItem>
                   <MenuItem component={Link} href="/wishlist" onClick={closeMenu}>
                     <ListItemIcon>
@@ -372,7 +372,7 @@ export default function Navbar() {
               <ListItemIcon sx={{ minWidth: 36 }}>
                 <PersonOutlineOutlined fontSize="small" />
               </ListItemIcon>
-              <ListItemText primary="الملف الشخصي" />
+              <ListItemText primary="حسابي" />
             </ListItemButton>
             <ListItemButton component={Link} href="/wishlist" onClick={() => setDrawerOpen(false)} sx={{ borderRadius: "6px" }}>
               <ListItemIcon sx={{ minWidth: 36 }}>
