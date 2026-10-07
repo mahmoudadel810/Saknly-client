@@ -1,21 +1,11 @@
 "use client";
 import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import * as mammoth from 'mammoth';
-import { 
-  Box, 
-  Button, 
-  CircularProgress, 
-  Typography, 
-  Paper, 
-  List, 
-  ListItem, 
-  ListItemText,
-  Alert,
-  Divider
-} from '@mui/material';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import DescriptionIcon from '@mui/icons-material/Description';
+import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
+import CircularProgress from '@mui/material/CircularProgress';
+import Typography from '@mui/material/Typography';
+import UploadFileOutlined from '@mui/icons-material/UploadFileOutlined';
 
 /** Fields an import table can carry. Columns are matched by their header text. */
 export type ImportField =
@@ -68,183 +58,136 @@ const mapHeaders = (headerCells: string[]): (ImportField | null)[] => {
   return mapped.some(Boolean) ? mapped : LEGACY_ORDER;
 };
 
-interface ImportPropertiesProps {
-  onImportComplete: (rows: ImportRow[]) => void;
+/** A message the admin can act on; parse failures we raise ourselves are already in Arabic. */
+class ImportFileError extends Error {}
+
+/** Reads every table row of a .docx file. mammoth is loaded only when a file is dropped. */
+async function readRows(file: File): Promise<ImportRow[]> {
+  const mammoth = await import('mammoth');
+  const arrayBuffer = await file.arrayBuffer();
+  const result = await mammoth.convertToHtml({ arrayBuffer });
+
+  const doc = new DOMParser().parseFromString(result.value, 'text/html');
+  const tables = doc.querySelectorAll('table');
+  if (!tables.length) {
+    throw new ImportFileError('لا يحتوي الملف على جدول. أضف جدولًا صفه الأول عناوين الأعمدة.');
+  }
+
+  const extracted: ImportRow[] = [];
+  tables.forEach((table) => {
+    const tableRows = Array.from(table.querySelectorAll('tr'));
+    if (tableRows.length < 2) return;
+
+    const cellTexts = (row: Element) =>
+      Array.from(row.querySelectorAll('td, th')).map((cell) => cell.textContent?.trim() || '');
+
+    // The first row holds the column headers.
+    const columns = mapHeaders(cellTexts(tableRows[0]));
+
+    tableRows.slice(1).forEach((row) => {
+      const texts = cellTexts(row);
+      // A fully empty row is layout, not data.
+      if (texts.every((text) => !text)) return;
+
+      const cells: ImportRow['cells'] = {};
+      columns.forEach((field, index) => {
+        if (field && texts[index]) cells[field] = texts[index];
+      });
+      // Every data row is kept, even incomplete ones: they are reported, not dropped.
+      extracted.push({ rowNumber: extracted.length + 1, cells });
+    });
+  });
+
+  if (extracted.length === 0) {
+    throw new ImportFileError('الجداول في الملف لا تحتوي على صفوف بيانات تحت صف العناوين.');
+  }
+  return extracted;
 }
 
+interface ImportPropertiesProps {
+  /** Called with every data row found, exactly as read, and the file name. */
+  onImportComplete: (rows: ImportRow[], fileName: string) => void;
+}
+
+/** Step 1 of the import: drop or pick a .docx file; its table rows are read in the browser. */
 const ImportProperties: React.FC<ImportPropertiesProps> = ({ onImportComplete }) => {
-  const [rows, setRows] = useState<ImportRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    if (!acceptedFiles.length) return;
-
-    setLoading(true);
-    setError('');
-
-    try {
+  const onDrop = useCallback(
+    async (acceptedFiles: File[]) => {
+      if (!acceptedFiles.length) return;
       const file = acceptedFiles[0];
-      const arrayBuffer = await file.arrayBuffer();
-      const result = await mammoth.convertToHtml({ arrayBuffer });
-      const htmlContent = result.value;
-
-      // تحليل الجدول من محتوى HTML
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(htmlContent, 'text/html');
-      const tables = doc.querySelectorAll('table');
-
-      if (!tables.length) {
-        throw new Error('لم يتم العثور على جداول في المستند');
+      setLoading(true);
+      setError('');
+      try {
+        onImportComplete(await readRows(file), file.name);
+      } catch (err) {
+        setError(
+          err instanceof ImportFileError
+            ? err.message
+            : 'تعذّرت قراءة الملف. تأكد أنه ملف Word بصيغة .docx وغير تالف.'
+        );
+      } finally {
+        setLoading(false);
       }
+    },
+    [onImportComplete]
+  );
 
-      const extracted: ImportRow[] = [];
-
-      tables.forEach(table => {
-        const tableRows = Array.from(table.querySelectorAll('tr'));
-        if (tableRows.length < 2) return;
-
-        const cellTexts = (row: Element) =>
-          Array.from(row.querySelectorAll('td, th')).map((cell) => cell.textContent?.trim() || '');
-
-        // The first row holds the column headers.
-        const columns = mapHeaders(cellTexts(tableRows[0]));
-
-        tableRows.slice(1).forEach(row => {
-          const texts = cellTexts(row);
-          // A fully empty row is layout, not data.
-          if (texts.every((text) => !text)) return;
-
-          const cells: ImportRow['cells'] = {};
-          columns.forEach((field, index) => {
-            if (field && texts[index]) cells[field] = texts[index];
-          });
-          // Every data row is kept, even incomplete ones: they are reported, not dropped.
-          extracted.push({ rowNumber: extracted.length + 1, cells });
-        });
-      });
-
-      if (extracted.length === 0) {
-        throw new Error('لم يتم العثور على صفوف بيانات في الجداول');
-      }
-
-      setRows(extracted);
-    } catch (err) {
-      setError(`خطأ في المعالجة: ${err instanceof Error ? err.message : 'خطأ غير معروف'}`);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+  const { getRootProps, getInputProps, isDragActive, fileRejections } = useDropzone({
     onDrop,
     accept: {
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
     },
-    maxFiles: 1
+    maxFiles: 1,
+    disabled: loading,
   });
 
-  const handleImport = () => {
-    onImportComplete(rows);
-    setRows([]);
-  };
-
-  const handleClear = () => {
-    setRows([]);
-    setError('');
-  };
+  const rejected = fileRejections.length > 0;
 
   return (
-    <Box sx={{ mt: 4, p: 3, border: '2px dashed #e0e0e0', borderRadius: 2, backgroundColor: '#fafafa' }}>
-      <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <DescriptionIcon color="primary" />
-        استيراد العقارات من ملف Word
-      </Typography>
-      
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        قم برفع ملف Word (.docx) يحتوي على جدول بالعقارات. يجب أن يحتوي الجدول على الأعمدة التالية: الموقع، الوصف، الدور، السعر، المساحة
-      </Typography>
-      
-      <div {...getRootProps()} style={{
-        padding: '30px',
-        border: '2px dashed #3f51b5',
-        borderRadius: '8px',
-        textAlign: 'center',
-        cursor: 'pointer',
-        backgroundColor: isDragActive ? '#f0f7ff' : 'white',
-        transition: 'all 0.3s ease'
-      }}>
-        <input {...getInputProps()} />
-        <CloudUploadIcon sx={{ fontSize: 48, color: '#3f51b5', mb: 2 }} />
-        {isDragActive ? (
-          <Typography color="primary" sx={{ fontWeight: 'bold' }}>
-            أسقط الملف هنا...
-          </Typography>
+    <Box>
+      <Box
+        {...getRootProps()}
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          textAlign: 'center',
+          gap: 1,
+          px: 2,
+          py: 5,
+          border: '1px dashed',
+          borderColor: isDragActive ? 'primary.main' : 'var(--c-border-strong)',
+          borderRadius: '10px',
+          bgcolor: isDragActive ? 'var(--c-primary-soft)' : 'background.paper',
+          cursor: loading ? 'progress' : 'pointer',
+          transition: 'background-color 150ms ease-out, border-color 150ms ease-out',
+          '&:focus-visible': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: 2 },
+        }}
+      >
+        <input {...getInputProps()} aria-label="اختيار ملف Word" />
+        {loading ? (
+          <CircularProgress size={32} aria-hidden />
         ) : (
-          <Box>
-            <Typography sx={{ fontWeight: 'bold', mb: 1 }}>
-              اسحب وأسقط ملف Word هنا، أو انقر للاختيار
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              يدعم ملفات .docx فقط
-            </Typography>
-          </Box>
+          <UploadFileOutlined aria-hidden sx={{ fontSize: 40, color: isDragActive ? 'primary.main' : 'var(--c-muted)' }} />
         )}
-      </div>
+        <Typography sx={{ fontWeight: 600 }}>
+          {loading ? 'جارٍ قراءة الملف…' : isDragActive ? 'أفلت الملف هنا' : 'اسحب ملف Word إلى هنا أو انقر لاختياره'}
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          ملف واحد بصيغة .docx يحتوي على جدول العقارات.
+        </Typography>
+      </Box>
 
-      {loading && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 3 }}>
-          <CircularProgress size={24} />
-          <Typography sx={{ ml: 2 }}>جاري معالجة الملف...</Typography>
-        </Box>
-      )}
-
-      {error && (
-        <Alert severity="error" sx={{ mt: 2 }}>
-          {error}
-        </Alert>
-      )}
-
-      {rows.length > 0 && (
-        <Box sx={{ mt: 3 }}>
-          <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>
-            الصفوف المستخرجة ({rows.length})
-          </Typography>
-          
-          <Paper elevation={2} sx={{ maxHeight: 400, overflow: 'auto', mb: 2 }}>
-            <List dense>
-              {rows.map((row, index) => (
-                <React.Fragment key={row.rowNumber}>
-                  <ListItem>
-                    <ListItemText
-                      primary={`${row.rowNumber}. ${row.cells.location || '—'} - ${row.cells.area || '—'} متر`}
-                      secondary={`السعر: ${row.cells.price || '—'} | الدور: ${row.cells.floor || '—'} | ${row.cells.description || ''}`}
-                    />
-                  </ListItem>
-                  {index < rows.length - 1 && <Divider />}
-                </React.Fragment>
-              ))}
-            </List>
-          </Paper>
-          
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleImport}
-              sx={{ flex: 1 }}
-            >
-              متابعة للمراجعة ({rows.length})
-            </Button>
-            <Button
-              variant="outlined"
-              onClick={handleClear}
-            >
-              مسح
-            </Button>
-          </Box>
-        </Box>
-      )}
+      <Box aria-live="polite">
+        {(error || rejected) && (
+          <Alert severity="error" sx={{ mt: 2 }}>
+            {error || 'هذا الملف غير مدعوم. اختر ملف Word واحدًا بصيغة .docx.'}
+          </Alert>
+        )}
+      </Box>
     </Box>
   );
 };
