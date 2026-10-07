@@ -118,7 +118,6 @@ export default function Register() {
           throw new Error(data?.message || data?.error || "تعذر إنشاء الحساب، حاول مرة أخرى");
         }
 
-        console.log("Registration successful:", data);
         formik.resetForm();
         
         // Show success message and prepare redirect
@@ -465,7 +464,9 @@ export default function Register() {
             <Button
               type="submit"
               variant="contained"
-              // onClick={handleRegister}
+              // Formik keeps isSubmitting true while onSubmit awaits, so a double click sends one request.
+              disabled={formik.isSubmitting}
+              aria-busy={formik.isSubmitting}
               sx={{
                 padding: "12px",
                 backgroundColor: PRIMARY,
@@ -488,7 +489,7 @@ export default function Register() {
                   cursor: "not-allowed",
                 },
               }}>
-              إنشاء حساب
+              {formik.isSubmitting ? "جاري إنشاء الحساب..." : "إنشاء حساب"}
             </Button>
           </Box>
 
