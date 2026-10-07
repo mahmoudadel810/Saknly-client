@@ -1,164 +1,319 @@
 "use client";
-import React, { useEffect, useState } from "react";
-import {
-  Box,
-  Typography,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  CircularProgress,
-  Chip,
-  Pagination,
-} from "@mui/material";
+
+import React, { useRef, useState } from "react";
 import Link from "next/link";
-import { useDarkMode } from "@/app/context/DarkModeContext";
-import { API_URL, authHeader } from "@/shared/utils/auth";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useDebounce } from "use-debounce";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import MenuItem from "@mui/material/MenuItem";
+import MuiLink from "@mui/material/Link";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import DeleteOutlineOutlined from "@mui/icons-material/DeleteOutlineOutlined";
+import ForumOutlined from "@mui/icons-material/ForumOutlined";
+import MailOutlineOutlined from "@mui/icons-material/MailOutlineOutlined";
+import VisibilityOutlined from "@mui/icons-material/VisibilityOutlined";
+import ConfirmDialog from "@/shared/components/ConfirmDialog";
+import { useToast } from "@/shared/provider/ToastProvider";
+import { api } from "@/shared/services/api";
+import DataTable, { useDataTableState, type DataTableColumn } from "@/shared/ui/DataTable";
+import ErrorState from "@/shared/ui/ErrorState";
+import LoadingState from "@/shared/ui/LoadingState";
+import StatusBadge from "@/shared/ui/StatusBadge";
+import { visuallyHidden } from "@/shared/ui/a11y";
+import DetailDrawer, { DetailField } from "@/shared/ui/admin/DetailDrawer";
+import SearchField from "@/shared/ui/admin/SearchField";
+import { adminErrorMessage } from "@/shared/ui/admin/errors";
+import { formatDate, formatDateTime } from "@/shared/ui/admin/format";
+import { propertyInquiriesQuery, type InquiryStatus, type PropertyInquiry } from "@/shared/ui/admin/queries";
+import { INQUIRY_STATUS } from "@/shared/ui/admin/statuses";
 
-interface PropertyInquiry {
-  _id: string;
-  name: string;
-  email: string;
-  phone: string;
-  message: string;
-  status: "new" | "in-progress" | "responded" | "closed";
-  isRead?: boolean;
-  createdAt: string;
-  property?: { _id: string; title?: string } | null;
-}
+const STATUS_FILTERS: { value: InquiryStatus | "all"; label: string }[] = [
+  { value: "all", label: "كل الحالات" },
+  { value: "new", label: INQUIRY_STATUS.new.label },
+  { value: "in-progress", label: INQUIRY_STATUS["in-progress"].label },
+  { value: "responded", label: INQUIRY_STATUS.responded.label },
+  { value: "closed", label: INQUIRY_STATUS.closed.label },
+];
 
-const STATUS_LABELS: Record<PropertyInquiry["status"], { label: string; color: "info" | "warning" | "success" | "default" }> = {
-  new: { label: "جديد", color: "info" },
-  "in-progress": { label: "قيد المتابعة", color: "warning" },
-  responded: { label: "تم الرد", color: "success" },
-  closed: { label: "مغلق", color: "default" },
-};
+const STATUS_VALUES = STATUS_FILTERS.filter((f) => f.value !== "all") as { value: InquiryStatus; label: string }[];
 
-const LIMIT = 10;
-
+/** Questions buyers sent about a listing (property-inquiry module): server-paginated, filterable, with details. */
 export default function PropertyInquiriesSection() {
-  const { isDarkMode } = useDarkMode();
-  const [inquiries, setInquiries] = useState<PropertyInquiry[]>([]);
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+  const table = useDataTableState({ pageSize: 10 });
+  const [status, setStatus] = useState<InquiryStatus | "all">("all");
+  const [search, setSearch] = useState("");
+  const [debouncedSearch] = useDebounce(search, 400);
+  const params = { page: table.page + 1, limit: table.pageSize, status, search: debouncedSearch.trim() };
+  const list = useQuery(propertyInquiriesQuery(params));
 
-  useEffect(() => {
-    const fetchInquiries = async () => {
-      setLoading(true);
-      setError("");
-      try {
-        const res = await fetch(
-          `${API_URL}/property-inquiry/get-all-property-inquiries?page=${page}&limit=${LIMIT}`,
-          { headers: authHeader() }
-        );
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.message || "فشل في جلب استفسارات العقارات");
-        setInquiries(Array.isArray(data.data) ? data.data : []);
-        setTotal(data.pagination?.total || 0);
-      } catch (err: any) {
-        setError(err.message || "حدث خطأ غير متوقع");
-      } finally {
-        setLoading(false);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const openedUnread = useRef(false);
+  const openInquiry = (q: PropertyInquiry) => {
+    openedUnread.current = !q.isRead;
+    setOpenId(q._id);
+  };
+  // Opening an inquiry through this endpoint marks it as read on the server; the list then drops its marker.
+  const detail = useQuery({
+    queryKey: ["admin", "property-inquiry", openId],
+    enabled: Boolean(openId),
+    queryFn: async (): Promise<PropertyInquiry> => {
+      const { data } = await api.get(`/property-inquiry/get-property-inquiry-by-id/${openId}`);
+      if (openedUnread.current) {
+        openedUnread.current = false;
+        queryClient.invalidateQueries({ queryKey: ["admin", "property-inquiries"] });
       }
-    };
-    fetchInquiries();
-  }, [page]);
+      return data?.data;
+    },
+  });
 
-  const totalPages = Math.max(1, Math.ceil(total / LIMIT));
-  const cellSx = { color: isDarkMode ? "#fff" : undefined, borderColor: isDarkMode ? "var(--dark-700)" : undefined };
-  const headSx = { ...cellSx, fontWeight: "bold", backgroundColor: isDarkMode ? "var(--dark-700)" : "#f8fafc" };
+  const [savingStatus, setSavingStatus] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<PropertyInquiry | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const refreshList = () => queryClient.invalidateQueries({ queryKey: ["admin", "property-inquiries"] });
+
+  const changeStatus = async (inquiry: PropertyInquiry, next: InquiryStatus) => {
+    if (savingStatus || inquiry.status === next) return;
+    setSavingStatus(true);
+    try {
+      await api.put(`/property-inquiry/update-property-inquiry-status/${inquiry._id}`, { status: next });
+      queryClient.setQueryData<PropertyInquiry>(["admin", "property-inquiry", inquiry._id], (prev) =>
+        prev ? { ...prev, status: next } : prev,
+      );
+      await refreshList();
+      showToast("تم تحديث حالة الاستفسار.", "success");
+    } catch (err) {
+      showToast(adminErrorMessage(err, "تعذّر تحديث الحالة. حاول مرة أخرى."), "error");
+    } finally {
+      setSavingStatus(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget || deleting) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/property-inquiry/delete-property-inquiry/${deleteTarget._id}`);
+      await Promise.all([refreshList(), queryClient.invalidateQueries({ queryKey: ["admin", "analytics"] })]);
+      if (openId === deleteTarget._id) setOpenId(null);
+      setDeleteTarget(null);
+      showToast("تم حذف الاستفسار.", "success");
+    } catch (err) {
+      showToast(adminErrorMessage(err, "تعذّر حذف الاستفسار. حاول مرة أخرى."), "error");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const columns: DataTableColumn<PropertyInquiry>[] = [
+    {
+      id: "sender",
+      header: "المرسل",
+      card: "title",
+      cell: (q) => (
+        <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1, minWidth: 0 }}>
+          {!q.isRead && (
+            <>
+              <Box aria-hidden sx={{ width: 8, height: 8, mt: 0.75, borderRadius: "50%", bgcolor: "primary.main", flexShrink: 0 }} />
+              <Box component="span" sx={visuallyHidden}>
+                غير مقروء:
+              </Box>
+            </>
+          )}
+          <Box sx={{ minWidth: 0 }}>
+            <Typography variant="body2" sx={{ fontWeight: q.isRead ? 500 : 700, fontSize: "0.875rem" }}>
+              {q.name}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", overflowWrap: "anywhere" }}>
+              {q.email}
+            </Typography>
+          </Box>
+        </Box>
+      ),
+    },
+    {
+      id: "property",
+      header: "العقار",
+      cell: (q) =>
+        q.property ? (
+          <MuiLink
+            component={Link}
+            href={`/properties/${q.property._id}`}
+            target="_blank"
+            rel="noopener"
+            underline="hover"
+            onClick={(event: React.MouseEvent) => event.stopPropagation()}
+            sx={{ fontSize: "0.8125rem" }}
+          >
+            {q.property.title || "عرض العقار"}
+          </MuiLink>
+        ) : (
+          <Typography variant="caption" color="text.secondary">
+            عقار محذوف
+          </Typography>
+        ),
+    },
+    {
+      id: "message",
+      header: "الرسالة",
+      hideBelow: "xl",
+      cell: (q) => (
+        <Typography variant="body2" sx={{ fontSize: "0.8125rem", maxWidth: 360, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+          {q.message}
+        </Typography>
+      ),
+    },
+    { id: "status", header: "الحالة", cell: (q) => <StatusBadge {...(INQUIRY_STATUS[q.status] ?? INQUIRY_STATUS.new)} /> },
+    { id: "date", header: "التاريخ", cell: (q) => formatDate(q.createdAt), hideBelow: "lg" },
+  ];
+
+  const inquiry = detail.data;
 
   return (
-    <Paper
-      elevation={0}
-      sx={{
-        borderRadius: { xs: 2, md: 3 },
-        overflow: "hidden",
-        mb: 3,
-        border: isDarkMode ? "1px solid var(--dark-700)" : "1px solid #e2e8f0",
-        backgroundColor: isDarkMode ? "var(--dark-800)" : "#fff",
-      }}
-    >
-      <Box sx={{ p: 2, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <Typography fontWeight="bold">استفسارات العقارات</Typography>
-        <Chip label={`الإجمالي: ${total}`} size="small" />
-      </Box>
-      <TableContainer sx={{ maxHeight: "70vh" }}>
-        <Table stickyHeader>
-          <TableHead>
-            <TableRow>
-              <TableCell align="center" sx={headSx}>العقار</TableCell>
-              <TableCell align="center" sx={headSx}>الاسم</TableCell>
-              <TableCell align="center" sx={headSx}>التواصل</TableCell>
-              <TableCell align="center" sx={headSx}>الرسالة</TableCell>
-              <TableCell align="center" sx={headSx}>الحالة</TableCell>
-              <TableCell align="center" sx={headSx}>التاريخ</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={6} align="center" sx={{ py: 6, ...cellSx }}>
-                  <CircularProgress size={32} />
-                </TableCell>
-              </TableRow>
-            ) : error ? (
-              <TableRow>
-                <TableCell colSpan={6} align="center" sx={{ py: 6, color: "#dc2626" }}>
-                  {error}
-                </TableCell>
-              </TableRow>
-            ) : inquiries.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} align="center" sx={{ py: 6, ...cellSx }}>
-                  لا توجد استفسارات على العقارات
-                </TableCell>
-              </TableRow>
-            ) : (
-              inquiries.map((inq) => {
-                const status = STATUS_LABELS[inq.status] || STATUS_LABELS.new;
-                return (
-                  <TableRow key={inq._id} hover>
-                    <TableCell align="center" sx={cellSx}>
-                      {inq.property?._id ? (
-                        <Link href={`/properties/${inq.property._id}`} style={{ color: "#2563eb" }}>
-                          {inq.property.title || "عرض العقار"}
-                        </Link>
-                      ) : (
-                        "—"
-                      )}
-                    </TableCell>
-                    <TableCell align="center" sx={cellSx}>{inq.name}</TableCell>
-                    <TableCell align="center" sx={cellSx}>
-                      <div>{inq.email}</div>
-                      <div dir="ltr">{inq.phone}</div>
-                    </TableCell>
-                    <TableCell align="center" sx={{ ...cellSx, maxWidth: 320, whiteSpace: "pre-wrap" }}>
-                      {inq.message}
-                    </TableCell>
-                    <TableCell align="center" sx={cellSx}>
-                      <Chip label={status.label} color={status.color} size="small" />
-                    </TableCell>
-                    <TableCell align="center" sx={cellSx}>
-                      {new Date(inq.createdAt).toLocaleDateString("ar-EG")}
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
-      {totalPages > 1 && (
-        <Box sx={{ display: "flex", justifyContent: "center", p: 2 }}>
-          <Pagination count={totalPages} page={page} onChange={(_, value) => setPage(value)} color="primary" />
-        </Box>
-      )}
-    </Paper>
+    <>
+      <DataTable
+        label="استفسارات العقارات"
+        mode="server"
+        rows={list.data?.rows ?? []}
+        columns={columns}
+        getRowId={(q) => q._id}
+        getRowLabel={(q) => q.name}
+        onRowClick={openInquiry}
+        pagination={{
+          page: table.page,
+          pageSize: table.pageSize,
+          onPageChange: table.setPage,
+          onPageSizeChange: table.setPageSize,
+          pageSizeOptions: [10, 25, 50],
+          total: list.data?.total ?? 0,
+        }}
+        toolbar={
+          <>
+            <SearchField
+              label="بحث بالاسم أو البريد أو الرسالة"
+              value={search}
+              onChange={(value) => {
+                setSearch(value);
+                table.setPage(0);
+              }}
+            />
+            <TextField
+              select
+              label="الحالة"
+              value={status}
+              onChange={(event) => {
+                setStatus(event.target.value as InquiryStatus | "all");
+                table.setPage(0);
+              }}
+              sx={{ minWidth: 160 }}
+            >
+              {STATUS_FILTERS.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </TextField>
+          </>
+        }
+        rowActions={() => [
+          { label: "عرض التفاصيل", icon: <VisibilityOutlined fontSize="small" />, onClick: openInquiry },
+          { label: "حذف", icon: <DeleteOutlineOutlined fontSize="small" />, destructive: true, onClick: setDeleteTarget },
+        ]}
+        loading={list.isFetching}
+        error={list.isError}
+        errorTitle="تعذّر تحميل استفسارات العقارات"
+        onRetry={() => list.refetch()}
+        empty={
+          debouncedSearch.trim() || status !== "all"
+            ? { title: "لا توجد استفسارات مطابقة", description: "جرّب كلمة بحث أخرى أو حالة أخرى." }
+            : { icon: <ForumOutlined />, title: "لا توجد استفسارات عن العقارات", description: "تظهر هنا أسئلة الزوار عن الإعلانات." }
+        }
+      />
+
+      <DetailDrawer
+        open={Boolean(openId)}
+        title="تفاصيل الاستفسار"
+        onClose={() => setOpenId(null)}
+        actions={
+          inquiry && (
+            <>
+              <Button variant="contained" component="a" href={`mailto:${inquiry.email}`} startIcon={<MailOutlineOutlined />}>
+                الرد بالبريد
+              </Button>
+              <Button color="error" startIcon={<DeleteOutlineOutlined />} onClick={() => setDeleteTarget(inquiry)} sx={{ marginInlineStart: "auto" }}>
+                حذف
+              </Button>
+            </>
+          )
+        }
+      >
+        {detail.isLoading ? (
+          <LoadingState compact />
+        ) : detail.isError || !inquiry ? (
+          <ErrorState compact title="تعذّر تحميل الاستفسار" onRetry={() => detail.refetch()} retrying={detail.isFetching} />
+        ) : (
+          <>
+            <TextField
+              select
+              fullWidth
+              label="الحالة"
+              value={inquiry.status}
+              disabled={savingStatus}
+              onChange={(event) => changeStatus(inquiry, event.target.value as InquiryStatus)}
+              helperText={savingStatus ? "جارٍ الحفظ…" : undefined}
+              sx={{ mb: 3 }}
+            >
+              {STATUS_VALUES.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </TextField>
+            <Box component="dl" sx={{ m: 0 }}>
+              <DetailField label="الاسم">{inquiry.name}</DetailField>
+              <DetailField label="البريد الإلكتروني">
+                <MuiLink href={`mailto:${inquiry.email}`}>{inquiry.email}</MuiLink>
+              </DetailField>
+              <DetailField label="الهاتف">
+                <MuiLink href={`tel:${inquiry.phone}`} dir="ltr">
+                  {inquiry.phone}
+                </MuiLink>
+              </DetailField>
+              <DetailField label="العقار">
+                {inquiry.property ? (
+                  <MuiLink component={Link} href={`/properties/${inquiry.property._id}`} target="_blank" rel="noopener">
+                    {inquiry.property.title || "عرض العقار"}
+                  </MuiLink>
+                ) : (
+                  "عقار محذوف"
+                )}
+              </DetailField>
+              {inquiry.agent && (
+                <DetailField label="صاحب الإعلان">
+                  {[inquiry.agent.userName, inquiry.agent.email].filter(Boolean).join("، ")}
+                </DetailField>
+              )}
+              <DetailField label="تاريخ الإرسال">{formatDateTime(inquiry.createdAt)}</DetailField>
+              <DetailField label="الرسالة">{inquiry.message}</DetailField>
+            </Box>
+          </>
+        )}
+      </DetailDrawer>
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="حذف الاستفسار"
+        description={`سيُحذف استفسار «${deleteTarget?.name ?? ""}» نهائيًا، ولا يمكن التراجع عن ذلك.`}
+        confirmLabel="حذف"
+        loadingLabel="جارٍ الحذف…"
+        loading={deleting}
+        onConfirm={confirmDelete}
+        onClose={() => !deleting && setDeleteTarget(null)}
+      />
+    </>
   );
 }

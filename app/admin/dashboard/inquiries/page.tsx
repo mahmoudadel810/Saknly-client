@@ -1,487 +1,284 @@
 "use client";
-import React, { useEffect, useState } from "react";
-import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, CircularProgress, Chip, IconButton, Tooltip, Tabs, Tab } from "@mui/material";
-import { Email, Person, Subject, Message, DateRange, Visibility, MailOutline, Check } from "@mui/icons-material";
-import { useAuth } from "../../../context/AuthContext";
-import { useDarkMode } from "@/app/context/DarkModeContext";
-import { API_URL, authHeader } from "@/shared/utils/auth";
-import PropertyInquiriesSection from "@/shared/components/admin/PropertyInquiriesSection";
+
+import React, { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import MenuItem from "@mui/material/MenuItem";
+import MuiLink from "@mui/material/Link";
+import Tab from "@mui/material/Tab";
+import Tabs from "@mui/material/Tabs";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import DeleteOutlineOutlined from "@mui/icons-material/DeleteOutlineOutlined";
+import MailOutlineOutlined from "@mui/icons-material/MailOutlineOutlined";
+import MarkEmailReadOutlined from "@mui/icons-material/MarkEmailReadOutlined";
+import VisibilityOutlined from "@mui/icons-material/VisibilityOutlined";
 import ConfirmDialog from "@/shared/components/ConfirmDialog";
+import PropertyInquiriesSection from "@/shared/components/admin/PropertyInquiriesSection";
+import { useToast } from "@/shared/provider/ToastProvider";
+import { api } from "@/shared/services/api";
+import DataTable, { useDataTableState, type DataTableColumn } from "@/shared/ui/DataTable";
+import PageHeader from "@/shared/ui/PageHeader";
+import StatusBadge from "@/shared/ui/StatusBadge";
+import DetailDrawer, { DetailField } from "@/shared/ui/admin/DetailDrawer";
+import SearchField from "@/shared/ui/admin/SearchField";
+import { adminErrorMessage } from "@/shared/ui/admin/errors";
+import { dateValue, formatDate, formatDateTime } from "@/shared/ui/admin/format";
+import { contactsQuery, type ContactMessage, type ContactStatus } from "@/shared/ui/admin/queries";
+import { CONTACT_STATUS } from "@/shared/ui/admin/statuses";
 
-interface Inquiry {
-  _id: string;
-  name: string;
-  email: string;
-  subject: string;
-  message: string;
-  createdAt: string;
-}
+const STATUS_FILTERS: { value: ContactStatus | "all"; label: string }[] = [
+  { value: "all", label: "كل الحالات" },
+  { value: "pending", label: CONTACT_STATUS.pending.label },
+  { value: "in-progress", label: CONTACT_STATUS["in-progress"].label },
+  { value: "closed", label: CONTACT_STATUS.closed.label },
+];
 
-const InquiriesPage = () => {
-  const { isDarkMode } = useDarkMode();
-  const { user } = useAuth();
-  const [inquiries, setInquiries] = useState<Inquiry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [deleteError, setDeleteError] = useState("");
-  const [confirmTarget, setConfirmTarget] = useState<Inquiry | null>(null);
-  const [tab, setTab] = useState(0);
+const STATUS_VALUES = STATUS_FILTERS.filter((f) => f.value !== "all") as { value: ContactStatus; label: string }[];
 
-  const handleDelete = async (id: string) => {
-    setDeletingId(id);
-    setDeleteError("");
+/** Messages sent from the contact page (contact module, unpaginated: filtered and paged here). */
+function ContactMessagesSection() {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+  const messages = useQuery(contactsQuery);
+  const table = useDataTableState({ sort: { columnId: "date", direction: "desc" } });
+  const [status, setStatus] = useState<ContactStatus | "all">("all");
+  const [search, setSearch] = useState("");
+  const [viewingId, setViewingId] = useState<string | null>(null);
+  const [savingStatus, setSavingStatus] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<ContactMessage | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const all = useMemo(() => messages.data ?? [], [messages.data]);
+  const rows = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return all.filter((m) => {
+      if (status !== "all" && m.status !== status) return false;
+      if (!term) return true;
+      return [m.name, m.email, m.subject, m.message].some((text) => text?.toLowerCase().includes(term));
+    });
+  }, [all, status, search]);
+  const viewing = all.find((m) => m._id === viewingId) ?? null;
+
+  const refresh = () => queryClient.invalidateQueries({ queryKey: contactsQuery.queryKey });
+
+  const changeStatus = async (message: ContactMessage, next: ContactStatus) => {
+    if (savingStatus || message.status === next) return;
+    setSavingStatus(true);
     try {
-      const res = await fetch(`${API_URL}/contact/delete-contact/${id}`, {
-        method: "DELETE",
-        headers: authHeader(),
-      });
-      if (!res.ok) throw new Error("فشل في حذف الاستفسار");
-      setInquiries((prev) => prev.filter((inq) => inq._id !== id));
-      setConfirmTarget(null);
-    } catch (err: any) {
-      setDeleteError(err.message || "حدث خطأ أثناء الحذف");
+      await api.put(`/contact/update-contact-status/${message._id}`, { status: next });
+      await refresh();
+      showToast("تم تحديث حالة الرسالة.", "success");
+    } catch (err) {
+      showToast(adminErrorMessage(err, "تعذّر تحديث الحالة. حاول مرة أخرى."), "error");
     } finally {
-      setDeletingId(null);
+      setSavingStatus(false);
     }
   };
 
-  useEffect(() => {
-    const fetchInquiries = async () => {
-      setLoading(true);
-      setError("");
-      try {
-        const res = await fetch(`${API_URL}/contact/get-all-contacts`, {
-          headers: authHeader(),
-        });
-        if (!res.ok) throw new Error("فشل في جلب الاستفسارات");
-        const data = await res.json();
-        setInquiries(data.data || []);
-      } catch (err: any) {
-        setError(err.message || "حدث خطأ غير متوقع");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchInquiries();
-  }, []);
-
-  const truncateText = (text: string, maxLength: number) => {
-    return text.length > maxLength ? text.substring(0, maxLength) + "..." : text;
+  const confirmDelete = async () => {
+    if (!deleteTarget || deleting) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/contact/delete-contact/${deleteTarget._id}`);
+      await Promise.all([refresh(), queryClient.invalidateQueries({ queryKey: ["admin", "analytics"] })]);
+      if (viewingId === deleteTarget._id) setViewingId(null);
+      setDeleteTarget(null);
+      showToast("تم حذف الرسالة.", "success");
+    } catch (err) {
+      showToast(adminErrorMessage(err, "تعذّر حذف الرسالة. حاول مرة أخرى."), "error");
+    } finally {
+      setDeleting(false);
+    }
   };
 
-  const getStatusColor = (date: string) => {
-    const inquiryDate = new Date(date);
-    const now = new Date();
-    const diffDays = Math.floor((now.getTime() - inquiryDate.getTime()) / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 0) return "#22c55e"; // success-500 - today
-    if (diffDays <= 3) return "#f59e0b"; // warning-500 - recent
-    return "#64748b"; // secondary-500 - old
-  };
-
-  const getStatusText = (date: string) => {
-    const inquiryDate = new Date(date);
-    const now = new Date();
-    const diffDays = Math.floor((now.getTime() - inquiryDate.getTime()) / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 0) return "جديد";
-    if (diffDays <= 3) return "حديث";
-    return "قديم";
-  };
+  const columns: DataTableColumn<ContactMessage>[] = [
+    {
+      id: "sender",
+      header: "المرسل",
+      card: "title",
+      sortable: true,
+      sortValue: (m) => m.name,
+      cell: (m) => (
+        <Box sx={{ minWidth: 0 }}>
+          <Typography variant="body2" sx={{ fontWeight: 600, fontSize: "0.875rem" }}>
+            {m.name}
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ display: "block", overflowWrap: "anywhere" }}>
+            {m.email}
+          </Typography>
+        </Box>
+      ),
+    },
+    {
+      id: "subject",
+      header: "الموضوع",
+      cell: (m) => (
+        <Typography variant="body2" sx={{ fontSize: "0.8125rem", maxWidth: 360, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+          {m.subject}
+        </Typography>
+      ),
+    },
+    { id: "status", header: "الحالة", cell: (m) => <StatusBadge {...(CONTACT_STATUS[m.status] ?? CONTACT_STATUS.pending)} /> },
+    {
+      id: "date",
+      header: "التاريخ",
+      cell: (m) => formatDate(m.createdAt),
+      sortable: true,
+      sortValue: (m) => dateValue(m.createdAt),
+      hideBelow: "lg",
+    },
+  ];
 
   return (
-    <Box sx={{ 
-      minHeight: "100vh", 
-      background: isDarkMode ? 'var(--dark-900)' : 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-      color: isDarkMode ? '#fff' : undefined,
-      p: { xs: 1, sm: 2, md: 4 }
-    }}>
-      {/* Header Section */}
-      <Box sx={{ 
-        mb: { xs: 3, md: 4 }, 
-        textAlign: "center", 
-        p: { xs: 3, md: 4 }, 
-        background: isDarkMode ? 'var(--dark-800)' : "linear-gradient(135deg, #2563eb 0%, #1d4ed8 50%, #1e40af 100%)",
-        borderRadius: { xs: 2, md: 3 }, 
-        color: isDarkMode ? '#fff' : '#fff',
-        position: "relative",
-        overflow: "hidden",
-        boxShadow: "0 25px 50px -12px rgba(37, 99, 235, 0.25)",
-        border: isDarkMode ? '1px solid var(--dark-700)' : "1px solid rgba(255, 255, 255, 0.1)",
-        "&::before": {
-          content: '""',
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: isDarkMode ? 'none' : "radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%)",
-          pointerEvents: "none",
-        }
-      }}>
-        <Box sx={{ position: "relative", zIndex: 1 }}>
-          <Typography 
-            variant="h4" 
-            fontWeight="bold" 
-            gutterBottom 
-            sx={{ 
-              fontSize: { xs: "1.5rem", sm: "1.875rem", md: "2.25rem" }, 
-              mb: { xs: 1, md: 2 },
-              textShadow: isDarkMode ? 'none' : "2px 2px 4px rgba(0,0,0,0.1)",
-              color: isDarkMode ? '#fff' : undefined,
-            }}
-          >
-            الاستفسارات المرسلة
-          </Typography>
-          <Typography 
-            variant="body1" 
-            sx={{ 
-              fontSize: { xs: "0.875rem", sm: "1rem", md: "1.125rem" }, 
-              color: isDarkMode ? '#fff' : "#dbeafe",
-              opacity: 0.95,
-              textShadow: isDarkMode ? 'none' : "1px 1px 2px rgba(0,0,0,0.1)"
-            }}
-          >
-            عرض وإدارة جميع الاستفسارات المرسلة من صفحة التواصل
-          </Typography>
-          <Box sx={{ 
-            display: "flex", 
-            justifyContent: "center", 
-            alignItems: "center", 
-            gap: 2, 
-            mt: 2,
-            flexWrap: "wrap"
-          }}>
-            <Chip 
-              label={`إجمالي الاستفسارات: ${inquiries.length}`}
-              sx={{ 
-                backgroundColor: isDarkMode ? 'var(--dark-700)' : "rgba(255, 255, 255, 0.2)",
-                color: isDarkMode ? '#fff' : "#fff",
-                fontWeight: "bold",
-                backdropFilter: "blur(10px)"
+    <>
+      <DataTable
+        label="رسائل التواصل"
+        rows={rows}
+        columns={columns}
+        getRowId={(m) => m._id}
+        getRowLabel={(m) => m.name}
+        onRowClick={(m) => setViewingId(m._id)}
+        sort={table.sort}
+        onSortChange={table.setSort}
+        pagination={{
+          page: table.page,
+          pageSize: table.pageSize,
+          onPageChange: table.setPage,
+          onPageSizeChange: table.setPageSize,
+        }}
+        toolbar={
+          <>
+            <SearchField
+              label="بحث في الرسائل"
+              value={search}
+              onChange={(value) => {
+                setSearch(value);
+                table.setPage(0);
               }}
             />
-          </Box>
-        </Box>
-      </Box>
+            <TextField
+              select
+              label="الحالة"
+              value={status}
+              onChange={(event) => {
+                setStatus(event.target.value as ContactStatus | "all");
+                table.setPage(0);
+              }}
+              sx={{ minWidth: 160 }}
+            >
+              {STATUS_FILTERS.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </TextField>
+          </>
+        }
+        rowActions={() => [
+          { label: "عرض الرسالة", icon: <VisibilityOutlined fontSize="small" />, onClick: (m) => setViewingId(m._id) },
+          { label: "حذف", icon: <DeleteOutlineOutlined fontSize="small" />, destructive: true, onClick: setDeleteTarget },
+        ]}
+        loading={messages.isFetching}
+        error={messages.isError}
+        errorTitle="تعذّر تحميل رسائل التواصل"
+        onRetry={() => messages.refetch()}
+        empty={
+          all.length === 0
+            ? { icon: <MarkEmailReadOutlined />, title: "لا توجد رسائل", description: "تظهر هنا الرسائل المرسلة من صفحة «تواصل معنا»." }
+            : { title: "لا توجد رسائل مطابقة", description: "جرّب كلمة بحث أخرى أو حالة أخرى." }
+        }
+      />
 
+      <DetailDrawer
+        open={Boolean(viewing)}
+        title="تفاصيل الرسالة"
+        onClose={() => setViewingId(null)}
+        actions={
+          viewing && (
+            <>
+              <Button
+                variant="contained"
+                component="a"
+                href={`mailto:${viewing.email}?subject=${encodeURIComponent(`رد: ${viewing.subject}`)}`}
+                startIcon={<MailOutlineOutlined />}
+              >
+                الرد بالبريد
+              </Button>
+              <Button color="error" startIcon={<DeleteOutlineOutlined />} onClick={() => setDeleteTarget(viewing)} sx={{ marginInlineStart: "auto" }}>
+                حذف
+              </Button>
+            </>
+          )
+        }
+      >
+        {viewing && (
+          <>
+            <TextField
+              select
+              fullWidth
+              label="الحالة"
+              value={viewing.status}
+              disabled={savingStatus}
+              onChange={(event) => changeStatus(viewing, event.target.value as ContactStatus)}
+              helperText={savingStatus ? "جارٍ الحفظ…" : undefined}
+              sx={{ mb: 3 }}
+            >
+              {STATUS_VALUES.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </TextField>
+            <Box component="dl" sx={{ m: 0 }}>
+              <DetailField label="الاسم">{viewing.name}</DetailField>
+              <DetailField label="البريد الإلكتروني">
+                <MuiLink href={`mailto:${viewing.email}`}>{viewing.email}</MuiLink>
+              </DetailField>
+              <DetailField label="تاريخ الإرسال">{formatDateTime(viewing.createdAt)}</DetailField>
+              <DetailField label="الموضوع">{viewing.subject}</DetailField>
+              <DetailField label="الرسالة">{viewing.message}</DetailField>
+            </Box>
+          </>
+        )}
+      </DetailDrawer>
 
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="حذف الرسالة"
+        description={`ستُحذف رسالة «${deleteTarget?.name ?? ""}» نهائيًا، ولا يمكن التراجع عن ذلك.`}
+        confirmLabel="حذف"
+        loadingLabel="جارٍ الحذف…"
+        loading={deleting}
+        onConfirm={confirmDelete}
+        onClose={() => !deleting && setDeleteTarget(null)}
+      />
+    </>
+  );
+}
+
+export default function AdminInquiriesPage() {
+  const [tab, setTab] = useState<"contact" | "property">("contact");
+  return (
+    <>
+      <PageHeader
+        title="الاستفسارات"
+        description="رسائل صفحة «تواصل معنا» وأسئلة الزوار عن الإعلانات، مع حالة متابعة كل منها."
+        breadcrumbs={[{ label: "لوحة الإدارة", href: "/admin/dashboard" }, { label: "الاستفسارات" }]}
+      />
       <Tabs
         value={tab}
         onChange={(_, value) => setTab(value)}
-        sx={{ mb: 3, "& .MuiTab-root": { fontWeight: 700, color: isDarkMode ? "#cbd5e1" : undefined } }}
+        aria-label="نوع الاستفسارات"
+        sx={{ mb: 2, borderBottom: 1, borderColor: "divider" }}
       >
-        <Tab label="رسائل التواصل" />
-        <Tab label="استفسارات العقارات" />
+        <Tab value="contact" id="tab-contact" aria-controls="panel-contact" label="رسائل التواصل" />
+        <Tab value="property" id="tab-property" aria-controls="panel-property" label="استفسارات العقارات" />
       </Tabs>
-
-      {tab === 1 && <PropertyInquiriesSection />}
-
-      {tab === 0 && (<>
-      {/* Main Table */}
-      <Paper 
-        elevation={0} 
-        sx={{ 
-          borderRadius: { xs: 2, md: 3 }, 
-          overflow: "hidden", 
-          mb: 3, 
-          border: isDarkMode ? '1px solid var(--dark-700)' : "1px solid #e2e8f0", 
-          backgroundColor: isDarkMode ? 'var(--dark-800)' : "#fff", 
-          boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
-          position: "relative"
-        }}
-      >
-        <TableContainer sx={{ maxHeight: "70vh", background: isDarkMode ? 'var(--dark-800)' : undefined }}>
-          <Table stickyHeader>
-            <TableHead>
-              <TableRow>
-                <TableCell 
-                  align="center" 
-                  sx={{ 
-                    background: isDarkMode ? 'var(--dark-700)' : "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
-                    color: isDarkMode ? '#fff' : "#fff",
-                    fontWeight: "bold",
-                    fontSize: "1rem",
-                    borderBottom: isDarkMode ? '2px solid var(--dark-700)' : "2px solid #475569"
-                  }}
-                >
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, justifyContent: "center" }}>
-                    <Person sx={{ fontSize: "1rem" }} />
-                    اسم المرسل
-                  </Box>
-                </TableCell>
-                <TableCell 
-                  align="center" 
-                  sx={{ 
-                    background: isDarkMode ? 'var(--dark-700)' : "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
-                    color: isDarkMode ? '#fff' : "#fff",
-                    fontWeight: "bold",
-                    fontSize: "1rem",
-                    borderBottom: isDarkMode ? '2px solid var(--dark-700)' : "2px solid #475569"
-                  }}
-                >
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, justifyContent: "center" }}>
-                    <Email sx={{ fontSize: "1rem" }} />
-                    البريد الإلكتروني
-                  </Box>
-                </TableCell>
-                <TableCell 
-                  align="center" 
-                  sx={{ 
-                    background: isDarkMode ? 'var(--dark-700)' : "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
-                    color: isDarkMode ? '#fff' : "#fff",
-                    fontWeight: "bold",
-                    fontSize: "1rem",
-                    borderBottom: isDarkMode ? '2px solid var(--dark-700)' : "2px solid #475569"
-                  }}
-                >
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, justifyContent: "center" }}>
-                    <Subject sx={{ fontSize: "1rem" }} />
-                    الموضوع
-                  </Box>
-                </TableCell>
-                <TableCell 
-                  align="center" 
-                  sx={{ 
-                    background: isDarkMode ? 'var(--dark-700)' : "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
-                    color: isDarkMode ? '#fff' : "#fff",
-                    fontWeight: "bold",
-                    fontSize: "1rem",
-                    borderBottom: isDarkMode ? '2px solid var(--dark-700)' : "2px solid #475569"
-                  }}
-                >
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, justifyContent: "center" }}>
-                    <Message sx={{ fontSize: "1rem" }} />
-                    الرسالة
-                  </Box>
-                </TableCell>
-                <TableCell 
-                  align="center" 
-                  sx={{ 
-                    background: isDarkMode ? 'var(--dark-700)' : "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
-                    color: isDarkMode ? '#fff' : "#fff",
-                    fontWeight: "bold",
-                    fontSize: "1rem",
-                    borderBottom: isDarkMode ? '2px solid var(--dark-700)' : "2px solid #475569"
-                  }}
-                >
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, justifyContent: "center" }}>
-                    <DateRange sx={{ fontSize: "1rem" }} />
-                    التاريخ والحالة
-                  </Box>
-                </TableCell>
-                <TableCell 
-                  align="center" 
-                  sx={{ 
-                    background: isDarkMode ? 'var(--dark-700)' : "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
-                    color: isDarkMode ? '#fff' : "#fff",
-                    fontWeight: "bold",
-                    fontSize: "1rem",
-                    borderBottom: isDarkMode ? '2px solid var(--dark-700)' : "2px solid #475569"
-                  }}
-                >
-                  الإجراءات
-                </TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
-                    <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-                      <CircularProgress size={48} sx={{ color: isDarkMode ? '#fff' : "#3b82f6" }} />
-                      <Typography variant="body1" sx={{ color: isDarkMode ? '#fff' : "#64748b" }}>
-                        جاري تحميل الاستفسارات...
-                      </Typography>
-                    </Box>
-                  </TableCell>
-                </TableRow>
-              ) : error ? (
-                <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
-                    <Box sx={{ 
-                      display: "flex", 
-                      flexDirection: "column", 
-                      alignItems: "center", 
-                      gap: 2,
-                      p: 4,
-                      backgroundColor: isDarkMode ? 'color-mix(in srgb, var(--c-error) 20%, var(--c-surface))' : "#fee2e2",
-                      borderRadius: 2,
-                      border: isDarkMode ? '1px solid var(--error-700)' : "1px solid #fca5a5"
-                    }}>
-                      <Typography variant="h6" sx={{ color: isDarkMode ? '#fff' : "#dc2626", fontWeight: "bold" }}>
-                        ❌ خطأ في تحميل البيانات
-                      </Typography>
-                      <Typography variant="body1" sx={{ color: isDarkMode ? '#fff' : "#b91c1c" }}>
-                        {error}
-                      </Typography>
-                    </Box>
-                  </TableCell>
-                </TableRow>
-              ) : inquiries.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
-                    <Box sx={{ 
-                      display: "flex", 
-                      flexDirection: "column", 
-                      alignItems: "center", 
-                      gap: 2,
-                      p: 4,
-                      backgroundColor: isDarkMode ? 'var(--dark-700)' : "#f1f5f9",
-                      borderRadius: 2,
-                      border: isDarkMode ? '1px solid var(--dark-700)' : "1px solid #cbd5e1"
-                    }}>
-                      <Typography variant="h6" sx={{ color: isDarkMode ? '#fff' : "#64748b", fontWeight: "bold" }}>
-                        �� لا يوجد استفسارات
-                      </Typography>
-                      <Typography variant="body1" sx={{ color: isDarkMode ? '#fff' : "#94a3b8" }}>
-                        لم يتم العثور على أي استفسارات مرسلة حتى الآن
-                      </Typography>
-                    </Box>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                inquiries.map((inq, index) => (
-                  <TableRow 
-                    key={inq._id}
-                    sx={{ 
-                      "&:nth-of-type(odd)": { backgroundColor: isDarkMode ? 'var(--dark-800)' : "#f8fafc" },
-                      "&:hover": { 
-                        backgroundColor: isDarkMode ? 'var(--dark-700)' : "#f1f5f9",
-                        transform: "scale(1.002)",
-                        transition: "all 0.2s ease"
-                      },
-                      transition: "all 0.2s ease"
-                    }}
-                  >
-                    <TableCell align="center" sx={{ 
-                      borderBottom: isDarkMode ? '1px solid var(--dark-700)' : "1px solid #e2e8f0",
-                      py: 2
-                    }}>
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 1, justifyContent: "center" }}>
-                        <Typography variant="body1" sx={{ fontWeight: "500", color: isDarkMode ? '#fff' : "#1e293b" }}>
-                          {inq.name}
-                        </Typography>
-                        <Person sx={{ fontSize: "1rem", color: isDarkMode ? '#fff' : "#64748b" }} />
-                      </Box>
-                    </TableCell>
-                    <TableCell align="center" sx={{ 
-                      borderBottom: isDarkMode ? '1px solid var(--dark-700)' : "1px solid #e2e8f0",
-                      py: 2
-                    }}>
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 1, justifyContent: "center" }}>
-                        <Typography variant="body2" sx={{ color: isDarkMode ? '#fff' : "#475569", fontFamily: "monospace" }}>
-                          {inq.email}
-                        </Typography>
-                        <Email sx={{ fontSize: "1rem", color: isDarkMode ? '#fff' : "#64748b" }} />
-                      </Box>
-                    </TableCell>
-                    <TableCell align="center" sx={{ 
-                      borderBottom: isDarkMode ? '1px solid var(--dark-700)' : "1px solid #e2e8f0",
-                      py: 2
-                    }}>
-                      <Tooltip title={inq.subject} arrow>
-                        <Typography variant="body1" sx={{ 
-                          fontWeight: "500", 
-                          color: isDarkMode ? '#fff' : "#334155",
-                          maxWidth: "200px"
-                        }}>
-                          {truncateText(inq.subject, 30)}
-                        </Typography>
-                      </Tooltip>
-                    </TableCell>
-                    <TableCell align="center" sx={{ 
-                      borderBottom: isDarkMode ? '1px solid var(--dark-700)' : "1px solid #e2e8f0",
-                      py: 2
-                    }}>
-                      <Tooltip title={inq.message} arrow>
-                        <Typography variant="body2" sx={{ 
-                          color: isDarkMode ? '#fff' : "#64748b",
-                          maxWidth: "250px",
-                          lineHeight: 1.4
-                        }}>
-                          {truncateText(inq.message, 50)}
-                        </Typography>
-                      </Tooltip>
-                    </TableCell>
-                    <TableCell align="center" sx={{ 
-                      borderBottom: isDarkMode ? '1px solid var(--dark-700)' : "1px solid #e2e8f0",
-                      py: 2
-                    }}>
-                      <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
-                        <Typography variant="body2" sx={{ color: isDarkMode ? '#fff' : "#475569", fontWeight: "500" }}>
-                          {new Date(inq.createdAt).toLocaleDateString("ar-EG")}
-                        </Typography>
-                        <Chip 
-                          label={getStatusText(inq.createdAt)}
-                          size="small"
-                          sx={{ 
-                            backgroundColor: getStatusColor(inq.createdAt),
-                            color: '#fff',
-                            fontWeight: "bold",
-                            fontSize: "0.75rem",
-                            border: isDarkMode ? '1px solid var(--dark-700)' : undefined
-                          }}
-                        />
-                      </Box>
-                    </TableCell>
-                    <TableCell align="center" sx={{ 
-                      borderBottom: isDarkMode ? '1px solid var(--dark-700)' : "1px solid #e2e8f0",
-                      py: 2
-                    }}>
-                      <Tooltip title="تواصل مع المرسل" arrow>
-                        <IconButton
-                          component="a"
-                          href={`mailto:${inq.email}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          sx={{ color: isDarkMode ? '#fff' : "#3b82f6" }}
-                          size="small"
-                        >
-                          <MailOutline sx={{ fontSize: "1rem" }} />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="تمت المعالجة" arrow>
-                        <span>
-                          <IconButton
-                            onClick={() => setConfirmTarget(inq)}
-                            sx={{ color: isDarkMode ? '#fff' : "#22c55e", ml: 1 }}
-                            size="small"
-                            disabled={deletingId === inq._id}
-                          >
-                            {deletingId === inq._id ? <CircularProgress size={16} /> : <Check sx={{ fontSize: "1rem" }} />}
-                          </IconButton>
-                        </span>
-                      </Tooltip>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Paper>
-      {deleteError && (
-        <Box sx={{ color: "#dc2626", textAlign: "center", mt: 2 }}>{deleteError}</Box>
-      )}
-      <ConfirmDialog
-        open={!!confirmTarget}
-        title="إنهاء الاستفسار وحذفه"
-        description={`سيتم حذف رسالة "${confirmTarget?.name ?? ""}" نهائيًا من قائمة الاستفسارات، ولا يمكن التراجع عن ذلك.`}
-        confirmLabel="حذف نهائي"
-        loadingLabel="جاري الحذف..."
-        loading={!!confirmTarget && deletingId === confirmTarget._id}
-        onConfirm={() => confirmTarget && handleDelete(confirmTarget._id)}
-        onClose={() => { setConfirmTarget(null); setDeleteError(""); }}
-      >
-        {deleteError && (
-          <Typography role="alert" sx={{ color: "#dc2626", mt: 2 }}>{deleteError}</Typography>
-        )}
-      </ConfirmDialog>
-      </>)}
-    </Box>
+      <Box role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
+        {tab === "contact" ? <ContactMessagesSection /> : <PropertyInquiriesSection />}
+      </Box>
+    </>
   );
-};
-
-export default InquiriesPage;
+}
