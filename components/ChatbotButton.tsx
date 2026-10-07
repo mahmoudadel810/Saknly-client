@@ -170,7 +170,7 @@ export function ChatConversation({
               maxWidth: "85%",
               border: 1,
               borderColor: "color-mix(in srgb, var(--c-error) 40%, var(--c-border))",
-              borderRadius: "10px",
+              borderRadius: "var(--r-inner)",
               px: 1.5,
               py: 1,
             }}
@@ -214,12 +214,15 @@ export function ChatConversation({
           color="primary"
           disabled={loading || !input.trim()}
           aria-label="إرسال السؤال"
+          // v2: a 48px filled circle, level with the 48px field; quiet on the field colour while disabled.
           sx={{
-            width: 44,
-            height: 44,
-            border: 1,
-            borderColor: "divider",
-            borderRadius: "6px",
+            width: 48,
+            height: 48,
+            flexShrink: 0,
+            bgcolor: "primary.main",
+            color: "primary.contrastText",
+            "&:hover": { bgcolor: "primary.dark" },
+            "&.Mui-disabled": { bgcolor: "var(--c-field)", color: "var(--c-muted)" },
             mb: input.length > MAX_QUESTION - 50 ? 3.5 : 0,
           }}
         >
@@ -240,7 +243,7 @@ function Bubble({ author, children }: { author: Message["role"]; children: React
         maxWidth: "85%",
         px: 1.5,
         py: 1,
-        borderRadius: "10px",
+        borderRadius: "var(--r-inner)",
         border: 1,
         borderColor: mine ? "transparent" : "divider",
         bgcolor: mine ? "var(--c-primary-soft)" : "var(--c-surface-2)",
