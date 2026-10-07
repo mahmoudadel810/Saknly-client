@@ -18,7 +18,8 @@ import { API_URL, authHeader } from "@/shared/utils/auth";
 // Type definitions
 interface StatCardProps {
   title: string;
-  value: number;
+  /** null when the count could not be loaded; rendered as a dash, never as 0 */
+  value: number | null;
   change?: number;
   icon: React.ElementType;
   color: string;
@@ -43,7 +44,7 @@ const StatCard = ({ title, value, change, icon: Icon, color, trend }: StatCardPr
         </div>
         <div>
           <p className="text-sm font-medium text-secondary-600 mb-1">{title}</p>
-          <p className="text-2xl font-bold text-secondary-900">{value.toLocaleString()}</p>
+          <p className="text-2xl font-bold text-secondary-900">{value === null ? '—' : value.toLocaleString()}</p>
         </div>
       </div>
       {typeof change === 'number' && (
@@ -95,9 +96,11 @@ const AdminDashboard = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
   const [users, setUsers] = useState<User[]>([]);
-  const [totalProperties, setTotalProperties] = useState(0);
-  const [totalAgencies, setTotalAgencies] = useState(0);
+  const [totalProperties, setTotalProperties] = useState<number | null>(null);
+  const [totalAgencies, setTotalAgencies] = useState<number | null>(null);
   const [analyticsUserCount, setAnalyticsUserCount] = useState<number | null>(null);
+  const [statsError, setStatsError] = useState(false);
+  const [statsReloadKey, setStatsReloadKey] = useState(0);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -127,22 +130,27 @@ const AdminDashboard = () => {
   useEffect(() => {
     // Totals from the admin analytics endpoint
     const fetchStats = async () => {
+      setStatsError(false);
       try {
         const res = await axios.get(`${API_URL}/admin/analytics`, { headers: authHeader() });
         const analytics = res.data?.data ?? res.data ?? {};
-        setAnalyticsUserCount(typeof analytics.userCount === 'number' ? analytics.userCount : null);
-        setTotalProperties(analytics.propertyCount || 0);
-        setTotalAgencies(analytics.agencyCount || 0);
+        const count = (v: unknown) => (typeof v === 'number' ? v : null);
+        setAnalyticsUserCount(count(analytics.userCount));
+        setTotalProperties(count(analytics.propertyCount));
+        setTotalAgencies(count(analytics.agencyCount));
       } catch (err) {
-        setTotalProperties(0);
-        setTotalAgencies(0);
+        // Unknown is not zero: show dashes and a retry instead of fake totals.
+        setAnalyticsUserCount(null);
+        setTotalProperties(null);
+        setTotalAgencies(null);
+        setStatsError(true);
       }
     };
     fetchStats();
-  }, []);
+  }, [statsReloadKey]);
 
   const stats = {
-    totalUsers: analyticsUserCount ?? totalUsers,
+    totalUsers: analyticsUserCount ?? (statsError ? null : totalUsers),
     totalProperties: totalProperties,
     totalAgencies: totalAgencies
   };
@@ -230,6 +238,22 @@ const AdminDashboard = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {statsError && (
+          <div
+            role="alert"
+            className="mb-6 rounded-lg border border-red-300 bg-red-50 text-red-800 px-4 py-3 flex items-center justify-between gap-4"
+          >
+            <span>تعذر تحميل إحصائيات لوحة التحكم. الأرقام غير متاحة حاليًا.</span>
+            <button
+              type="button"
+              onClick={() => setStatsReloadKey((k) => k + 1)}
+              className="shrink-0 rounded-md border border-red-400 px-3 py-1 text-sm font-medium hover:bg-red-100"
+            >
+              إعادة المحاولة
+            </button>
+          </div>
+        )}
+
         {/* Stats Cards */}
         <div
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"

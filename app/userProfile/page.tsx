@@ -19,6 +19,7 @@ import {
   useMediaQuery,
   Theme,
   CircularProgress,
+  Alert,
 } from "@mui/material";
 import {
   Email,
@@ -45,6 +46,8 @@ export default function UserProfilePage() {
 
   const [myProperties, setMyProperties] = useState<any[]>([]);
   const [loadingProperties, setLoadingProperties] = useState(true);
+  const [propertiesError, setPropertiesError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   
   // Pagination state
   const [page, setPage] = useState(0);
@@ -60,20 +63,26 @@ export default function UserProfilePage() {
     }
     const fetchUserProperties = async () => {
       setLoadingProperties(true);
+      setPropertiesError(false);
       try {
         const res = await fetch(`${API_URL}/properties/myProperties`, {
           headers: authHeader(),
         });
-        const data = await res.json();
-        setMyProperties(res.ok && data.success && Array.isArray(data.data) ? data.data : []);
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.success || !Array.isArray(data.data)) {
+          throw new Error("failed to load properties");
+        }
+        setMyProperties(data.data);
       } catch (err) {
+        // A failure is not "no properties": keep it distinct so the user can retry.
         setMyProperties([]);
+        setPropertiesError(true);
       } finally {
         setLoadingProperties(false);
       }
     };
     fetchUserProperties();
-  }, [userId]);
+  }, [userId, reloadKey]);
 
   if (!authContext) {
     return <Typography>Loading...</Typography>;
@@ -96,14 +105,14 @@ export default function UserProfilePage() {
     },
     { 
       title: "قيد المراجعة", 
-      value: pendingCount, 
+      value: propertiesError ? "—" : pendingCount, 
       icon: <HourglassTop sx={{ color: "#f59e0b" }} />,
       color: "linear-gradient(135deg, #fef3c7 0%, #fffbeb 100%)",
       borderColor: "#f59e0b"
     },
     { 
       title: "المقبولة", 
-      value: acceptedCount, 
+      value: propertiesError ? "—" : acceptedCount, 
       icon: <Check sx={{ color: "#22c55e" }} />,
       color: "linear-gradient(135deg, #dcfce7 0%, #f0fdf4 100%)",
       borderColor: "#22c55e"
@@ -444,6 +453,18 @@ export default function UserProfilePage() {
                 }}>
                   <CircularProgress size={40} sx={{ color: isDarkMode ? "#60a5fa" : "#3b82f6" }} />
                 </Box>
+              ) : propertiesError ? (
+                <Alert
+                  severity="error"
+                  sx={{ my: 2 }}
+                  action={
+                    <Button color="inherit" size="small" onClick={() => setReloadKey((k) => k + 1)}>
+                      إعادة المحاولة
+                    </Button>
+                  }
+                >
+                  تعذر تحميل عقاراتك. تحقق من الاتصال ثم أعد المحاولة.
+                </Alert>
               ) : myProperties.length === 0 ? (
                 <Box sx={{ 
                   textAlign: "center", 

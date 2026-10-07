@@ -37,6 +37,7 @@ import { Agency } from '../../../../shared/types/index';
 import { useDarkMode } from "@/app/context/DarkModeContext";
 import { API_URL, authHeader } from "@/shared/utils/auth";
 import ConfirmDialog from "@/shared/components/ConfirmDialog";
+import { useToast } from "@/shared/provider/ToastProvider";
 
 const PAGE_SIZE = 10;
 
@@ -231,6 +232,7 @@ const AgenciesPage = () => {
   const [selectedAgency, setSelectedAgency] = useState<Agency | null>(null);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const { showToast } = useToast();
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -287,8 +289,8 @@ const AgenciesPage = () => {
             : a
         )
       );
-    } catch (err) {
-      console.error('Error toggling featured status:', err);
+    } catch (err: any) {
+      showToast(err?.message || 'فشل في تحديث حالة الوكالة', 'error');
     } finally {
       setActionLoading(false);
     }
@@ -310,8 +312,10 @@ const AgenciesPage = () => {
       );
       setSelectedAgency(null);
       setDeleteDialog(false);
-    } catch (err) {
-      console.error('Error deleting agency:', err);
+      showToast('تم حذف الوكالة', 'success');
+    } catch (err: any) {
+      // The dialog stays open so the admin can retry or cancel.
+      showToast(err?.message || 'فشل حذف الوكالة', 'error');
     } finally {
       setActionLoading(false);
     }
@@ -478,6 +482,14 @@ const AgenciesPage = () => {
             >
               {error}
             </Typography>
+            <Button
+              size="small"
+              onClick={() => fetchAgencies(debouncedSearch, page)}
+              disabled={loading}
+              sx={{ mt: 1, color: isDarkMode ? '#fff' : colors.error }}
+            >
+              إعادة المحاولة
+            </Button>
           </Box>
         )}
 

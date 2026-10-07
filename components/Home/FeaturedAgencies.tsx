@@ -26,10 +26,13 @@ export default function FeaturedAgencies() {
   const router = useRouter();
   const [agencies, setAgencies] = useState<Agency[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const hasFetched = useRef(false);
   const swiperRef = useRef<any>(null);
 
   const fetchFeaturedAgencies = async () => {
+    setLoading(true);
+    setLoadError(false);
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1';
       if (!apiUrl) {
@@ -39,9 +42,9 @@ export default function FeaturedAgencies() {
       }
 
       const res = await axios.get(`${apiUrl}/agencies/featured`);
-      setAgencies(res.data.data);
+      setAgencies(Array.isArray(res.data?.data) ? res.data.data : []);
     } catch (error) {
-      console.error("فشل في تحميل الوكالات:", error);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -74,6 +77,19 @@ export default function FeaturedAgencies() {
     return (
       <Box sx={{ textAlign: "center", py: 4 }}>
         <Typography>جاري تحميل الوكالات...</Typography>
+      </Box>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <Box role="alert" sx={{ textAlign: "center", py: 4 }}>
+        <Typography color="error" sx={{ mb: 2 }}>
+          تعذر تحميل الوكالات المميزة.
+        </Typography>
+        <Button variant="outlined" onClick={fetchFeaturedAgencies}>
+          إعادة المحاولة
+        </Button>
       </Box>
     );
   }

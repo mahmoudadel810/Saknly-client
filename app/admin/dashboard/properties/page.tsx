@@ -512,15 +512,18 @@ const PropertiesAdminPage = () => {
   });
 
   // Fetch pending properties
-  const { data: pendingProperties, isLoading } = useQuery({
+  const { data: pendingProperties, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['pending-properties'],
     queryFn: async () => {
       const responses = await Promise.all(
-        propertyTypes.map(type => 
-          fetch(`${API_URL}/properties/pending?category=${type.key}`, {
+        propertyTypes.map(async type => {
+          const res = await fetch(`${API_URL}/properties/pending?category=${type.key}`, {
             headers: authHeader(),
-          }).then(res => res.json())
-        )
+          });
+          // A 401/500 must not be shown as "no pending properties".
+          if (!res.ok) throw new Error(`Failed to load pending properties (${res.status})`);
+          return res.json();
+        })
       );
       
       return propertyTypes.reduce((acc, type, index) => {
@@ -673,7 +676,22 @@ const PropertiesAdminPage = () => {
           </Paper>
         </Fade>
 
-        {/* Property Sections */}
+        {isError && (
+          <Alert
+            severity="error"
+            sx={{ mb: 3, borderRadius: 2 }}
+            action={
+              <Button color="inherit" size="small" onClick={() => refetch()} disabled={isFetching}>
+                إعادة المحاولة
+              </Button>
+            }
+          >
+            تعذر تحميل العقارات المعلقة.
+          </Alert>
+        )}
+
+        {/* Property Sections (hidden when the first load failed, so an error never reads as "nothing pending") */}
+        {!(isError && !pendingProperties) && (
         <Box sx={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: { xs: 2, md: 3 } }}>
           {propertyTypes.map((type) => (
             <Box key={type.key} sx={{ flex: '1 1 0', minWidth: 0, maxWidth: '100%' }}>
@@ -687,6 +705,7 @@ const PropertiesAdminPage = () => {
             </Box>
           ))}
         </Box>
+        )}
 
         {/* Deny Dialog — the server deletes the listing (DELETE /properties/:id/deny) */}
         <ConfirmDialog
