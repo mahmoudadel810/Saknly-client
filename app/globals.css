@@ -22,6 +22,7 @@
   --c-surface: #FFFFFF;
   --c-surface-raised: #FFFFFF;
   --c-border: #DDE2E1;
+  --c-border-strong: #7E8A88; /* input outlines: 3.6:1 on surface */
   --c-text: #17201F;
   --c-text-2: #4A5654;
   --c-muted: #66706E;
@@ -42,6 +43,7 @@
   --c-surface: #161D1C;
   --c-surface-raised: #1D2625;
   --c-border: #2A3533;
+  --c-border-strong: #647371;
   --c-text: #E8EDEC;
   --c-text-2: #B3BEBC;
   --c-muted: #82908D;
