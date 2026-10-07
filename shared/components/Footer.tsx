@@ -51,8 +51,8 @@ export default function Footer() {
   return (
     <Box component="footer" sx={{ borderTop: 1, borderColor: "divider", bgcolor: "background.paper" }}>
       <Box sx={{ maxWidth: 1240, mx: "auto", px: { xs: 2, md: 3 }, pt: { xs: 4, md: 5 }, pb: 3 }}>
-        <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)]">
-          <div>
+        <div className="grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)]">
+          <div className="col-span-2 md:col-span-1">
             <Box
               component={Link}
               href="/"
