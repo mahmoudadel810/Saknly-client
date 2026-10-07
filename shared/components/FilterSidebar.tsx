@@ -1,602 +1,251 @@
 "use client";
 
-import React, { useEffect, useState, useRef, Suspense } from 'react';
-import {
-  Box,
-  Typography,
-  Slider,
-  FormControl,
-  FormLabel,
-  RadioGroup,
-  FormControlLabel,
-  Radio,
-  Checkbox,
-  FormGroup,
-  Button,
-  Divider,
-  TextField,
-  InputAdornment,
-} from '@mui/material';
-import SearchIcon from '@mui/icons-material/Search';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useDebounce, useDebouncedCallback } from 'use-debounce';
-import { AMENITIES, CITY_OPTIONS, PROPERTY_TYPE_OPTIONS } from '../constants/property';
+import React, { useId } from "react";
+import Box from "@mui/material/Box";
+import Checkbox from "@mui/material/Checkbox";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import InputAdornment from "@mui/material/InputAdornment";
+import MenuItem from "@mui/material/MenuItem";
+import Slider from "@mui/material/Slider";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import SearchOutlined from "@mui/icons-material/SearchOutlined";
+import { AMENITIES, CITY_OPTIONS, PROPERTY_TYPE_OPTIONS } from "@/shared/constants/property";
+import { formatNumber } from "@/shared/ui/Price";
+import { yearsLabel, type PropertyFilters } from "@/shared/ui/listing/usePropertyFilters";
 
-// URL keys this sidebar owns; every other key (category, isStudentFriendly, page, ...) is preserved.
-const OWNED_KEYS = [
-  'search',
-  'price[gte]',
-  'price[lte]',
-  'location.city',
-  'type',
-  'bedrooms',
-  'bathrooms',
-  'area',
-  'amenities',
-  'downPayment',
-  'installmentPeriodInYears',
-];
+const COUNTS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+const YEARS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
-const SEARCH_DEBOUNCE_MS = 400;
-
-interface FilterSidebarProps { }
-
-const FilterSidebar: React.FC<FilterSidebarProps> = () => {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-
-  // State for filters, initialized from URL search params
-  const [searchQuery, setSearchQuery] = useState<string>(searchParams.get('search') || '');
-  const [priceRange, setPriceRange] = useState<number[]>([
-    Number(searchParams.get('price[gte]')) || 500000,
-    Number(searchParams.get('price[lte]')) || 20000000
-  ]);
-  // priceRange follows the slider/inputs live; appliedPrice is what reaches the URL (and so the API):
-  // the slider commits on release, typed values after a pause.
-  const [appliedPrice, setAppliedPrice] = useState<number[]>(priceRange);
-  const applyTypedPrice = useDebouncedCallback((value: number[]) => setAppliedPrice(value), SEARCH_DEBOUNCE_MS);
-  // Typing in the search box updates the URL only after a pause, not per keystroke.
-  const [appliedSearch] = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
-  const [selectedAreas, setSelectedAreas] = useState<string[]>(searchParams.get('location.city')?.split(',') || []);
-  const [selectedPropertyTypes, setSelectedPropertyTypes] = useState<string[]>(searchParams.get('type')?.split(',') || []);
-  const [selectedBedrooms, setSelectedBedrooms] = useState<number | null>(
-    searchParams.has('bedrooms') ? Number(searchParams.get('bedrooms')) : null
-  );
-  const [selectedBathrooms, setSelectedBathrooms] = useState<number | null>(
-    searchParams.has('bathrooms') ? Number(searchParams.get('bathrooms')) : null
-  );
-  const [unitArea, setUnitArea] = useState<number | null>(
-    searchParams.has('area') ? Number(searchParams.get('area')) : null
-  );
-  const [selectedAmenities, setSelectedAmenities] = useState<string[]>(searchParams.get('amenities')?.split(',') || []);
-  const [downPayment, setDownPayment] = useState<string>(searchParams.get('downPayment') || '');
-  const [installmentPeriodInYears, setInstallmentPeriodInYears] = useState<number | null>(
-    searchParams.has('installmentPeriodInYears') ? Number(searchParams.get('installmentPeriodInYears')) : null
-  );
-
-  // Constants for filter options
-  const PROPERTY_TYPES_OPTIONS = PROPERTY_TYPE_OPTIONS;
-
-  const CITIES_OPTIONS = CITY_OPTIONS;
-
-  const AMENITIES_OPTIONS = AMENITIES;
-
-  const bedroomOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-  const bathroomOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-  const installmentYearsOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-
-  const isFirstRun = useRef(true);
-
-  useEffect(() => {
-    // The initial state is read from the URL, so there is nothing to write on mount.
-    if (isFirstRun.current) {
-      isFirstRun.current = false;
-      return;
-    }
-
-    // Start from the current params and only rewrite the keys this sidebar owns.
-    const currentFilters = new URLSearchParams(window.location.search);
-    const newFilters = new URLSearchParams(currentFilters);
-    OWNED_KEYS.forEach((key) => newFilters.delete(key));
-
-    if (appliedSearch) {
-      newFilters.set('search', appliedSearch);
-    }
-    if (appliedPrice[0] !== 500000) {
-      newFilters.set('price[gte]', appliedPrice[0].toString());
-    }
-    if (appliedPrice[1] !== 20000000) {
-      newFilters.set('price[lte]', appliedPrice[1].toString());
-    }
-    if (selectedAreas.length > 0) {
-      newFilters.set('location.city', selectedAreas.join(','));
-    }
-    if (selectedPropertyTypes.length > 0) {
-      newFilters.set('type', selectedPropertyTypes.join(','));
-    }
-    if (selectedBedrooms !== null) {
-      newFilters.set('bedrooms', selectedBedrooms.toString());
-    }
-    if (selectedBathrooms !== null) {
-      newFilters.set('bathrooms', selectedBathrooms.toString());
-    }
-    if (unitArea !== null) {
-      newFilters.set('area', unitArea.toString());
-    }
-    if (selectedAmenities.length > 0) {
-      newFilters.set('amenities', selectedAmenities.join(','));
-    }
-    if (downPayment) {
-      newFilters.set('downPayment', downPayment);
-    }
-    if (installmentPeriodInYears !== null) {
-      newFilters.set('installmentPeriodInYears', installmentPeriodInYears.toString());
-    }
-
-    const ownedState = (params: URLSearchParams) =>
-      OWNED_KEYS.map((key) => `${key}=${params.get(key) ?? ''}`).join('&');
-    if (ownedState(currentFilters) === ownedState(newFilters)) {
-      return;
-    }
-    // A filter change invalidates the current page number.
-    newFilters.delete('page');
-
-    const query = newFilters.toString();
-    router.replace(query ? `?${query}` : window.location.pathname, { scroll: false });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    appliedSearch,
-    appliedPrice,
-    selectedAreas,
-    selectedPropertyTypes,
-    selectedBedrooms,
-    selectedBathrooms,
-    unitArea,
-    selectedAmenities,
-    downPayment,
-    installmentPeriodInYears,
-  ]);
-
-
-  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(event.target.value);
-  };
-
-  const handlePriceChange = (event: Event, newValue: number | number[]) => {
-    setPriceRange(newValue as number[]);
-  };
-
-  const handlePriceCommitted = (event: React.SyntheticEvent | Event, newValue: number | number[]) => {
-    applyTypedPrice.cancel();
-    setAppliedPrice(newValue as number[]);
-  };
-
-  const handleMinPriceChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const next = [Number(event.target.value), priceRange[1]];
-    setPriceRange(next);
-    applyTypedPrice(next);
-  };
-
-  const handleMaxPriceChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const next = [priceRange[0], Number(event.target.value)];
-    setPriceRange(next);
-    applyTypedPrice(next);
-  };
-
-  const resetPrice = () => {
-    applyTypedPrice.cancel();
-    setPriceRange([500000, 20000000]);
-    setAppliedPrice([500000, 20000000]);
-  };
-
-  const handleAreaChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = event.target.name;
-    setSelectedAreas(prev =>
-      prev.includes(value) ? prev.filter(item => item !== value) : [...prev, value]
-    );
-  };
-
-  const handlePropertyTypeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = event.target.name;
-    setSelectedPropertyTypes(prev =>
-      prev.includes(value) ? prev.filter(item => item !== value) : [...prev, value]
-    );
-  };
-
-  const handleBedroomChange = (beds: number) => {
-    setSelectedBedrooms(prev => (prev === beds ? null : beds));
-  };
-
-  const handleBathroomChange = (baths: number) => {
-    setSelectedBathrooms(prev => (prev === baths ? null : baths));
-  };
-
-  const handleUnitAreaInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = Number(event.target.value);
-    setUnitArea(isNaN(value) ? null : value);
-  };
-
-  const handleAmenityChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = event.target.name;
-    setSelectedAmenities(prev =>
-      prev.includes(value) ? prev.filter(item => item !== value) : [...prev, value]
-    );
-  };
-
-  const handleDownPaymentChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setDownPayment(event.target.value);
-  };
-
-  const handleInstallmentPeriodInYearsChange = (years: number) => {
-    setInstallmentPeriodInYears(prev => (prev === years ? null : years));
-  };
-
-  const handleClearAll = () => {
-    setSearchQuery('');
-    resetPrice();
-    setSelectedAreas([]);
-    setSelectedPropertyTypes([]);
-    setSelectedBedrooms(null);
-    setSelectedBathrooms(null);
-    setUnitArea(null);
-    setSelectedAmenities([]);
-    setDownPayment('');
-    setInstallmentPeriodInYears(null);
-    // The URL sync effect removes the owned keys and keeps category and other params.
-  };
-
-  const handleClearFilter = (filterName: string) => {
-    const newFilters = new URLSearchParams(searchParams.toString());
-    switch (filterName) {
-      case 'search':
-        setSearchQuery('');
-        newFilters.delete('search');
-        break;
-      case 'price':
-        resetPrice();
-        newFilters.delete('price[gte]');
-        newFilters.delete('price[lte]');
-        break;
-      case 'location.city':
-        setSelectedAreas([]);
-        newFilters.delete('location.city');
-        break;
-      case 'type':
-        setSelectedPropertyTypes([]);
-        newFilters.delete('type');
-        break;
-      case 'bedrooms':
-        setSelectedBedrooms(null);
-        newFilters.delete('bedrooms');
-        break;
-      case 'bathrooms':
-        setSelectedBathrooms(null);
-        newFilters.delete('bathrooms');
-        break;
-      case 'area':
-        setUnitArea(null);
-        newFilters.delete('area');
-        break;
-      case 'amenities':
-        setSelectedAmenities([]);
-        newFilters.delete('amenities');
-        break;
-      case 'downPayment':
-        setDownPayment('');
-        newFilters.delete('downPayment');
-        break;
-      case 'installmentPeriodInYears':
-        setInstallmentPeriodInYears(null);
-        newFilters.delete('installmentPeriodInYears');
-        break;
-      default:
-        break;
-    }
-    newFilters.delete('page');
-    router.replace(`?${newFilters.toString()}`, { scroll: false });
-  };
-
+/** A labelled group of filters: a fieldset whose legend is the visible section title. */
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <Box
-      sx={{
-        width: { xs: '50%', md: 350 }, // Full width on small screens, 350px on medium and up
-        p: { xs: 2, md: 3 }, // Less padding on small screens
-        borderLeft: { xs: 'none', md: '1px solid #e0e0e0' }, // No left border on small screens
-        borderBottom: { xs: '1px solid #e0e0e0', md: 'none' }, // Add bottom border on small screens if it's placed at the top
-        backgroundColor: '#fff',
-        flexShrink: 0,
-        overflowY: 'auto',
-        maxHeight: { xs: 'auto', md: '100vh' }, // Adjust max height for small screens if needed
-      }}
+      component="fieldset"
+      sx={{ m: 0, p: 0, border: 0, minWidth: 0, py: 2.5, borderTop: 1, borderColor: "divider", "&:first-of-type": { borderTop: 0, pt: 0 } }}
     >
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-          الفلاتر
-        </Typography>
-        <Button onClick={handleClearAll} sx={{ color: 'primary.main', textDecoration: 'underline' }}>
-          مسح الكل
-        </Button>
-      </Box>
-
-      {/* Search Bar */}
-      <TextField
-        fullWidth
-        placeholder="البحث بالمدينة, العنوان ..."
-        variant="outlined"
-        size="small"
-        value={searchQuery}
-        onChange={handleSearchChange}
-        sx={{ mb: 3, '.MuiOutlinedInput-root': { borderRadius: '8px' } }}
-        InputProps={{
-          startAdornment: (
-            <InputAdornment position="start">
-              <SearchIcon sx={{ ml: 1 }} />
-            </InputAdornment>
-          ),
-          style: { textAlign: 'start' }
-        }}
-        inputProps={{ dir: 'rtl', style: { textAlign: 'start' } }}
-      />
-      <Divider sx={{ my: 3 }} />
-
-      {/* Price Range Filter */}
-      <FormControl component="fieldset" sx={{ mb: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-          <FormLabel component="legend" sx={{ textAlign: 'start', fontWeight: 'bold' }}>
-            السعر
-          </FormLabel>
-          <Button onClick={() => handleClearFilter('price')} sx={{ color: 'primary.main', textDecoration: 'underline', fontSize: '0.8rem' }}>
-            الغاء
-          </Button>
-        </Box>
-        <Slider
-          value={priceRange}
-          onChange={handlePriceChange}
-          onChangeCommitted={handlePriceCommitted}
-          valueLabelDisplay="auto"
-          min={500000}
-          max={20000000}
-          sx={{ width: '95%', margin: '0 auto' }}
-        />
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1, flexWrap: 'wrap', gap: 1 }}> {/* Added flexWrap and gap here */}
-          <TextField
-            label="الحد الأدنى"
-            variant="outlined"
-            size="small"
-            type="number"
-            value={priceRange[0]}
-            onChange={handleMinPriceChange}
-            sx={{ flexGrow: 1, '.MuiOutlinedInput-root': { borderRadius: '8px' } }} 
-            inputProps={{ dir: 'rtl', style: { textAlign: 'start' } }}
-          />
-          <TextField
-            label="الحد الأقصى"
-            variant="outlined"
-            size="small"
-            type="number"
-            value={priceRange[1]}
-            onChange={handleMaxPriceChange}
-            sx={{ flexGrow: 1, '.MuiOutlinedInput-root': { borderRadius: '8px' } }} 
-            inputProps={{ dir: 'rtl', style: { textAlign: 'start' } }}
-          />
-        </Box>
-      </FormControl>
-
-      <Divider sx={{ my: 3 }} />
-
-      {/* Areas (Cities) Filter */}
-      <FormControl component="fieldset" sx={{ mb: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-          <FormLabel component="legend" sx={{ textAlign: 'start', fontWeight: 'bold' }}>
-            المناطق (المدن)
-          </FormLabel>
-          <Button onClick={() => handleClearFilter('location.city')} sx={{ color: 'primary.main', textDecoration: 'underline', fontSize: '0.8rem' }}>
-            الغاء
-          </Button>
-        </Box>
-        <FormGroup>
-          {CITIES_OPTIONS.map((city) => (
-            <FormControlLabel
-              key={city}
-              control={
-                <Checkbox
-                  checked={selectedAreas.includes(city)}
-                  onChange={handleAreaChange}
-                  name={city}
-                />
-              }
-              label={city}
-              sx={{ '.MuiFormControlLabel-label': { mr: 1 } }}
-            />
-          ))}
-        </FormGroup>
-      </FormControl>
-
-      <Divider sx={{ my: 3 }} />
-
-      {/* Property Type Filter */}
-      <FormControl component="fieldset" sx={{ mb: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-          <FormLabel component="legend" sx={{ textAlign: 'start', fontWeight: 'bold' }}>
-            نوع العقار
-          </FormLabel>
-          <Button onClick={() => handleClearFilter('type')} sx={{ color: 'primary.main', textDecoration: 'underline', fontSize: '0.8rem' }}>
-            الغاء
-          </Button>
-        </Box>
-        <FormGroup>
-          {PROPERTY_TYPES_OPTIONS.map((type) => (
-            <FormControlLabel
-              key={type.value}
-              control={
-                <Checkbox
-                  checked={selectedPropertyTypes.includes(type.value)}
-                  onChange={handlePropertyTypeChange}
-                  name={type.value}
-                />
-              }
-              label={type.label}
-              sx={{ '.MuiFormControlLabel-label': { mr: 1 } }}
-            />
-          ))}
-        </FormGroup>
-      </FormControl>
-
-      <Divider sx={{ my: 3 }} />
-
-      {/* Bedrooms Filter */}
-      <FormControl component="fieldset" sx={{ mb: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-          <FormLabel component="legend" sx={{ textAlign: 'start', fontWeight: 'bold' }}>
-            عدد غرف النوم
-          </FormLabel>
-          <Button onClick={() => handleClearFilter('bedrooms')} sx={{ color: 'primary.main', textDecoration: 'underline', fontSize: '0.8rem' }}>
-            الغاء
-          </Button>
-        </Box>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-          {bedroomOptions.map((beds) => (
-            <Button
-              key={beds}
-              variant={selectedBedrooms === beds ? 'contained' : 'outlined'}
-              onClick={() => handleBedroomChange(beds)}
-              sx={{ minWidth: '40px', padding: '5px 8px' }}
-            >
-              {beds}
-            </Button>
-          ))}
-        </Box>
-      </FormControl>
-
-      <Divider sx={{ my: 3 }} />
-
-      {/* Bathrooms Filter */}
-      <FormControl component="fieldset" sx={{ mb: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-          <FormLabel component="legend" sx={{ textAlign: 'start', fontWeight: 'bold' }}>
-            عدد الحمامات
-          </FormLabel>
-          <Button onClick={() => handleClearFilter('bathrooms')} sx={{ color: 'primary.main', textDecoration: 'underline', fontSize: '0.8rem' }}>
-            الغاء
-          </Button>
-        </Box>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-          {bathroomOptions.map((baths) => (
-            <Button
-              key={baths}
-              variant={selectedBathrooms === baths ? 'contained' : 'outlined'}
-              onClick={() => handleBathroomChange(baths)}
-              sx={{ minWidth: '40px', padding: '5px 8px' }}
-            >
-              {baths}
-            </Button>
-          ))}
-        </Box>
-      </FormControl>
-
-      <Divider sx={{ my: 3 }} />
-
-      {/* Unit Area Filter */}
-      <FormControl component="fieldset" sx={{ mb: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-          <FormLabel component="legend" sx={{ textAlign: 'start', fontWeight: 'bold' }}>
-            مساحة الوحدة (متر مربع)
-          </FormLabel>
-          <Button onClick={() => handleClearFilter('area')} sx={{ color: 'primary.main', textDecoration: 'underline', fontSize: '0.8rem' }}>
-            الغاء
-          </Button>
-        </Box>
-        <TextField
-          fullWidth
-          label="المساحة"
-          variant="outlined"
-          size="small"
-          type="number"
-          value={unitArea === null ? '' : unitArea}
-          onChange={handleUnitAreaInputChange}
-          inputProps={{ min: 0, style: { textAlign: 'start' } }}
-          sx={{ '.MuiOutlinedInput-root': { borderRadius: '8px' } }}
-        />
-      </FormControl>
-
-      <Divider sx={{ my: 3 }} />
-
-      {/* Amenities Filter */}
-      <FormControl component="fieldset" sx={{ mb: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-          <FormLabel component="legend" sx={{ textAlign: 'start', fontWeight: 'bold' }}>
-            الرفاهيات
-          </FormLabel>
-          <Button onClick={() => handleClearFilter('amenities')} sx={{ color: 'primary.main', textDecoration: 'underline', fontSize: '0.8rem' }}>
-            الغاء
-          </Button>
-        </Box>
-        <FormGroup>
-          {AMENITIES_OPTIONS.map((amenity) => (
-            <FormControlLabel
-              key={amenity}
-              control={
-                <Checkbox
-                  checked={selectedAmenities.includes(amenity)}
-                  onChange={handleAmenityChange}
-                  name={amenity}
-                />
-              }
-              label={amenity}
-              sx={{ '.MuiFormControlLabel-label': { mr: 1 } }}
-            />
-          ))}
-        </FormGroup>
-      </FormControl>
-
-      <Divider sx={{ my: 3 }} />
-
-      {/* Payment Plan Filter */}
-      <FormControl component="fieldset" sx={{ mb: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-          <FormLabel component="legend" sx={{ textAlign: 'start', fontWeight: 'bold' }}>
-            خطة الدفع
-          </FormLabel>
-          <Button onClick={() => { handleClearFilter('downPayment'); handleClearFilter('installmentPeriodInYears'); }} sx={{ color: 'primary.main', textDecoration: 'underline', fontSize: '0.8rem' }}>
-            الغاء
-          </Button>
-        </Box>
-        <TextField
-          fullWidth
-          label="المقدم (Down Payment)"
-          variant="outlined"
-          size="small"
-          type="number"
-          value={downPayment}
-          onChange={handleDownPaymentChange}
-          inputProps={{ min: 0, style: { textAlign: 'start' } }}
-          sx={{ mb: 2, '.MuiOutlinedInput-root': { borderRadius: '8px' } }}
-        />
-        <FormLabel component="legend" sx={{ textAlign: 'start', fontWeight: 'bold', mb: 1 }}>
-          عدد سنوات التقسيط
-        </FormLabel>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-          {installmentYearsOptions.map((years) => (
-            <Button
-              key={years}
-              variant={installmentPeriodInYears === years ? 'contained' : 'outlined'}
-              onClick={() => handleInstallmentPeriodInYearsChange(years)}
-              sx={{ minWidth: '40px', padding: '5px 8px' }}
-            >
-              {years}
-            </Button>
-          ))}
-        </Box>
-      </FormControl>
+      <Typography component="legend" variant="subtitle2" sx={{ p: 0, mb: 1.5, fontSize: "0.875rem", fontWeight: 600 }}>
+        {title}
+      </Typography>
+      {children}
     </Box>
   );
-};
+}
 
-// useSearchParams requires a Suspense boundary for static rendering.
-const FilterSidebarWithSuspense: React.FC<FilterSidebarProps> = (props) => (
-  <Suspense fallback={null}>
-    <FilterSidebar {...props} />
-  </Suspense>
-);
+function CheckList({
+  options,
+  selected,
+  onToggle,
+  columns = 1,
+}: {
+  options: readonly { value: string; label: string }[];
+  selected: string[];
+  onToggle: (value: string) => void;
+  columns?: 1 | 2;
+}) {
+  return (
+    <Box sx={{ display: "grid", gridTemplateColumns: columns === 2 ? "repeat(2, minmax(0, 1fr))" : "1fr", columnGap: 1 }}>
+      {options.map((option) => (
+        <FormControlLabel
+          key={option.value}
+          sx={{ m: 0, minHeight: 36, "& .MuiFormControlLabel-label": { fontSize: "0.875rem" } }}
+          control={
+            <Checkbox
+              size="small"
+              checked={selected.includes(option.value)}
+              onChange={() => onToggle(option.value)}
+              sx={{ p: 0.75, marginInlineEnd: 0.5 }}
+            />
+          }
+          label={option.label}
+        />
+      ))}
+    </Box>
+  );
+}
 
-export default FilterSidebarWithSuspense;
+const numberInput = { inputMode: "numeric" as const, min: 0 };
+
+/**
+ * The browse filters as a form. It holds no state: everything comes from usePropertyFilters, so the
+ * desktop column and the mobile drawer show the same values and the applied-filter chips stay in step.
+ */
+export default function FilterSidebar({ filters }: { filters: PropertyFilters }) {
+  const id = useId();
+  const { draft, type, update, preview, toggleIn, bounds } = filters;
+  const showPaymentPlan = draft.kind === "all" || draft.kind === "sale";
+
+  const sliderValue = [
+    Math.min(Number(draft.priceMin) || bounds.min, bounds.max),
+    Math.min(Number(draft.priceMax) || bounds.max, bounds.max),
+  ];
+  const fromSlider = (value: number[]) => ({
+    priceMin: value[0] > bounds.min ? String(value[0]) : "",
+    priceMax: value[1] < bounds.max ? String(value[1]) : "",
+  });
+
+  return (
+    <Box>
+      <Section title="كلمة البحث">
+        <TextField
+          fullWidth
+          type="search"
+          value={draft.search}
+          onChange={(event) => type("search", event.target.value)}
+          placeholder="العنوان، الحي، أو وصف العقار"
+          slotProps={{
+            htmlInput: { maxLength: 100, "aria-label": "كلمة البحث" },
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchOutlined aria-hidden />
+                </InputAdornment>
+              ),
+            },
+          }}
+        />
+      </Section>
+
+      <Section title={draft.kind === "rent" || draft.kind === "student" ? "الإيجار الشهري (ج.م)" : "السعر (ج.م)"}>
+        <div className="grid grid-cols-2 gap-3">
+          <TextField
+            label="من"
+            type="number"
+            value={draft.priceMin}
+            onChange={(event) => type("priceMin", event.target.value)}
+            slotProps={{ htmlInput: { ...numberInput, step: bounds.step } }}
+          />
+          <TextField
+            label="إلى"
+            type="number"
+            value={draft.priceMax}
+            onChange={(event) => type("priceMax", event.target.value)}
+            slotProps={{ htmlInput: { ...numberInput, step: bounds.step } }}
+          />
+        </div>
+        <Box sx={{ px: 1.25, pt: 1.5 }}>
+          <Slider
+            value={sliderValue}
+            min={bounds.min}
+            max={bounds.max}
+            step={bounds.step}
+            onChange={(_, value) => preview(fromSlider(value as number[]))}
+            onChangeCommitted={(_, value) => update(fromSlider(value as number[]))}
+            getAriaLabel={(index) => (index === 0 ? "أقل سعر" : "أعلى سعر")}
+            getAriaValueText={(value) => `${formatNumber(value)} ج.م`}
+            valueLabelDisplay="auto"
+            valueLabelFormat={(value) => formatNumber(value)}
+            disableSwap
+          />
+        </Box>
+      </Section>
+
+      <Section title="المدينة">
+        <CheckList
+          options={CITY_OPTIONS.map((city) => ({ value: city, label: city }))}
+          selected={draft.cities}
+          onToggle={(value) => toggleIn("cities", value)}
+          columns={2}
+        />
+      </Section>
+
+      <Section title="نوع العقار">
+        <CheckList
+          options={PROPERTY_TYPE_OPTIONS}
+          selected={draft.types}
+          onToggle={(value) => toggleIn("types", value)}
+          columns={2}
+        />
+      </Section>
+
+      <Section title="الغرف والحمامات">
+        <div className="grid grid-cols-2 gap-3">
+          <TextField
+            select
+            label="الغرف"
+            value={draft.bedrooms === null ? "" : String(draft.bedrooms)}
+            onChange={(event) => update({ bedrooms: event.target.value ? Number(event.target.value) : null })}
+            slotProps={{ select: { displayEmpty: true } }}
+          >
+            <MenuItem value="">أي عدد</MenuItem>
+            {COUNTS.map((n) => (
+              <MenuItem key={n} value={String(n)}>
+                {n}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            label="الحمامات"
+            value={draft.bathrooms === null ? "" : String(draft.bathrooms)}
+            onChange={(event) => update({ bathrooms: event.target.value ? Number(event.target.value) : null })}
+            slotProps={{ select: { displayEmpty: true } }}
+          >
+            <MenuItem value="">أي عدد</MenuItem>
+            {COUNTS.map((n) => (
+              <MenuItem key={n} value={String(n)}>
+                {n}
+              </MenuItem>
+            ))}
+          </TextField>
+        </div>
+      </Section>
+
+      <Section title="المساحة (م²)">
+        <div className="grid grid-cols-2 gap-3">
+          <TextField
+            label="من"
+            type="number"
+            value={draft.areaMin}
+            onChange={(event) => type("areaMin", event.target.value)}
+            slotProps={{ htmlInput: numberInput }}
+          />
+          <TextField
+            label="إلى"
+            type="number"
+            value={draft.areaMax}
+            onChange={(event) => type("areaMax", event.target.value)}
+            slotProps={{ htmlInput: numberInput }}
+          />
+        </div>
+      </Section>
+
+      <Section title="المرافق">
+        <CheckList
+          options={AMENITIES.map((amenity) => ({ value: amenity, label: amenity }))}
+          selected={draft.amenities}
+          onToggle={(value) => toggleIn("amenities", value)}
+        />
+      </Section>
+
+      {showPaymentPlan && (
+        <Section title="التقسيط">
+          <div className="grid gap-3">
+            <TextField
+              id={`${id}-down`}
+              label="المقدم حتى (ج.م)"
+              type="number"
+              value={draft.downPaymentMax}
+              onChange={(event) => type("downPaymentMax", event.target.value)}
+              slotProps={{ htmlInput: numberInput }}
+            />
+            <TextField
+              select
+              label="مدة التقسيط"
+              value={draft.installmentYears === null ? "" : String(draft.installmentYears)}
+              onChange={(event) => update({ installmentYears: event.target.value ? Number(event.target.value) : null })}
+              slotProps={{ select: { displayEmpty: true } }}
+            >
+              <MenuItem value="">أي مدة</MenuItem>
+              {YEARS.map((n) => (
+                <MenuItem key={n} value={String(n)}>
+                  {yearsLabel(n)}
+                </MenuItem>
+              ))}
+            </TextField>
+          </div>
+        </Section>
+      )}
+    </Box>
+  );
+}

@@ -1,469 +1,147 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Property } from '@/shared/types';
-import axios from 'axios';
-import { escapeHtml } from '@/shared/utils/escapeHtml';
-import AddOutlined from '@mui/icons-material/AddOutlined';
-import CloseOutlined from '@mui/icons-material/CloseOutlined';
-import HomeOutlined from '@mui/icons-material/HomeOutlined';
-import NavigationOutlined from '@mui/icons-material/NavigationOutlined';
-import SearchOutlined from '@mui/icons-material/SearchOutlined';
+"use client";
 
-type MapProperty = {
-  id: string;
-  title: string;
-  price: string;
-  type: string;
-  bedrooms: number;
-  bathrooms: number;
-  area: string;
-  image: string;
-  address: string;
-};
+import React, { useEffect, useRef, useState } from "react";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import { formatPrice } from "@/shared/ui/Price";
+import ErrorState from "@/shared/ui/ErrorState";
+import LoadingState from "@/shared/ui/LoadingState";
+import { hasCoordinates, loadLeaflet, markerHtml, readToken } from "@/shared/ui/listing/leaflet";
 
-// Built from DOM nodes with textContent, so listing fields can never be parsed as HTML or script.
-function buildPropertyPopup(property: MapProperty): HTMLElement {
-  const el = <K extends keyof HTMLElementTagNameMap>(tag: K, style: string, text?: string) => {
-    const node = document.createElement(tag);
-    node.setAttribute('style', style);
-    if (text !== undefined) node.textContent = text;
-    return node;
-  };
+export interface MapListing {
+  _id: string;
+  title?: string;
+  price?: number | null;
+  category?: string;
+  location?: { address?: string; city?: string; latitude?: number | null; longitude?: number | null } | null;
+}
 
-  const root = el('div', 'width: 250px;');
-  const img = el('img', 'width: 100%; height: 120px; object-fit: cover; border-radius: 8px; margin-bottom: 8px;');
-  img.src = property.image;
-  img.alt = property.title;
-  root.append(
-    img,
-    el('h3', 'margin: 0 0 8px 0; font-size: 16px; font-weight: bold;', property.title),
-    el('p', 'margin: 0 0 4px 0; color: #3b82f6; font-weight: bold; font-size: 14px;', property.price),
-    el('p', 'margin: 0 0 4px 0; color: #666; font-size: 12px;', `${property.type} • ${property.bedrooms} beds • ${property.bathrooms} baths`),
-    el('p', 'margin: 0 0 4px 0; color: #666; font-size: 12px;', property.area),
-    el('p', 'margin: 0 0 8px 0; color: #666; font-size: 11px;', `📍 ${property.address}`),
-  );
+// The centre of Menoufia, where the listed cities are; used only when no listing on the page has a location.
+const DEFAULT_CENTER: [number, number] = [30.55, 31.0];
 
-  const actions = el('div', 'display: flex; gap: 8px;');
-  const directions = el('button', 'background: #3b82f6; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;', 'Get Directions');
-  directions.type = 'button';
-  directions.addEventListener('click', () => window.showDirections?.(property.id));
-  const details = el('button', 'background: #10b981; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;', 'View Details');
-  details.type = 'button';
-  details.addEventListener('click', () => window.selectProperty?.(property.id));
-  actions.append(directions, details);
-  root.append(actions);
+/** Popup content built from DOM nodes with textContent, so listing fields can never be parsed as HTML. */
+function popupContent(listing: MapListing): HTMLElement {
+  const root = document.createElement("div");
+  root.setAttribute("dir", "rtl");
+  root.style.cssText = "min-width:180px;font-family:inherit";
+  const title = document.createElement("a");
+  title.href = `/properties/${encodeURIComponent(listing._id)}`;
+  title.textContent = listing.title || "إعلان";
+  title.style.cssText = "display:block;font-weight:600;margin-bottom:4px;color:var(--c-primary)";
+  root.append(title);
+  if (typeof listing.price === "number") {
+    const price = document.createElement("div");
+    price.textContent = formatPrice(listing.price, listing.category);
+    price.style.cssText = "font-weight:700;font-variant-numeric:tabular-nums";
+    root.append(price);
+  }
+  const where = [listing.location?.address, listing.location?.city].filter(Boolean).join("، ");
+  if (where) {
+    const p = document.createElement("div");
+    p.textContent = where;
+    p.style.cssText = "color:var(--c-text-2);font-size:12px;margin-top:2px";
+    root.append(p);
+  }
   return root;
 }
 
-interface PropertyMapProps {
-  properties?: Property[];
-  onPropertySelect?: (property: Property) => void;
-  selectedProperty?: Property | null;
-}
+/**
+ * The browse page's map view: one marker per listing on the current page that has real coordinates.
+ * Listings without a location are not placed (they used to get invented coordinates around Cairo).
+ */
+export default function PropertyMap({ properties }: { properties: MapListing[] }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<any>(null);
+  const layerRef = useRef<any>(null);
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [attempt, setAttempt] = useState(0);
 
-const PropertyMap: React.FC<PropertyMapProps> = ({ 
-  properties = [], 
-  onPropertySelect, 
-  selectedProperty 
-}) => {
-  const mapRef = useRef(null);
-  const [map, setMap] = useState<any>(null);
-  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
-  const [customPins, setCustomPins] = useState<any[]>([]);
-  const [showDirections, setShowDirections] = useState(false);
-  const [routeControl, setRouteControl] = useState<any>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  // Transform properties to map format
-  const mapProperties = properties.map((property, index) => {
-    // Use real coordinates if available, otherwise use default coordinates with slight variations
-    const defaultLat = 30.0444 + (index * 0.01); // Slight variation for each property
-    const defaultLng = 31.2357 + (index * 0.01);
-    
-    return {
-      id: property._id,
-      title: property.title || 'Property',
-      price: property.price ? `${property.price} EGP` : 'Price on request',
-      type: property.type || 'Property',
-      bedrooms: property.bedrooms || 0,
-      bathrooms: property.bathrooms || 0,
-      area: property.area ? `${property.area} sqm` : 'N/A',
-      lat: property.location?.latitude || property.location?.coordinates?.latitude || defaultLat,
-      lng: property.location?.longitude || property.location?.coordinates?.longitude || defaultLng,
-      image: property.images?.[0]?.url || 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=300&h=200&fit=crop',
-      category: property.category || 'sale',
-      address: property.location?.address || property.location?.city || 'Egypt'
-    };
-  });
+  const located = properties.filter((p) => hasCoordinates(p.location));
 
   useEffect(() => {
-    // Load Leaflet CSS and JS
-    const loadLeaflet = async () => {
-      if (!window.L) {
-        // Load CSS
-        const link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-        document.head.appendChild(link);
-
-        // Load JS
-        const script = document.createElement('script');
-        script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-        script.onload = initializeMap;
-        document.head.appendChild(script);
-
-        // Load routing plugin
-        const routingLink = document.createElement('link');
-        routingLink.rel = 'stylesheet';
-        routingLink.href = 'https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css';
-        document.head.appendChild(routingLink);
-
-        const routingScript = document.createElement('script');
-        routingScript.src = 'https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js';
-        document.head.appendChild(routingScript);
-      } else {
-        initializeMap();
-      }
-    };
-
-    loadLeaflet();
-
+    let cancelled = false;
+    setStatus("loading");
+    loadLeaflet()
+      .then((L) => {
+        if (cancelled || !containerRef.current) return;
+        if (!mapRef.current) {
+          mapRef.current = L.map(containerRef.current, { scrollWheelZoom: false }).setView(DEFAULT_CENTER, 10);
+          L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            attribution: "© OpenStreetMap contributors",
+            maxZoom: 19,
+          }).addTo(mapRef.current);
+          layerRef.current = L.layerGroup().addTo(mapRef.current);
+        }
+        setStatus("ready");
+      })
+      .catch(() => !cancelled && setStatus("error"));
     return () => {
-      if (map) {
-        map.remove();
-      }
+      cancelled = true;
     };
-  }, []);
+  }, [attempt]);
 
-  const initializeMap = () => {
-    if (!window.L || !mapRef.current) return;
+  useEffect(
+    () => () => {
+      mapRef.current?.remove();
+      mapRef.current = null;
+    },
+    [],
+  );
 
-    const mapInstance = window.L.map(mapRef.current).setView([30.0444, 31.2357], 11);
-
-    // Add OpenStreetMap tiles (free)
-    window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors'
-    }).addTo(mapInstance);
-
-    // Custom property icon
-    const propertyIcon = window.L.divIcon({
-      html: `<div style="background: #3b82f6; color: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></div>`,
-      className: 'custom-property-icon',
-      iconSize: [30, 30],
-      iconAnchor: [15, 15]
+  useEffect(() => {
+    if (status !== "ready" || !window.L || !mapRef.current) return;
+    const L = window.L;
+    const layer = layerRef.current;
+    layer.clearLayers();
+    const icon = L.divIcon({
+      html: markerHtml(readToken("--c-primary", "CanvasText"), readToken("--c-surface", "Canvas")),
+      className: "",
+      iconSize: [28, 28],
+      iconAnchor: [14, 14],
     });
-
-    // Add property markers
-    if (mapProperties.length > 0) {
-      mapProperties.forEach(property => {
-        try {
-          const marker = window.L.marker([property.lat, property.lng], { icon: propertyIcon })
-            .addTo(mapInstance)
-            .bindPopup(buildPropertyPopup(property));
-        } catch (error) {
-          console.error('Error adding property marker:', error, property);
-        }
-      });
-    } else {
-      // Add a message marker when no properties are available
-      const messageIcon = window.L.divIcon({
-        html: `<div style="background: #f59e0b; color: white; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></div>`,
-        className: 'message-icon',
-        iconSize: [40, 40],
-        iconAnchor: [20, 20]
-      });
-
-      window.L.marker([30.0444, 31.2357], { icon: messageIcon })
-        .addTo(mapInstance)
-        .bindPopup(`
-          <div style="width: 200px; text-align: center;">
-            <h3 style="margin: 0 0 8px 0; font-size: 16px; font-weight: bold;">لا توجد عقارات متاحة</h3>
-            <p style="margin: 0; color: #666; font-size: 12px;">جاري تحميل العقارات أو لا توجد عقارات في هذه المنطقة</p>
-          </div>
-        `);
-    }
-
-    setMap(mapInstance);
-
-    // Get user location
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const userLat = position.coords.latitude;
-          const userLng = position.coords.longitude;
-          setUserLocation([userLat, userLng]);
-
-          // Add user location marker
-          const userIcon = window.L.divIcon({
-            html: `<div style="background: #ef4444; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"><div style="width: 8px; height: 8px; background: white; border-radius: 50%;"></div></div>`,
-            className: 'user-location-icon',
-            iconSize: [20, 20],
-            iconAnchor: [10, 10]
-          });
-
-          window.L.marker([userLat, userLng], { icon: userIcon })
-            .addTo(mapInstance)
-            .bindPopup('Your Location');
-        },
-        (error) => {
-          console.log('Error getting location:', error);
-        }
-      );
-    }
-
-    // Add click event to add custom pins
-    mapInstance.on('click', (e: any) => {
-      const customIcon = window.L.divIcon({
-        html: `<div style="background: #f59e0b; color: white; border-radius: 50%; width: 25px; height: 25px; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg></div>`,
-        className: 'custom-pin-icon',
-        iconSize: [25, 25],
-        iconAnchor: [12, 12]
-      });
-
-      const newPin = {
-        id: Date.now(),
-        lat: e.latlng.lat,
-        lng: e.latlng.lng,
-        marker: window.L.marker([e.latlng.lat, e.latlng.lng], { icon: customIcon })
-          .addTo(mapInstance)
-          .bindPopup(`
-            <div style="text-align: center;">
-              <p style="margin: 0 0 8px 0; font-weight: bold;">Custom Pin</p>
-              <p style="margin: 0 0 8px 0; font-size: 12px; color: #666;">Lat: ${e.latlng.lat.toFixed(6)}<br>Lng: ${e.latlng.lng.toFixed(6)}</p>
-              <button onclick="window.removePin(${Date.now()})" style="background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">Remove Pin</button>
-            </div>
-          `)
-      };
-
-      setCustomPins(prev => [...prev, newPin]);
+    const points: [number, number][] = [];
+    located.forEach((listing) => {
+      const point: [number, number] = [listing.location!.latitude as number, listing.location!.longitude as number];
+      points.push(point);
+      L.marker(point, { icon, title: listing.title || "إعلان", alt: listing.title || "إعلان" })
+        .bindPopup(popupContent(listing))
+        .addTo(layer);
     });
-
-    // Global functions for popup buttons
-    window.showDirections = (propertyId: string) => {
-      const property = mapProperties.find(p => p.id === propertyId);
-      if (property && userLocation) {
-        showDirectionsTo(property, mapInstance);
-      } else {
-        alert('Please allow location access to get directions');
-      }
-    };
-
-    window.selectProperty = (propertyId: string) => {
-      const property = mapProperties.find(p => p.id === propertyId);
-      if (property) {
-        onPropertySelect?.(properties.find(p => p._id === propertyId) as Property);
-        mapInstance.setView([property.lat, property.lng], 15);
-      }
-    };
-
-    window.removePin = (pinId: number) => {
-      setCustomPins(prev => {
-        const pinToRemove = prev.find(p => p.id === pinId);
-        if (pinToRemove) {
-          mapInstance.removeLayer(pinToRemove.marker);
-        }
-        return prev.filter(p => p.id !== pinId);
-      });
-    };
-  };
-
-  const showDirectionsTo = (property: any, mapInstance: any) => {
-    if (!userLocation || !window.L.Routing) return;
-
-    // Remove existing route
-    if (routeControl) {
-      mapInstance.removeControl(routeControl);
-    }
-
-    const newRouteControl = window.L.Routing.control({
-      waypoints: [
-        window.L.latLng(userLocation[0], userLocation[1]),
-        window.L.latLng(property.lat, property.lng)
-      ],
-      routeWhileDragging: true,
-      createMarker: () => null, // Don't create default markers
-      lineOptions: {
-        styles: [{ color: '#3b82f6', weight: 4, opacity: 0.7 }]
-      }
-    }).addTo(mapInstance);
-
-    setRouteControl(newRouteControl);
-    setShowDirections(true);
-  };
-
-  const clearDirections = () => {
-    if (routeControl && map) {
-      map.removeControl(routeControl);
-      setRouteControl(null);
-      setShowDirections(false);
-    }
-  };
-
-  const searchLocation = async () => {
-    if (!searchQuery.trim()) return;
-
-    setLoading(true);
-    try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery + ', Egypt')}&limit=1`);
-      const data = await response.json();
-      
-      if (data.length > 0) {
-        const { lat, lon } = data[0];
-        map.setView([parseFloat(lat), parseFloat(lon)], 13);
-        
-        // Add temporary search marker
-        const searchIcon = window.L.divIcon({
-          html: `<div style="background: #10b981; color: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg></div>`,
-          className: 'search-marker',
-          iconSize: [30, 30],
-          iconAnchor: [15, 15]
-        });
-
-        window.L.marker([parseFloat(lat), parseFloat(lon)], { icon: searchIcon })
-          .addTo(map)
-          .bindPopup(`Search Result: ${escapeHtml(data[0].display_name)}`)
-          .openPopup();
-      }
-    } catch (error) {
-      console.error('Search error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    if (points.length === 1) mapRef.current.setView(points[0], 14);
+    else if (points.length > 1) mapRef.current.fitBounds(points, { padding: [32, 32], maxZoom: 15 });
+    // `located` is derived from `properties`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, properties]);
 
   return (
-    <div className="w-full h-screen bg-gray-100 relative">
-      {/* Header */}
-      <div className="absolute top-0 left-0 right-0 z-10 bg-white shadow-lg">
-        <div className="p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-              <HomeOutlined sx={{ fontSize: 24 }} className="text-blue-600" />
-              Saknly Property Map
-            </h1>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={clearDirections}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  showDirections 
-                    ? 'bg-red-500 text-white hover:bg-red-600' 
-                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                }`}
-                disabled={!showDirections}
-              >
-                <CloseOutlined sx={{ fontSize: 16 }} className="mr-1 inline" />
-                Clear Route
-              </button>
-            </div>
-          </div>
-          
-          {/* Search Bar */}
-          <div className="flex gap-2">
-            <div className="flex-1 relative">
-              <SearchOutlined sx={{ fontSize: 16 }} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search location in Egypt..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && searchLocation()}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <button
-              onClick={searchLocation}
-              disabled={loading}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-            >
-              {loading ? 'Searching...' : 'Search'}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Map Container */}
-      <div ref={mapRef} className="w-full h-full pt-32" />
-
-      {/* Instructions */}
-      <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg p-4 shadow-lg max-w-xs">
-        <h3 className="font-bold text-sm mb-2 flex items-center gap-2">
-          <AddOutlined sx={{ fontSize: 16 }} className="text-blue-600" />
-          Map Instructions
-        </h3>
-        <ul className="text-xs text-gray-600 space-y-1">
-          <li>• Click on property markers to view details</li>
-          <li>• Click anywhere on map to add custom pins</li>
-          <li>• Use "Get Directions" for navigation</li>
-          <li>• Search for specific locations in Egypt</li>
-        </ul>
-      </div>
-
-      {/* Property Details Panel */}
-      {selectedProperty && (
-        <div className="absolute top-32 right-4 w-80 bg-white rounded-lg shadow-xl overflow-hidden">
-          <div className="relative">
-            <img 
-              src={selectedProperty.images?.[0]?.url || 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=300&h=200&fit=crop'} 
-              alt={selectedProperty.title}
-              className="w-full h-48 object-cover"
-            />
-            <button
-              onClick={() => onPropertySelect?.(null as any)}
-              className="absolute top-2 right-2 bg-white/80 hover:bg-white rounded-full p-2 transition-colors"
-            >
-              <CloseOutlined sx={{ fontSize: 16 }} />
-            </button>
-          </div>
-          <div className="p-4">
-            <h3 className="font-bold text-lg mb-2">{selectedProperty.title}</h3>
-            <p className="text-blue-600 font-bold text-xl mb-2">{selectedProperty.price} EGP</p>
-            <div className="space-y-2 text-sm text-gray-600">
-              <p>Type: {selectedProperty.type}</p>
-              <p>Bedrooms: {selectedProperty.bedrooms}</p>
-              <p>Bathrooms: {selectedProperty.bathrooms}</p>
-              <p>Area: {typeof selectedProperty.area === 'object' ? selectedProperty.area.total : selectedProperty.area} sqm</p>
-              <p>📍 {selectedProperty.location?.address || selectedProperty.location?.city || 'Egypt'}</p>
-            </div>
-            <div className="mt-4 flex gap-2">
-              <button
-                onClick={() => window.showDirections(selectedProperty._id)}
-                className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
-              >
-                <NavigationOutlined sx={{ fontSize: 16 }} />
-                Directions
-              </button>
-              <button className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors">
-                Contact
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Map Legend */}
-      <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm rounded-lg p-4 shadow-lg">
-        <h3 className="font-bold text-sm mb-2">Legend</h3>
-        <div className="space-y-2 text-xs">
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-blue-600 rounded-full"></div>
-            <span>Properties</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-red-500 rounded-full"></div>
-            <span>Your Location</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-amber-500 rounded-full"></div>
-            <span>Custom Pins</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-green-500 rounded-full"></div>
-            <span>Search Result</span>
-          </div>
-        </div>
-      </div>
-    </div>
+    <Box>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }} aria-live="polite">
+        {located.length === properties.length
+          ? "كل إعلانات هذه الصفحة على الخريطة."
+          : `${located.length} من ${properties.length} إعلانات هذه الصفحة لها موقع على الخريطة.`}
+      </Typography>
+      <Box
+        sx={{
+          position: "relative",
+          height: { xs: 420, md: 560 },
+          border: 1,
+          borderColor: "divider",
+          borderRadius: "10px",
+          overflow: "hidden",
+          bgcolor: "var(--c-bg)",
+        }}
+      >
+        <Box ref={containerRef} role="region" aria-label="خريطة الإعلانات" sx={{ position: "absolute", inset: 0 }} />
+        {status !== "ready" && (
+          <Box sx={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", bgcolor: "background.paper" }}>
+            {status === "loading" ? (
+              <LoadingState compact label="جاري تحميل الخريطة" />
+            ) : (
+              <ErrorState compact title="تعذر تحميل الخريطة" onRetry={() => setAttempt((n) => n + 1)} />
+            )}
+          </Box>
+        )}
+      </Box>
+    </Box>
   );
-};
-
-export default PropertyMap; 
+}
