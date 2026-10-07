@@ -114,6 +114,15 @@ export default function Register() {
 
         const data = await res.json().catch(() => ({}));
 
+        if (res.status === 409) {
+          // Any existing account, confirmed or not (the server does not reveal which).
+          const message =
+            "هذا البريد مسجّل بالفعل. سجّل الدخول، وإن لم تكن أكدت بريدك فيمكنك إعادة إرسال رسالة التأكيد من صفحة تسجيل الدخول.";
+          formik.setFieldError("email", "هذا البريد مسجّل بالفعل");
+          showToast(message, "error");
+          return;
+        }
+
         if (!res.ok) {
           throw new Error(data?.message || data?.error || "تعذر إنشاء الحساب، حاول مرة أخرى");
         }
