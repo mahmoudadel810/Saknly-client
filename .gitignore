@@ -88,3 +88,6 @@ tmp/
 temp/ 
 
 .env
+# Notes, plans, audits and design docs stay local; only the README is published
+*.md
+!README.md

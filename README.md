@@ -73,4 +73,4 @@ The `main` branch deploys automatically to Vercel. Set `NEXT_PUBLIC_API_URL` in 
 
 ## Credits
 
-Hero and page photos are from [Unsplash](https://unsplash.com/license); see [`public/images/hero/CREDITS.md`](public/images/hero/CREDITS.md).
+Hero and page photos are from [Unsplash](https://unsplash.com/license): "Couch near painting" by [Quilia](https://unsplash.com/@heyquilia), a living room by [Danilo Rios](https://unsplash.com/@danrop), and a building by [Dan Faltas](https://unsplash.com/@danfaltas).
