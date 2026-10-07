@@ -1,114 +1,90 @@
-import React, { useState, useEffect } from 'react';
+"use client";
+
+import React, { useState } from "react";
+import Box from "@mui/material/Box";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import { formatNumber } from "@/shared/ui/Price";
 
 interface MortgageCalculatorProps {
   price: number;
+  /** The listing's down payment, when the owner gave one. */
   downPayment?: number;
+  /** The listing's installment period in years, when the owner gave one. */
   termInYears?: number;
 }
 
-const MortgageCalculator: React.FC<MortgageCalculatorProps> = ({
-  price,
-  downPayment = 0,
-  termInYears = 1,
-}) => {
-  const [loanAmount, setLoanAmount] = useState(price - downPayment);
-  const [interestRate, setInterestRate] = useState(8); // Default interest rate (e.g., 8%)
-  const [loanTerm, setLoanTerm] = useState(termInYears);
-  const [monthlyPayment, setMonthlyPayment] = useState(0);
+/** The monthly payment of an amortised loan; with a 0% rate it is the remainder split evenly. */
+export function monthlyPayment(principal: number, annualRatePercent: number, years: number): number {
+  if (principal <= 0 || years <= 0) return 0;
+  const months = years * 12;
+  if (annualRatePercent <= 0) return principal / months;
+  const r = annualRatePercent / 100 / 12;
+  return (principal * r) / (1 - Math.pow(1 + r, -months));
+}
 
-  useEffect(() => {
-    const principal = price - downPayment;
-    setLoanAmount(principal > 0 ? principal : 0);
-    setLoanTerm(termInYears);
-  }, [price, downPayment, termInYears]);
-
-  const calculateMonthlyPayment = () => {
-    if (loanAmount <= 0 || interestRate <= 0 || loanTerm <= 0) {
-      setMonthlyPayment(0);
-      return;
-    }
-
-    const monthlyInterestRate = interestRate / 100 / 12;
-    const numberOfPayments = loanTerm * 12;
-
-    const numerator =
-      monthlyInterestRate * Math.pow(1 + monthlyInterestRate, numberOfPayments);
-    const denominator = Math.pow(1 + monthlyInterestRate, numberOfPayments) - 1;
-
-    if (denominator === 0) {
-        setMonthlyPayment(0);
-        return;
-    }
-
-    const monthlyPaymentValue = loanAmount * (numerator / denominator);
-    setMonthlyPayment(monthlyPaymentValue);
-  };
-
-  useEffect(() => {
-    calculateMonthlyPayment();
-  }, [loanAmount, interestRate, loanTerm]);
-
-  return (
-    <div className="p-6 mt-6 bg-gray-50 border border-gray-200 rounded-lg shadow-md">
-      <h3 className="text-2xl font-bold mb-4 text-gray-800">حاسبة التمويل العقاري</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="price" className="block text-sm font-medium text-gray-700">
-            سعر العقار
-          </label>
-          <input
-            type="number"
-            id="price"
-            value={price}
-            readOnly
-            className="mt-1 block w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md shadow-sm focus:outline-none sm:text-sm"
-          />
-        </div>
-        <div>
-          <label htmlFor="downPayment" className="block text-sm font-medium text-gray-700">
-            المقدم
-          </label>
-          <input
-            type="number"
-            id="downPayment"
-            value={loanAmount === (price-downPayment) ? downPayment: price - loanAmount}
-            onChange={(e) => setLoanAmount(price - Number(e.target.value))}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-          />
-        </div>
-        <div>
-          <label htmlFor="loanTerm" className="block text-sm font-medium text-gray-700">
-            مدة القسط (بالسنوات)
-          </label>
-          <input
-            type="number"
-            id="loanTerm"
-            value={loanTerm}
-            onChange={(e) => setLoanTerm(Number(e.target.value))}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-          />
-        </div>
-        <div>
-          <label htmlFor="interestRate" className="block text-sm font-medium text-gray-700">
-            نسبة الفائدة السنوية (%)
-          </label>
-          <input
-            type="number"
-            id="interestRate"
-            value={interestRate}
-            onChange={(e) => setInterestRate(Number(e.target.value))}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-          />
-        </div>
-      </div>
-      <div className="mt-6 text-center">
-        <h4 className="text-lg font-medium text-gray-600">القسط الشهري المتوقع</h4>
-        <p className="text-3xl font-bold text-blue-600">
-          {monthlyPayment > 0 ? monthlyPayment.toFixed(2) : '0.00'} EGP
-        </p>
-      </div>
-    </div>
-  );
+const toNumber = (value: string) => {
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? n : 0;
 };
 
-export default MortgageCalculator; 
+/**
+ * An installment estimate for a sale listing. It starts from the listing's own down payment and period and
+ * a 0% rate (developer installments in Egypt are usually interest-free); the visitor can change all three.
+ * The result is labelled an estimate: the owner's terms decide.
+ */
+export default function MortgageCalculator({ price, downPayment, termInYears }: MortgageCalculatorProps) {
+  const [down, setDown] = useState(downPayment ? String(downPayment) : "");
+  const [years, setYears] = useState(termInYears ? String(termInYears) : "");
+  const [rate, setRate] = useState("0");
+
+  const principal = Math.max(0, price - toNumber(down));
+  const monthly = monthlyPayment(principal, toNumber(rate), toNumber(years));
+
+  return (
+    <Box>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <TextField
+          label="المقدم (ج.م)"
+          type="number"
+          value={down}
+          onChange={(event) => setDown(event.target.value)}
+          slotProps={{ htmlInput: { min: 0, max: price, inputMode: "numeric" } }}
+        />
+        <TextField
+          label="المدة (سنوات)"
+          type="number"
+          value={years}
+          onChange={(event) => setYears(event.target.value)}
+          slotProps={{ htmlInput: { min: 1, max: 30, inputMode: "numeric" } }}
+        />
+        <TextField
+          label="الفائدة السنوية (%)"
+          type="number"
+          value={rate}
+          onChange={(event) => setRate(event.target.value)}
+          slotProps={{ htmlInput: { min: 0, max: 50, step: 0.5, inputMode: "decimal" } }}
+        />
+      </div>
+      <Box sx={{ mt: 2, p: 2, borderRadius: "6px", bgcolor: "var(--c-primary-soft)" }} aria-live="polite">
+        {monthly > 0 ? (
+          <>
+            <Typography variant="body2" color="text.secondary">
+              القسط الشهري التقريبي
+            </Typography>
+            <Typography sx={{ fontSize: "1.25rem", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
+              {formatNumber(Math.round(monthly))} ج.م / شهر
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              على مبلغ {formatNumber(principal)} ج.م. تقدير فقط؛ الشروط الفعلية يحددها المالك.
+            </Typography>
+          </>
+        ) : (
+          <Typography variant="body2" color="text.secondary">
+            أدخل المقدم ومدة التقسيط لترى القسط الشهري التقريبي.
+          </Typography>
+        )}
+      </Box>
+    </Box>
+  );
+}

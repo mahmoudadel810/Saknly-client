@@ -1,151 +1,157 @@
-import React from 'react';
-import { 
-  Box, Typography, Paper, Stack, Button, IconButton, Divider 
-} from '@mui/material';
-import WhatsAppIcon from '@mui/icons-material/WhatsApp';
-import CallIcon from '@mui/icons-material/Call';
-import EmailIcon from '@mui/icons-material/Email';
-import ShareIcon from '@mui/icons-material/Share';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import FacebookIcon from '@mui/icons-material/Facebook';
-import TwitterIcon from '@mui/icons-material/Twitter';
-import { Property } from '@/shared/types';
+"use client";
 
-interface ContactProps {
-  property: Property;
+import React from "react";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Divider from "@mui/material/Divider";
+import Typography from "@mui/material/Typography";
+import CallOutlined from "@mui/icons-material/CallOutlined";
+import ChatOutlined from "@mui/icons-material/ChatOutlined";
+import MailOutlineOutlined from "@mui/icons-material/MailOutlineOutlined";
+import InquiryForm from "@/shared/ui/listing/InquiryForm";
+
+export interface ContactSource {
+  contactInfo?: { name?: string; phone?: string; email?: string; whatsapp?: string } | null;
+  owner?: { userName?: string; firstName?: string; lastName?: string; email?: string; phone?: string } | null;
+  agent?: { userName?: string; email?: string; phone?: string } | null;
 }
 
-const ContactCard: React.FC<ContactProps> = ({ property }) => {
+export interface ContactChannels {
+  name: string;
+  phone: string | null;
+  whatsapp: string | null;
+  email: string | null;
+}
+
+/**
+ * The listing's contact channels: the contact details the owner entered on the listing, falling back to the
+ * owner's account. Only fields that exist are offered; nothing is invented.
+ */
+export function contactChannels(listing: ContactSource): ContactChannels {
+  const c = listing.contactInfo ?? {};
+  const owner = listing.owner ?? {};
+  const ownerName = owner.userName || [owner.firstName, owner.lastName].filter(Boolean).join(" ");
+  const phone = (c.phone || owner.phone || "").trim() || null;
+  const whatsapp = (c.whatsapp || c.phone || owner.phone || "").trim() || null;
+  return {
+    name: (c.name || ownerName || "").trim() || "المالك",
+    phone,
+    whatsapp,
+    email: (c.email || owner.email || "").trim() || null,
+  };
+}
+
+/** tel: wants the digits and a leading +. */
+export const telHref = (phone: string) => `tel:${phone.replace(/[^\d+]/g, "")}`;
+
+/** wa.me wants the international number without + or leading zeros; Egyptian 01… numbers get 20. */
+export function whatsappHref(phone: string, text?: string) {
+  let digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("00")) digits = digits.slice(2);
+  else if (digits.length === 11 && digits.startsWith("01")) digits = `2${digits}`;
+  return `https://wa.me/${digits}${text ? `?text=${encodeURIComponent(text)}` : ""}`;
+}
+
+export function ContactButtons({
+  channels,
+  title,
+  size = "large",
+}: {
+  channels: ContactChannels;
+  title: string;
+  size?: "medium" | "large";
+}) {
   return (
-    <Paper elevation={0} sx={{ 
-      p: 3, 
-      borderRadius: 3, 
-      position: 'sticky',
-      top: 20,
-      boxShadow: '0px 5px 25px rgba(0,0,0,0.08)',
-      border: '1px solid',
-      borderColor: 'divider'
-    }}>
-      <Typography variant="h5" fontWeight={700} mb={3}>
-        تواصل مع المعلن
-      </Typography>
-      
-      <Stack spacing={2} mb={4}>
+    <>
+      {channels.phone && (
         <Button
+          component="a"
+          href={telHref(channels.phone)}
           variant="contained"
-          size="large"
-          startIcon={<CallIcon />}
-          fullWidth
-          sx={{ 
-            py: 1.5,
-            borderRadius: 2,
-            fontWeight: 700,
-            fontSize: '1.1rem',
-            bgcolor: 'primary.dark',
-            '&:hover': { bgcolor: 'primary.main' }
-          }}
-          href={`tel:${property.contactInfo?.phone || ''}`}
+          size={size}
+          startIcon={<CallOutlined aria-hidden />}
+          aria-label={`اتصل بـ${channels.name} على ${channels.phone}`}
         >
-          اتصال مباشر
+          اتصال
         </Button>
-        
+      )}
+      {channels.whatsapp && (
         <Button
-          variant="contained"
-          size="large"
-          startIcon={<WhatsAppIcon />}
-          fullWidth
-          sx={{ 
-            py: 1.5,
-            borderRadius: 2,
-            fontWeight: 700,
-            fontSize: '1.1rem',
-            bgcolor: '#25D366',
-            '&:hover': { bgcolor: '#22C55E' }
-          }}
-          href={`https://wa.me/${property.contactInfo?.phone || ''}`}
+          component="a"
+          href={whatsappHref(channels.whatsapp, `مرحبًا، أسأل عن إعلان «${title}» على سكنلي.`)}
           target="_blank"
-        >
-          التواصل عبر واتساب
-        </Button>
-        
-        <Button
+          rel="noopener noreferrer"
           variant="outlined"
-          color="primary"
-          size="large"
-          startIcon={<EmailIcon />}
-          fullWidth
-          sx={{ 
-            py: 1.5,
-            borderRadius: 2,
-            fontWeight: 700,
-            fontSize: '1.1rem',
-            borderWidth: 2,
-            '&:hover': { borderWidth: 2 }
-          }}
-          href={`mailto:${property.contactInfo?.email || ''}`}
+          size={size}
+          startIcon={<ChatOutlined aria-hidden />}
         >
-          إرسال بريد إلكتروني
+          واتساب
         </Button>
-      </Stack>
-      
-      <Divider sx={{ my: 3 }} />
-      
-      <Box>
-        <Typography variant="h6" fontWeight={700} mb={2}>
-          مشاركة العقار
-        </Typography>
-        <Stack direction="row" justifyContent="center" spacing={1.5}>
-          <ShareButton 
-            icon={<ContentCopyIcon />} 
-            color="#6B7280" 
-            tooltip="نسخ الرابط" 
-          />
-          <ShareButton 
-            icon={<WhatsAppIcon />} 
-            color="#25D366" 
-            tooltip="واتساب" 
-          />
-          <ShareButton 
-            icon={<FacebookIcon />} 
-            color="#1877F2" 
-            tooltip="فيسبوك" 
-          />
-          <ShareButton 
-            icon={<TwitterIcon />} 
-            color="#1DA1F2" 
-            tooltip="تويتر" 
-          />
-        </Stack>
-      </Box>
-    </Paper>
+      )}
+    </>
   );
-};
+}
 
-// Share Button Component
-const ShareButton = ({ 
-  icon, 
-  color, 
-  tooltip 
-}: { 
-  icon: React.ReactNode; 
-  color: string; 
-  tooltip: string; 
-}) => (
-  <IconButton
-    sx={{
-      bgcolor: `${color}10`,
-      color: color,
-      '&:hover': { 
-        bgcolor: `${color}20`,
-        transform: 'translateY(-2px)'
-      },
-      transition: 'all 0.2s ease',
-      width: 44,
-      height: 44
-    }}
-  >
-    {icon}
-  </IconButton>
-);
+/**
+ * The contact panel on the listing page: who to contact, call / WhatsApp / email, and the inquiry form.
+ * The page makes it sticky on desktop; on phones the call buttons also sit in a bottom bar.
+ */
+export default function ContactCard({
+  listing,
+  propertyId,
+  title,
+}: {
+  listing: ContactSource;
+  propertyId: string;
+  title: string;
+}) {
+  const channels = contactChannels(listing);
+  const hasDirect = Boolean(channels.phone || channels.whatsapp || channels.email);
 
-export default ContactCard;
+  return (
+    <Box
+      component="section"
+      aria-labelledby="contact-title"
+      sx={{ border: 1, borderColor: "divider", borderRadius: "10px", bgcolor: "background.paper", p: { xs: 2, md: 2.5 } }}
+    >
+      <Typography id="contact-title" component="h2" variant="h5">
+        تواصل مع المالك
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+        {channels.name}
+        {channels.phone && (
+          <Box component="span" sx={{ display: "block", fontVariantNumeric: "tabular-nums", color: "text.primary" }}>
+            {channels.phone}
+          </Box>
+        )}
+      </Typography>
+
+      {hasDirect && (
+        <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 1, mt: 2 }}>
+          <ContactButtons channels={channels} title={title} />
+          {channels.email && (
+            <Button
+              component="a"
+              href={`mailto:${channels.email}?subject=${encodeURIComponent(`استفسار عن «${title}»`)}`}
+              color="secondary"
+              startIcon={<MailOutlineOutlined aria-hidden />}
+              sx={{ gridColumn: "1 / -1" }}
+            >
+              مراسلة بالبريد الإلكتروني
+            </Button>
+          )}
+        </Box>
+      )}
+
+      <Divider sx={{ my: 2.5 }} />
+
+      <Typography id="inquiry-title" component="h3" variant="h6" sx={{ mb: 0.5 }}>
+        أرسل استفسارًا
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        تصل رسالتك إلى صاحب الإعلان مع بيانات التواصل التي تكتبها هنا.
+      </Typography>
+      <InquiryForm propertyId={propertyId} />
+    </Box>
+  );
+}

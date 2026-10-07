@@ -1,206 +1,165 @@
-import React, { useEffect, useState } from 'react';
-import { Box, Typography, TextField, Button, CircularProgress, Avatar, Alert } from '@mui/material';
-import SendIcon from '@mui/icons-material/Send';
-import Rating from '@mui/material/Rating';
-import { authHeader } from '@/shared/utils/auth';
-import { API_URL } from '@/shared/services/api';
+"use client";
+
+import React, { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import Alert from "@mui/material/Alert";
+import Avatar from "@mui/material/Avatar";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import ChatBubbleOutlineOutlined from "@mui/icons-material/ChatBubbleOutlineOutlined";
+import { api, getErrorMessage } from "@/shared/services/api";
+import { useToast } from "@/shared/provider/ToastProvider";
+import EmptyState from "@/shared/ui/EmptyState";
+import ErrorState from "@/shared/ui/ErrorState";
+import LoadingState from "@/shared/ui/LoadingState";
 
 interface Comment {
   _id: string;
   // null when the author's account was deleted (the server does not cascade comments)
-  user: { userName: string; email: string } | null;
+  user: { userName?: string; firstName?: string; lastName?: string } | null;
   text: string;
   createdAt: string;
-  rating?: number;
 }
 
 interface CommentSectionProps {
   propertyId: string;
   isAuthenticated: boolean;
-  userName?: string;
-  userEmail?: string;
 }
 
-const CommentSection: React.FC<CommentSectionProps> = ({
-  propertyId,
-  isAuthenticated,
-  userName,
-  userEmail,
-}) => {
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [postError, setPostError] = useState<string | null>(null);
-  const [newComment, setNewComment] = useState('');
+const MAX = 1000;
+const DATE = new Intl.DateTimeFormat("ar-EG", { dateStyle: "medium" });
+
+const authorName = (comment: Comment) =>
+  comment.user?.userName || [comment.user?.firstName, comment.user?.lastName].filter(Boolean).join(" ") || "مستخدم محذوف";
+
+/**
+ * Comments on a listing. Loading the list and posting fail separately (AUDIT F-16): a failed post keeps the
+ * list and the typed text and shows its message above the field.
+ */
+export default function CommentSection({ propertyId, isAuthenticated }: CommentSectionProps) {
+  const pathname = usePathname();
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+  const queryKey = ["property-comments", propertyId];
+  const { data, isPending, isError, refetch, isFetching } = useQuery({
+    queryKey,
+    queryFn: async (): Promise<Comment[]> => {
+      const res = await api.get(`/property-comments/${propertyId}`);
+      return Array.isArray(res.data?.data) ? res.data.data : [];
+    },
+  });
+
+  const [text, setText] = useState("");
   const [posting, setPosting] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [postError, setPostError] = useState<string | null>(null);
 
-  const fetchComments = async () => {
-    setLoading(true);
-    setLoadError(null);
-    try {
-      const res = await fetch(
-        `${API_URL}/property-comments/${propertyId}`
-      );
-      const data = await res.json();
-      if (data.success) {
-        setComments(data.data);
-      } else {
-        setLoadError('حدث خطأ أثناء جلب التعليقات');
-      }
-    } catch (err) {
-      setLoadError('تعذر الاتصال بالخادم');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchComments();
-    // eslint-disable-next-line
-  }, [propertyId]);
-
-  const handleAddComment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newComment.trim()) return;
-
-    // If not authenticated, prevent posting and show error
-    if (!isAuthenticated) {
-      setPostError('يجب تسجيل الدخول لإضافة تعليق.');
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const value = text.trim();
+    if (!value) {
+      setPostError("اكتب تعليقك أولًا.");
       return;
     }
-
+    if (posting) return;
     setPosting(true);
     setPostError(null);
-    setSuccess(false);
-
     try {
-      // Try to get token from localStorage (if your app stores it there)
-      let token: string | null = null;
-      if (typeof window !== 'undefined') {
-        token = localStorage.getItem('token');
-      }
-
-      // Prepare headers
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      Object.assign(headers, authHeader(token));
-
-      const res = await fetch(
-        `${API_URL}/property-comments/${propertyId}`,
-        {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({ text: newComment}),
-          credentials: 'include',
-        }
-      );
-      const data = await res.json().catch(() => ({}));
-      if (res.status === 401) {
-        setPostError('يجب تسجيل الدخول لإضافة تعليق.');
-      } else if (data.success) {
-        setNewComment('');
-        setSuccess(true);
-        setComments(prev => [data.data, ...prev]);
-      } else {
-        setPostError(data.message || 'حدث خطأ أثناء إضافة التعليق');
-      }
+      const res = await api.post(`/property-comments/${propertyId}`, { text: value });
+      const created: Comment | undefined = res.data?.data;
+      if (created) queryClient.setQueryData<Comment[]>(queryKey, (prev) => [created, ...(prev ?? [])]);
+      else await refetch();
+      setText("");
+      showToast("نُشر تعليقك.", "success");
     } catch (err) {
-      setPostError('تعذر الاتصال بالخادم');
+      setPostError(getErrorMessage(err, "تعذر نشر تعليقك. حاول مرة أخرى."));
     } finally {
       setPosting(false);
     }
   };
 
   return (
-    <Box mt={4}>
-      <Typography variant="h6" mb={2} fontWeight={700}>
-        التعليقات
+    <Box component="section" aria-labelledby="comments-title">
+      <Typography id="comments-title" component="h2" variant="h5" sx={{ mb: 2 }}>
+        التعليقات{data && data.length > 0 ? ` (${data.length})` : ""}
       </Typography>
-      {loading ? (
-        <Box display="flex" justifyContent="center" my={3}>
-          <CircularProgress />
-        </Box>
-      ) : loadError ? (
-        <Alert
-          severity="error"
-          action={
-            <Button color="inherit" size="small" onClick={fetchComments}>
-              إعادة المحاولة
-            </Button>
-          }
-        >
-          {loadError}
-        </Alert>
-      ) : (
-        <>
+
+      {isAuthenticated ? (
+        <Box component="form" noValidate onSubmit={handleSubmit} sx={{ display: "flex", flexDirection: "column", gap: 1.5, mb: 3 }}>
           {postError && (
-            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setPostError(null)}>
+            <Alert severity="error" onClose={() => setPostError(null)}>
               {postError}
             </Alert>
           )}
-          {isAuthenticated ? (
-            <Box component="form" onSubmit={handleAddComment} mb={3} display="flex" gap={2} alignItems="center">
-              <TextField
-                label="أضف تعليقك..."
-                variant="outlined"
-                fullWidth
-                value={newComment}
-                onChange={e => setNewComment(e.target.value)}
-                disabled={posting}
-                inputProps={{ maxLength: 1000 }}
-              />
-              <Button
-                type="submit"
-                variant="contained"
-                color="primary"
-                endIcon={<SendIcon />}
-                disabled={posting || !newComment.trim()}
-                sx={{ minWidth: 120 }}
+          <TextField
+            label="تعليقك"
+            multiline
+            minRows={2}
+            fullWidth
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            disabled={posting}
+            helperText={`اسأل عن العقار أو شارك ملاحظتك. ${text.length} / ${MAX}`}
+            slotProps={{ htmlInput: { maxLength: MAX } }}
+          />
+          <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={posting || !text.trim()}
+              startIcon={posting ? <CircularProgress size={16} color="inherit" /> : undefined}
+            >
+              {posting ? "جاري النشر…" : "نشر التعليق"}
+            </Button>
+          </Box>
+        </Box>
+      ) : (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          <Link href={`/login?redirect=${encodeURIComponent(pathname || "/properties")}`}>سجّل الدخول</Link> لتكتب تعليقًا.
+        </Alert>
+      )}
+
+      {isPending ? (
+        <LoadingState variant="rows" rows={3} label="جاري تحميل التعليقات" />
+      ) : isError ? (
+        <ErrorState compact title="تعذر تحميل التعليقات" onRetry={() => refetch()} retrying={isFetching} />
+      ) : data.length === 0 ? (
+        <EmptyState compact icon={<ChatBubbleOutlineOutlined />} title="لا توجد تعليقات بعد" />
+      ) : (
+        <Box component="ul" sx={{ listStyle: "none", m: 0, p: 0, display: "flex", flexDirection: "column" }}>
+          {data.map((comment) => {
+            const name = authorName(comment);
+            return (
+              <Box
+                component="li"
+                key={comment._id}
+                sx={{ display: "flex", gap: 1.5, py: 2, borderTop: 1, borderColor: "divider", "&:first-of-type": { borderTop: 0, pt: 0 } }}
               >
-                {posting ? <CircularProgress size={22} /> : 'إرسال'}
-              </Button>
-            </Box>
-          ) : (
-            <Alert severity="info" sx={{ mb: 3 }}>
-              يجب تسجيل الدخول لإضافة تعليق.
-            </Alert>
-          )}
-          {success && (
-            <Alert severity="success" sx={{ mb: 2 }}>
-              تم إضافة التعليق بنجاح
-            </Alert>
-          )}
-          {comments.length === 0 ? (
-            <Typography color="text.secondary">
-              لا توجد تعليقات بعد.
-            </Typography>
-          ) : (
-            <Box display="flex" flexDirection="column" gap={2}>
-              {comments.map(comment => {
-                const authorName = comment.user?.userName || 'مستخدم محذوف';
-                return (
-                <Box key={comment._id} display="flex" alignItems="flex-start" gap={2} p={2} bgcolor="#f7f7f7" borderRadius={2}>
-                  <Avatar>{comment.user?.userName?.[0] || '?'}</Avatar>
-                  <Box>
-                    <Typography fontWeight={700}>{authorName}</Typography>
-                    <Box display="flex" alignItems="center" gap={1} mb={0.5}>
-                      <Typography variant="body2" color="text.secondary">
-                        {new Date(comment.createdAt).toLocaleString('ar-EG')}
-                      </Typography>
-                    </Box>
-                    <Typography>{comment.text}</Typography>
+                <Avatar aria-hidden sx={{ width: 36, height: 36, fontSize: "0.9375rem", bgcolor: "var(--c-primary-soft)", color: "primary.main" }}>
+                  {comment.user ? name.charAt(0) : "؟"}
+                </Avatar>
+                <Box sx={{ minWidth: 0 }}>
+                  <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", columnGap: 1 }}>
+                    <Typography component="p" variant="subtitle2" sx={{ fontWeight: 600 }}>
+                      {name}
+                    </Typography>
+                    <Typography component="time" variant="caption" color="text.secondary" dateTime={comment.createdAt}>
+                      {DATE.format(new Date(comment.createdAt))}
+                    </Typography>
                   </Box>
+                  <Typography variant="body1" sx={{ whiteSpace: "pre-line", overflowWrap: "anywhere" }}>
+                    {comment.text}
+                  </Typography>
                 </Box>
-                );
-              })}
-            </Box>
-          )}
-        </>
+              </Box>
+            );
+          })}
+        </Box>
       )}
     </Box>
   );
-};
-
-export default CommentSection;
+}
