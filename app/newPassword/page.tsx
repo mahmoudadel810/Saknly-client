@@ -101,7 +101,7 @@ export default function ResetPasswordFormPage() {
 
     return (
         <Container maxWidth="sm" sx={{ mt: 8 }}>
-            <Paper elevation={3} sx={{ p: 4, borderRadius: 2, direction: 'rtl' }}>
+            <Paper elevation={3} sx={{ p: 4, borderRadius: 2 }}>
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
                     <Box sx={{ 
                         bgcolor: 'primary.main', 

@@ -57,7 +57,6 @@ export default function EmailConfirmedPage() {
                 justifyContent: 'center',
                 bgcolor: '#ededed',
                 px: 2,
-                direction: 'rtl',
             }}
         >
             <Paper

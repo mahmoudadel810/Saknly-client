@@ -133,7 +133,6 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
         display: 'flex',
         flexDirection: 'row',
         borderRadius: '12px',
-        direction: 'rtl',
         overflow: 'hidden',
         cursor: 'pointer',
         transition: 'transform 0.3s ease-in-out, boxShadow 0.3s ease-in-out', 

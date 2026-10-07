@@ -18,7 +18,6 @@ const HeroSection = () => {
                 justifyContent: 'center',
                 color: 'white',
                 textAlign: 'center',
-                direction: 'rtl',
                 position: 'relative',
                 '&::before': {
                     content: '""',

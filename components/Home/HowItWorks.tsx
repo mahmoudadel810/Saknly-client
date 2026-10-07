@@ -26,7 +26,7 @@ const steps = [
 
 const HowItWorks = () => {
     return (
-        <Box sx={{ py: { xs: 8, md: 12 }, bgcolor: 'grey.50' ,direction:"rtl"}}>
+        <Box sx={{ py: { xs: 8, md: 12 }, bgcolor: 'grey.50'}}>
             <Container maxWidth="lg">
                 <Typography
                     variant="h2"

@@ -18,7 +18,7 @@ export default function PrivacyPolicyPage() {
   return (
     <Container
       maxWidth="md"
-      sx={{ py: { xs: 2, md: 6 }, bgcolor: "#FFF", minHeight: "100vh", direction: "rtl" }}
+      sx={{ py: { xs: 2, md: 6 }, bgcolor: "#FFF", minHeight: "100vh" }}
       dir="rtl"
     >
       <Box
@@ -69,7 +69,7 @@ export default function PrivacyPolicyPage() {
         <Typography sx={{ mb: 1, fontSize: { xs: 15, md: 17 } }}>
           قد نقوم بجمع معلومات عنك بعدة طرق. تشمل المعلومات التي قد نجمعها عبر الموقع:
         </Typography>
-        <ul style={{ marginLeft: 24, marginBottom: 20, fontSize: 16, direction: "rtl", textAlign: "right" }}>
+        <ul style={{ marginLeft: 24, marginBottom: 20, fontSize: 16, textAlign: "start" }}>
           <li style={{ marginBottom: 8 }}>
             <b>البيانات الشخصية:</b> معلومات تعريفية مثل الاسم، عنوان البريد الإلكتروني، رقم الهاتف، والعنوان، بالإضافة إلى معلومات ديموغرافية مثل العمر والجنس والاهتمامات، والتي تقدمها لنا طوعًا عند التسجيل أو المشاركة في أنشطة الموقع.
           </li>

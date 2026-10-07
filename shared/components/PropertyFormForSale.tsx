@@ -560,7 +560,6 @@ export default function PropertyFormForSale() {
         gap: 4, 
         display: "flex",
         flexDirection: "column",
-        direction: "rtl"
       }}>
         <Typography variant="h5" fontWeight="bold" gutterBottom sx={{
           color: colors.primary[600], 

@@ -68,7 +68,7 @@ export default function TestimonialsModerationPage() {
   };
 
   return (
-    <Box sx={{ direction: "rtl", color: isDarkMode ? "#fff" : undefined }}>
+    <Box sx={{ color: isDarkMode ? "#fff" : undefined }}>
       <Typography variant="h4" fontWeight="bold" sx={{ mb: 1, fontSize: { xs: "1.5rem", md: "2rem" } }}>
         آراء العملاء
       </Typography>

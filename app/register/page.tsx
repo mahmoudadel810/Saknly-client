@@ -226,7 +226,7 @@ export default function Register() {
             flexDirection: "column",
             justifyContent: "center",
             padding: { xs: "2rem", md: "4rem" },
-            textAlign: "right",
+            textAlign: "start",
             width: { xs: "100%", lg: "unset" },
             ...(isDarkMode && {
               backgroundColor: "var(--dark-700)",
@@ -240,7 +240,6 @@ export default function Register() {
               fontSize: { xs: "24px", md: "30px" },
               marginBottom: "2rem",
               textAlign: "center",
-              direction: "rtl",
             }}>
             إنشاء حساب
           </Typography>
@@ -251,7 +250,6 @@ export default function Register() {
             sx={{
               display: "grid",
               gap: "1rem",
-              direction: "rtl",
             }}>
             {/* userName Field */}
             <TextField
@@ -274,8 +272,7 @@ export default function Register() {
               }}
               FormHelperTextProps={{
                 sx: {
-                  textAlign: "right",
-                  direction: "rtl",
+                  textAlign: "start",
                 },
               }}
               sx={textFieldStyles}
@@ -306,8 +303,7 @@ export default function Register() {
               }}
               FormHelperTextProps={{
                 sx: {
-                  textAlign: "right",
-                  direction: "rtl",
+                  textAlign: "start",
                 },
               }}
               sx={textFieldStyles}
@@ -348,8 +344,7 @@ export default function Register() {
               }}
               FormHelperTextProps={{
                 sx: {
-                  textAlign: "right",
-                  direction: "rtl",
+                  textAlign: "start",
                 },
               }}
               sx={textFieldStyles}
@@ -392,8 +387,7 @@ export default function Register() {
               }}
               FormHelperTextProps={{
                 sx: {
-                  textAlign: "right",
-                  direction: "rtl",
+                  textAlign: "start",
                 },
               }}
               sx={textFieldStyles}
@@ -420,8 +414,7 @@ export default function Register() {
               }}
               FormHelperTextProps={{
                 sx: {
-                  textAlign: "right",
-                  direction: "rtl",
+                  textAlign: "start",
                 },
               }}
               sx={textFieldStyles}
@@ -448,8 +441,7 @@ export default function Register() {
               }}
               FormHelperTextProps={{
                 sx: {
-                  textAlign: "right",
-                  direction: "rtl",
+                  textAlign: "start",
                 },
               }}
               sx={textFieldStyles}
@@ -491,7 +483,6 @@ export default function Register() {
             sx={{
               marginTop: "1rem",
               textAlign: "center",
-              direction: "rtl",
             }}>
             هل لديك حساب بالفعل ؟{" "}
             <a

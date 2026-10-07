@@ -167,7 +167,6 @@ export default function HeroSearchBar() {
           width: "100%",
           minWidth: { xs: "300px", sm: "auto" },
           mx: "auto",
-          direction: "rtl",
           alignItems: "flex-start",
           mb: 4,
           overflow: "visible",
@@ -414,7 +413,6 @@ export default function HeroSearchBar() {
                   borderRadius: 2,
                   boxShadow: 3,
                   mt: 1,
-                  direction: "rtl",
                   width: isMobile ? "calc(100vw - 32px)" : 300,
                   maxWidth: "none",
                 },
@@ -426,7 +424,7 @@ export default function HeroSearchBar() {
                   sx={{
                     fontWeight: "bold",
                     mb: 1,
-                    textAlign: "right",
+                    textAlign: "start",
                     fontSize: { xs: "0.9rem", sm: "1rem" },
                   }}
                 >
@@ -511,7 +509,7 @@ export default function HeroSearchBar() {
                   sx={{
                     fontWeight: "bold",
                     mb: 1,
-                    textAlign: "right",
+                    textAlign: "start",
                     fontSize: { xs: "0.9rem", sm: "1rem" },
                   }}
                 >
@@ -676,7 +674,6 @@ export default function HeroSearchBar() {
                 borderRadius: 2,
                 boxShadow: 3,
                 mt: 1,
-                direction: "rtl",
                 width: isMobile ? "calc(100vw - 32px)" : 300,
                 maxWidth: "none",
               },
@@ -714,7 +711,7 @@ export default function HeroSearchBar() {
                       <ListItemText
                         primary={`${val} م²`}
                         sx={{
-                          textAlign: "right",
+                          textAlign: "start",
                           fontSize: { xs: "0.8rem", sm: "0.875rem" },
                         }}
                       />
@@ -837,7 +834,6 @@ export default function HeroSearchBar() {
                 borderRadius: 2,
                 boxShadow: 3,
                 mt: 1,
-                direction: "rtl",
                 width: isMobile ? "calc(100vw - 32px)" : 300,
                 maxWidth: "none",
               },
@@ -876,7 +872,7 @@ export default function HeroSearchBar() {
                       <ListItemText
                         primary={`$${val.toLocaleString()} جنيه`}
                         sx={{
-                          textAlign: "right",
+                          textAlign: "start",
                           fontSize: { xs: "0.8rem", sm: "0.875rem" },
                         }}
                       />

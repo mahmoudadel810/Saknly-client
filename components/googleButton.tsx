@@ -21,7 +21,6 @@ const GoogleButton = () => {
                 width: 'fit-content',
                 boxShadow: 'none',
                 textTransform: 'none',
-                direction: "ltr", // 👈 مهم علشان ما يتأثرش بـ rtl الصفحة
                 '&:hover': {
                     boxShadow:
                         '0 1px 2px 0 rgba(60, 64, 67, .30), 0 1px 3px 1px rgba(60, 64, 67, .15)',

@@ -145,7 +145,6 @@ export default function UserProfilePage() {
         display: "flex",
         flexDirection: "column",
         backgroundColor: isDarkMode ? "#111827" : "#f1f5f9",
-        direction: "rtl",
         py: 4,
         px: { xs: 1, sm: 2 },
         color: isDarkMode ? "#f1f5f9" : undefined,
@@ -495,7 +494,7 @@ export default function UserProfilePage() {
                       sx={{
                         minWidth: isMobile ? 600 : "100%",
                         "& .MuiTableCell-root": {
-                          textAlign: "right",
+                          textAlign: "start",
                           padding: isMobile ? "12px 8px" : "16px",
                           color: isDarkMode ? "#f1f5f9" : undefined,
                           borderBottom: isDarkMode ? "1px solid #374151" : undefined,

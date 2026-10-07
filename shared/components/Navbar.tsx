@@ -76,7 +76,6 @@ export default function Navbar() {
       elevation={0} 
       className="bg-white/92 dark:bg-[#1f2937] border-b border-gray-200/40 dark:border-dark-700/40 text-black dark:text-white"
       sx={{ 
-        direction: "rtl", 
         zIndex: 1201, 
         backdropFilter: 'blur(8px)',
         transition: 'all 0.3s ease'
@@ -394,7 +393,6 @@ export default function Navbar() {
         PaperProps={{ 
           sx: { 
             width: 260, 
-            direction: "rtl",
             bgcolor: 'rgba(255, 255, 255, 0.95)',
             backdropFilter: 'blur(8px)'
           } 
@@ -449,7 +447,7 @@ export default function Navbar() {
                 <ListItemText 
                   primary={link.label} 
                   sx={{ 
-                    textAlign: "right", 
+                    textAlign: "start", 
                     '& .MuiTypography-root': {
                       fontWeight: isActive ? 600 : 400,
                       fontSize: '0.95rem',
@@ -478,7 +476,7 @@ export default function Navbar() {
               <ListItemText 
                 primary="لوحة تحكم الأدمن" 
                 sx={{ 
-                  textAlign: "right", 
+                  textAlign: "start", 
                   '& .MuiTypography-root': {
                     fontWeight: 400,
                     fontSize: '0.95rem',
@@ -514,7 +512,7 @@ export default function Navbar() {
             <ListItemText 
               primary="أضف عقارك" 
               sx={{ 
-                textAlign: "right", 
+                textAlign: "start", 
                 '& .MuiTypography-root': {
                   fontWeight: 400,
                   fontSize: '0.95rem',

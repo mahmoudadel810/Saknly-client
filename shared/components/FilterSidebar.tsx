@@ -303,7 +303,6 @@ const FilterSidebar: React.FC<FilterSidebarProps> = () => {
         p: { xs: 2, md: 3 }, // Less padding on small screens
         borderLeft: { xs: 'none', md: '1px solid #e0e0e0' }, // No left border on small screens
         borderBottom: { xs: '1px solid #e0e0e0', md: 'none' }, // Add bottom border on small screens if it's placed at the top
-        direction: 'rtl',
         backgroundColor: '#fff',
         flexShrink: 0,
         overflowY: 'auto',
@@ -334,16 +333,16 @@ const FilterSidebar: React.FC<FilterSidebarProps> = () => {
               <SearchIcon sx={{ ml: 1 }} />
             </InputAdornment>
           ),
-          style: { direction: 'rtl', textAlign: 'right' }
+          style: { textAlign: 'start' }
         }}
-        inputProps={{ dir: 'rtl', style: { textAlign: 'right' } }}
+        inputProps={{ dir: 'rtl', style: { textAlign: 'start' } }}
       />
       <Divider sx={{ my: 3 }} />
 
       {/* Price Range Filter */}
       <FormControl component="fieldset" sx={{ mb: 4 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-          <FormLabel component="legend" sx={{ textAlign: 'right', fontWeight: 'bold' }}>
+          <FormLabel component="legend" sx={{ textAlign: 'start', fontWeight: 'bold' }}>
             السعر
           </FormLabel>
           <Button onClick={() => handleClearFilter('price')} sx={{ color: 'primary.main', textDecoration: 'underline', fontSize: '0.8rem' }}>
@@ -357,7 +356,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = () => {
           valueLabelDisplay="auto"
           min={500000}
           max={20000000}
-          sx={{ direction: 'ltr', width: '95%', margin: '0 auto' }}
+          sx={{ width: '95%', margin: '0 auto' }}
         />
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1, flexWrap: 'wrap', gap: 1 }}> {/* Added flexWrap and gap here */}
           <TextField
@@ -368,7 +367,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = () => {
             value={priceRange[0]}
             onChange={handleMinPriceChange}
             sx={{ flexGrow: 1, '.MuiOutlinedInput-root': { borderRadius: '8px' } }} 
-            inputProps={{ dir: 'rtl', style: { textAlign: 'right' } }}
+            inputProps={{ dir: 'rtl', style: { textAlign: 'start' } }}
           />
           <TextField
             label="الحد الأقصى"
@@ -378,7 +377,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = () => {
             value={priceRange[1]}
             onChange={handleMaxPriceChange}
             sx={{ flexGrow: 1, '.MuiOutlinedInput-root': { borderRadius: '8px' } }} 
-            inputProps={{ dir: 'rtl', style: { textAlign: 'right' } }}
+            inputProps={{ dir: 'rtl', style: { textAlign: 'start' } }}
           />
         </Box>
       </FormControl>
@@ -388,7 +387,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = () => {
       {/* Areas (Cities) Filter */}
       <FormControl component="fieldset" sx={{ mb: 4 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-          <FormLabel component="legend" sx={{ textAlign: 'right', fontWeight: 'bold' }}>
+          <FormLabel component="legend" sx={{ textAlign: 'start', fontWeight: 'bold' }}>
             المناطق (المدن)
           </FormLabel>
           <Button onClick={() => handleClearFilter('location.city')} sx={{ color: 'primary.main', textDecoration: 'underline', fontSize: '0.8rem' }}>
@@ -418,7 +417,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = () => {
       {/* Property Type Filter */}
       <FormControl component="fieldset" sx={{ mb: 4 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-          <FormLabel component="legend" sx={{ textAlign: 'right', fontWeight: 'bold' }}>
+          <FormLabel component="legend" sx={{ textAlign: 'start', fontWeight: 'bold' }}>
             نوع العقار
           </FormLabel>
           <Button onClick={() => handleClearFilter('type')} sx={{ color: 'primary.main', textDecoration: 'underline', fontSize: '0.8rem' }}>
@@ -448,7 +447,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = () => {
       {/* Bedrooms Filter */}
       <FormControl component="fieldset" sx={{ mb: 4 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-          <FormLabel component="legend" sx={{ textAlign: 'right', fontWeight: 'bold' }}>
+          <FormLabel component="legend" sx={{ textAlign: 'start', fontWeight: 'bold' }}>
             عدد غرف النوم
           </FormLabel>
           <Button onClick={() => handleClearFilter('bedrooms')} sx={{ color: 'primary.main', textDecoration: 'underline', fontSize: '0.8rem' }}>
@@ -474,7 +473,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = () => {
       {/* Bathrooms Filter */}
       <FormControl component="fieldset" sx={{ mb: 4 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-          <FormLabel component="legend" sx={{ textAlign: 'right', fontWeight: 'bold' }}>
+          <FormLabel component="legend" sx={{ textAlign: 'start', fontWeight: 'bold' }}>
             عدد الحمامات
           </FormLabel>
           <Button onClick={() => handleClearFilter('bathrooms')} sx={{ color: 'primary.main', textDecoration: 'underline', fontSize: '0.8rem' }}>
@@ -500,7 +499,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = () => {
       {/* Unit Area Filter */}
       <FormControl component="fieldset" sx={{ mb: 4 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-          <FormLabel component="legend" sx={{ textAlign: 'right', fontWeight: 'bold' }}>
+          <FormLabel component="legend" sx={{ textAlign: 'start', fontWeight: 'bold' }}>
             مساحة الوحدة (متر مربع)
           </FormLabel>
           <Button onClick={() => handleClearFilter('area')} sx={{ color: 'primary.main', textDecoration: 'underline', fontSize: '0.8rem' }}>
@@ -515,7 +514,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = () => {
           type="number"
           value={unitArea === null ? '' : unitArea}
           onChange={handleUnitAreaInputChange}
-          inputProps={{ min: 0, style: { textAlign: 'right' } }}
+          inputProps={{ min: 0, style: { textAlign: 'start' } }}
           sx={{ '.MuiOutlinedInput-root': { borderRadius: '8px' } }}
         />
       </FormControl>
@@ -525,7 +524,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = () => {
       {/* Amenities Filter */}
       <FormControl component="fieldset" sx={{ mb: 4 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-          <FormLabel component="legend" sx={{ textAlign: 'right', fontWeight: 'bold' }}>
+          <FormLabel component="legend" sx={{ textAlign: 'start', fontWeight: 'bold' }}>
             الرفاهيات
           </FormLabel>
           <Button onClick={() => handleClearFilter('amenities')} sx={{ color: 'primary.main', textDecoration: 'underline', fontSize: '0.8rem' }}>
@@ -555,7 +554,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = () => {
       {/* Payment Plan Filter */}
       <FormControl component="fieldset" sx={{ mb: 4 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-          <FormLabel component="legend" sx={{ textAlign: 'right', fontWeight: 'bold' }}>
+          <FormLabel component="legend" sx={{ textAlign: 'start', fontWeight: 'bold' }}>
             خطة الدفع
           </FormLabel>
           <Button onClick={() => { handleClearFilter('downPayment'); handleClearFilter('installmentPeriodInYears'); }} sx={{ color: 'primary.main', textDecoration: 'underline', fontSize: '0.8rem' }}>
@@ -570,10 +569,10 @@ const FilterSidebar: React.FC<FilterSidebarProps> = () => {
           type="number"
           value={downPayment}
           onChange={handleDownPaymentChange}
-          inputProps={{ min: 0, style: { textAlign: 'right' } }}
+          inputProps={{ min: 0, style: { textAlign: 'start' } }}
           sx={{ mb: 2, '.MuiOutlinedInput-root': { borderRadius: '8px' } }}
         />
-        <FormLabel component="legend" sx={{ textAlign: 'right', fontWeight: 'bold', mb: 1 }}>
+        <FormLabel component="legend" sx={{ textAlign: 'start', fontWeight: 'bold', mb: 1 }}>
           عدد سنوات التقسيط
         </FormLabel>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>

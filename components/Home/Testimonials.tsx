@@ -405,7 +405,7 @@ const Testimonials = () => {
                         variant="caption" 
                         align="left" 
                         color={form.text.length > 200 ? 'error' : 'textSecondary'}
-                        sx={{ mt: -1, mb: 1, width: '100%', textAlign: 'right' }}
+                        sx={{ mt: -1, mb: 1, width: '100%', textAlign: 'start' }}
                     >
                         {form.text.length}/200 حرف
                     </Typography>

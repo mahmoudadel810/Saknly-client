@@ -73,7 +73,7 @@ const PropertyPieChart = ({ pending }: { pending: { sale: any[]; rent: any[]; st
       >
         توزيع العقارات المعلقة حسب النوع
       </Typography>
-      <Box sx={{ height: "300px", direction: "ltr" }}>
+      <Box sx={{ height: "300px" }}>
         <Pie data={chartData} options={options} />
       </Box>
       <Typography

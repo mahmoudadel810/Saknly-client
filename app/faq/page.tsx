@@ -71,7 +71,6 @@ export default function FAQPage() {
         px: { xs: 2, sm: 3 },
         bgcolor: "#FFF", 
         minHeight: "100vh", 
-        direction: "rtl" 
       }}
       dir="rtl"
     >

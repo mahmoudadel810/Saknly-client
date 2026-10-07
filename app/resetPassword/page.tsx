@@ -150,7 +150,7 @@ const ResetPasswordPage = () => {
 
   return (
     <Container maxWidth="sm" sx={{ mt: 8, mb: 8 }}>
-      <Paper elevation={3} sx={{ p: 4, borderRadius: 5, direction: "rtl" }}>
+      <Paper elevation={3} sx={{ p: 4, borderRadius: 5 }}>
         <Box
           sx={{
             display: "flex",
@@ -216,8 +216,7 @@ const ResetPasswordPage = () => {
               }}
               FormHelperTextProps={{
                 sx: {
-                  textAlign: "right",
-                  direction: "rtl",
+                  textAlign: "start",
                   color: ERROR,
                   fontWeight: 600,
                   fontSize: "1em",
@@ -269,8 +268,7 @@ const ResetPasswordPage = () => {
               }}
               FormHelperTextProps={{
                 sx: {
-                  textAlign: "right",
-                  direction: "rtl",
+                  textAlign: "start",
                   color: ERROR,
                   fontWeight: 600,
                   fontSize: "1em",
@@ -317,8 +315,7 @@ const ResetPasswordPage = () => {
               }}
               FormHelperTextProps={{
                 sx: {
-                  textAlign: "right",
-                  direction: "rtl",
+                  textAlign: "start",
                   color: ERROR,
                   fontWeight: 600,
                   fontSize: "1em",
@@ -370,8 +367,7 @@ const ResetPasswordPage = () => {
               }}
               FormHelperTextProps={{
                 sx: {
-                  textAlign: "right",
-                  direction: "rtl",
+                  textAlign: "start",
                   color: ERROR,
                   fontWeight: 600,
                   fontSize: "1em",

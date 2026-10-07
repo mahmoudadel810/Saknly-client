@@ -268,7 +268,7 @@ const LoginPage = () => {
             flexDirection: "column",
             justifyContent: "center",
             padding: { xs: "2rem", md: "4rem" },
-            textAlign: "right",
+            textAlign: "start",
             width: { xs: "100%", md: "unset" },
           }}>
           <Typography
@@ -278,7 +278,6 @@ const LoginPage = () => {
               fontSize: { xs: "24px", md: "30px" },
               marginBottom: "2rem",
               textAlign: "center",
-              direction: "rtl",
             }}>
             تسجيل الدخول
           </Typography>
@@ -288,7 +287,6 @@ const LoginPage = () => {
             sx={{
               display: "grid",
               gap: "1rem",
-              direction: "rtl",
             }}>
             {/* Email Field */}
             <TextField
@@ -312,8 +310,7 @@ const LoginPage = () => {
               }}
               FormHelperTextProps={{
                 sx: {
-                  textAlign: "right",
-                  direction: "rtl",
+                  textAlign: "start",
                   color: ERROR,
                   fontWeight: 600,
                   fontSize: "1em",
@@ -356,8 +353,7 @@ const LoginPage = () => {
               }}
               FormHelperTextProps={{
                 sx: {
-                  textAlign: "right",
-                  direction: "rtl",
+                  textAlign: "start",
                   color: ERROR,
                   fontWeight: 600,
                   fontSize: "1em",
@@ -444,7 +440,6 @@ const LoginPage = () => {
             <Typography
               sx={{
                 textAlign: "center",
-                direction: "rtl",
               }}>
               ليس لديك حساب؟{" "}
               <Link

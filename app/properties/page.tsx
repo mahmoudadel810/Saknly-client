@@ -329,8 +329,7 @@ const EnhancedPropertyCard: React.FC<EnhancedPropertyCardProps> = ({
               color: "#1e293b",
               fontSize: "1.5rem",
               mb: 1,
-              textAlign: "right",
-              direction: "rtl"
+              textAlign: "start",
             }}>
             {title}
           </Typography>
@@ -672,7 +671,6 @@ const SearchPage: React.FC = () => {
           display: "flex",
           minHeight: "100vh",
           backgroundColor: "#f8f9fa",
-          direction: "rtl"
         }}>
         <FilterSidebar />
         <Box
