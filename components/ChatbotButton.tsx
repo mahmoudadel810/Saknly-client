@@ -24,7 +24,7 @@ import { arabicErrorMessage } from "@/shared/ui/form/errorMessage";
 // server/modules/chatBot/chat.routes.js rejects questions longer than 500 characters.
 const MAX_QUESTION = 500;
 
-const SUGGESTIONS = ["شقق للإيجار في شبين الكوم", "سكن طلاب قريب من الجامعة", "عقارات للبيع أقل من مليون جنيه"];
+const SUGGESTIONS = ["شقق للإيجار في شبين الكوم", "سكن طلابي قريب من الجامعة", "عقارات للبيع أقل من مليون جنيه"];
 
 type Message = { id: number; role: "user" | "bot"; text: string };
 

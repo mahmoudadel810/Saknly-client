@@ -18,7 +18,7 @@ const COLUMNS: { id: string; title: string; links: { href: string; label: string
       { href: "/properties", label: "كل العقارات" },
       { href: "/properties?category=sale", label: "للبيع" },
       { href: "/properties?category=rent", label: "للإيجار" },
-      { href: "/properties?isStudentFriendly=true", label: "سكن الطلاب" },
+      { href: "/properties?isStudentFriendly=true", label: "سكن طلابي" },
       { href: "/uploadProperty", label: "أضف عقارك" },
     ],
   },
@@ -63,7 +63,7 @@ export default function Footer() {
               <Logo size={28} showLatin />
             </Box>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5, maxWidth: "36ch" }}>
-              عقارات للبيع والإيجار وسكن الطلاب. ابحث عن العقار المناسب وتواصل مع مالكه مباشرة.
+              عقارات للبيع والإيجار وسكن طلابي. ابحث عن العقار المناسب وتواصل مع مالكه مباشرة.
             </Typography>
             <Box
               component="address"

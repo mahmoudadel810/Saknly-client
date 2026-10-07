@@ -48,7 +48,7 @@ const NAV_LINKS: { href: string; label: string; isActive: (pathname: string, que
   },
   {
     href: "/properties?isStudentFriendly=true",
-    label: "سكن الطلاب",
+    label: "سكن طلابي",
     isActive: (pathname, query) => pathname === "/properties" && query?.get("isStudentFriendly") === "true",
   },
 ];
