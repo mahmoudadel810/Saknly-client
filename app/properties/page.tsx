@@ -151,7 +151,7 @@ function SearchPage() {
 
   let results: React.ReactNode;
   if (loading) {
-    results = <LoadingState variant="cards" count={6} label="جاري تحميل العقارات" />;
+    results = <LoadingState variant="cards" columns={3} count={6} label="جاري تحميل العقارات" />;
   } else if (error) {
     results = <ErrorState title={error} onRetry={() => setReloadKey((k) => k + 1)} />;
   } else if (properties.length === 0) {
@@ -465,7 +465,7 @@ export default function SearchPageWithSuspense() {
     <Suspense
       fallback={
         <Box sx={{ maxWidth: 1240, mx: "auto", px: { xs: 2, md: 3 }, py: 4 }}>
-          <LoadingState variant="cards" count={6} label="جاري تحميل العقارات" />
+          <LoadingState variant="cards" columns={3} count={6} label="جاري تحميل العقارات" />
         </Box>
       }
     >

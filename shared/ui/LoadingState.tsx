@@ -12,8 +12,11 @@ import CardGrid from "./CardGrid";
 export type LoadingStateProps =
   /** A spinner, for small areas (a panel, a dialog body, a button-sized region). */
   | { variant?: "spinner"; label?: string; compact?: boolean }
-  /** Skeleton listing cards in the card grid. */
-  | { variant: "cards"; count?: number; label?: string }
+  /**
+   * Skeleton listing cards in the card grid. `columns: 3` matches the browse results (three at most, beside
+   * the filter column) instead of the four-column CardGrid.
+   */
+  | { variant: "cards"; count?: number; label?: string; columns?: 3 }
   /** Skeleton of the listing detail page: gallery, price block, facts, contact panel. */
   | { variant: "detail"; label?: string }
   /** Skeleton 44px rows outside a table (e.g. a stacked list). Inside a <tbody> use TableRowsSkeleton. */
@@ -99,11 +102,25 @@ export default function LoadingState(props: LoadingStateProps) {
     case "cards":
       return (
         <Busy label={label}>
-          <CardGrid>
-            {Array.from({ length: props.count ?? 8 }, (_, i) => (
-              <CardSkeleton key={i} />
-            ))}
-          </CardGrid>
+          {props.columns === 3 ? (
+            <Box
+              sx={{
+                display: "grid",
+                gap: 2,
+                gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(2, minmax(0, 1fr))", md: "repeat(3, minmax(0, 1fr))" },
+              }}
+            >
+              {Array.from({ length: props.count ?? 6 }, (_, i) => (
+                <CardSkeleton key={i} />
+              ))}
+            </Box>
+          ) : (
+            <CardGrid>
+              {Array.from({ length: props.count ?? 8 }, (_, i) => (
+                <CardSkeleton key={i} />
+              ))}
+            </CardGrid>
+          )}
         </Busy>
       );
     case "detail":
