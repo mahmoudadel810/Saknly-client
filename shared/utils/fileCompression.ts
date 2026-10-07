@@ -1,4 +1,8 @@
-// File compression utility for reducing upload sizes
+// Client-side photo checks and compression for the publish-listing form.
+// Server limits (server/utils/multer.js): JPEG, PNG, GIF, WebP or AVIF; at most 8 files; 4 MB per file; and
+// Vercel rejects request bodies over about 4.5 MB in total. The server re-encodes to 800×600 JPEG anyway, so
+// compressing to the same size here costs nothing in quality and keeps uploads small.
+
 export interface CompressedFile {
   file: File;
   originalSize: number;
@@ -6,167 +10,94 @@ export interface CompressedFile {
   compressionRatio: number;
 }
 
+export const UPLOAD_LIMITS = {
+  maxFiles: 8,
+  maxFileBytes: 4 * 1024 * 1024,
+  /** Leaves room for the text fields under Vercel's ~4.5 MB body cap. */
+  maxTotalBytes: 4 * 1024 * 1024,
+  types: ["image/jpeg", "image/png", "image/gif", "image/webp", "image/avif"],
+  accept: "image/jpeg,image/png,image/gif,image/webp,image/avif",
+} as const;
+
 export class FileCompressor {
   private static readonly MAX_WIDTH = 800;
   private static readonly MAX_HEIGHT = 600;
   private static readonly QUALITY = 0.7;
-  private static readonly MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB
 
-  /**
-   * Compress an image file using canvas
-   */
+  /** Resize to fit 800×600 and re-encode; GIFs (possibly animated) are kept as they are. */
   static async compressImage(file: File): Promise<CompressedFile> {
-    return new Promise((resolve, reject) => {
-      if (!file.type.startsWith('image/')) {
-        resolve({
-          file,
-          originalSize: file.size,
-          compressedSize: file.size,
-          compressionRatio: 1
-        });
-        return;
+    const unchanged = { file, originalSize: file.size, compressedSize: file.size, compressionRatio: 1 };
+    if (!file.type.startsWith("image/") || file.type === "image/gif") return unchanged;
+
+    const url = URL.createObjectURL(file);
+    try {
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const el = new Image();
+        el.onload = () => resolve(el);
+        el.onerror = () => reject(new Error("image could not be read"));
+        el.src = url;
+      });
+      let { width, height } = img;
+      if (width > this.MAX_WIDTH || height > this.MAX_HEIGHT) {
+        const ratio = Math.min(this.MAX_WIDTH / width, this.MAX_HEIGHT / height);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
       }
-
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      const img = new Image();
-
-      img.onload = () => {
-        // Calculate new dimensions
-        let { width, height } = img;
-        
-        if (width > this.MAX_WIDTH || height > this.MAX_HEIGHT) {
-          const ratio = Math.min(this.MAX_WIDTH / width, this.MAX_HEIGHT / height);
-          width *= ratio;
-          height *= ratio;
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-
-        // Draw and compress
-        ctx?.drawImage(img, 0, 0, width, height);
-
-        canvas.toBlob(
-          (blob) => {
-            if (!blob) {
-              reject(new Error('Failed to compress image'));
-              return;
-            }
-
-            const compressedFile = new File([blob], file.name, {
-              type: file.type,
-              lastModified: Date.now()
-            });
-
-            resolve({
-              file: compressedFile,
-              originalSize: file.size,
-              compressedSize: compressedFile.size,
-              compressionRatio: compressedFile.size / file.size
-            });
-          },
-          file.type,
-          this.QUALITY
-        );
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext("2d")?.drawImage(img, 0, 0, width, height);
+      // PNG keeps transparency; everything else becomes JPEG, as on the server.
+      const type = file.type === "image/png" ? "image/png" : "image/jpeg";
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, this.QUALITY));
+      if (!blob || blob.size >= file.size) return unchanged;
+      const name = type === "image/jpeg" ? file.name.replace(/\.[^.]+$/, "") + ".jpg" : file.name;
+      const compressed = new File([blob], name, { type, lastModified: Date.now() });
+      return {
+        file: compressed,
+        originalSize: file.size,
+        compressedSize: compressed.size,
+        compressionRatio: compressed.size / file.size,
       };
-
-      img.onerror = () => reject(new Error('Failed to load image'));
-      img.src = URL.createObjectURL(file);
-    });
+    } finally {
+      URL.revokeObjectURL(url);
+    }
   }
 
-  /**
-   * Compress multiple files
-   */
+  /** Compress each file; a file that cannot be compressed is kept as it is. */
   static async compressFiles(files: File[]): Promise<CompressedFile[]> {
-    const compressedFiles: CompressedFile[] = [];
-
-    for (const file of files) {
-      try {
-        if (file.type.startsWith('image/')) {
-          const compressed = await this.compressImage(file);
-          compressedFiles.push(compressed);
-        } else {
-          // For non-image files, check if they need compression
-          if (file.size > this.MAX_FILE_SIZE) {
-            console.warn(`File ${file.name} is too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Consider reducing file size.`);
-          }
-          compressedFiles.push({
-            file,
-            originalSize: file.size,
-            compressedSize: file.size,
-            compressionRatio: 1
-          });
-        }
-      } catch (error) {
-        console.error(`Failed to compress file ${file.name}:`, error);
-        // Return original file if compression fails
-        compressedFiles.push({
+    return Promise.all(
+      files.map((file) =>
+        this.compressImage(file).catch(() => ({
           file,
           originalSize: file.size,
           compressedSize: file.size,
-          compressionRatio: 1
-        });
-      }
-    }
-
-    return compressedFiles;
+          compressionRatio: 1,
+        })),
+      ),
+    );
   }
 
-  /**
-   * Validate file size and type
-   */
+  /** Type and size check against the server limits, with an Arabic message. */
   static validateFile(file: File): { isValid: boolean; error?: string } {
-    const maxSize = 4 * 1024 * 1024; // 4MB
-    const allowedTypes = [
-      'image/jpeg',
-      'image/png',
-      'image/gif',
-      'image/webp',
-      'image/avif',
-      'video/mp4',
-      'video/quicktime',
-      'video/x-matroska',
-      'video/webm'
-    ];
-
-    if (file.size > maxSize) {
-      return {
-        isValid: false,
-        error: `File size must be less than 4MB. Current size: ${(file.size / 1024 / 1024).toFixed(2)}MB`
-      };
+    if (!(UPLOAD_LIMITS.types as readonly string[]).includes(file.type)) {
+      return { isValid: false, error: `«${file.name}» ليست صورة مدعومة. استخدم JPG أو PNG أو WebP أو AVIF أو GIF.` };
     }
-
-    if (!allowedTypes.includes(file.type)) {
-      return {
-        isValid: false,
-        error: `File type ${file.type} is not allowed`
-      };
+    if (file.type === "image/gif" && file.size > UPLOAD_LIMITS.maxFileBytes) {
+      return { isValid: false, error: `«${file.name}» أكبر من 4 ميجابايت.` };
     }
-
     return { isValid: true };
   }
 
-  /**
-   * Get total size of files
-   */
   static getTotalSize(files: File[]): number {
     return files.reduce((total, file) => total + file.size, 0);
   }
 
-  /**
-   * Format file size for display
-   */
+  /** "1.2 ميجابايت", "350 كيلوبايت". */
   static formatFileSize(bytes: number): string {
-    if (bytes === 0) return '0 Bytes';
-    
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} ميجابايت`;
+    return `${Math.max(1, Math.round(bytes / 1024))} كيلوبايت`;
   }
 }
 
-export default FileCompressor; 
+export default FileCompressor;

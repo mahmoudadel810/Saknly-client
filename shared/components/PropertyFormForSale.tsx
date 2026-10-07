@@ -1,1629 +1,460 @@
 "use client";
-import React, { useState, useRef, useEffect } from "react";
-import {
-  Box, TextField, FormControl, InputLabel, Select, MenuItem,
-  Checkbox, FormControlLabel, Button, Typography, Chip,
-  OutlinedInput, SelectChangeEvent, IconButton, Divider, Dialog,
-  DialogTitle, DialogContent, DialogActions, CircularProgress, Snackbar, Alert
-} from "@mui/material";
-import DeleteIcon from "@mui/icons-material/Delete";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { jwtDecode } from "jwt-decode";
-import { validatePropertyForm, getCurrentAreaConstraints } from "../utils/propertyFormValidation";
-import MapPicker from "./MapPicker";
-import { useToast } from "../provider/ToastProvider";
-import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
-import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
-import { DatePicker } from "@mui/x-date-pickers/DatePicker";
-import { arSA } from 'date-fns/locale/ar-SA';
-import { format } from 'date-fns';
-import FileCompressor from "../utils/fileCompression";
-import { AMENITIES, CITY_OPTIONS, PROPERTY_TYPE_OPTIONS } from "../constants/property";
-import { API_URL, authHeader, clearAuthToken } from "../utils/auth";
+import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
+import Typography from "@mui/material/Typography";
+import CheckCircleOutlined from "@mui/icons-material/CheckCircleOutlined";
+import { useAuth } from "@/app/context/AuthContext";
+import { useToast } from "@/shared/provider/ToastProvider";
+import ConfirmDialog from "@/shared/components/ConfirmDialog";
+import { API_URL, authHeader, clearAuthToken, getToken } from "@/shared/utils/auth";
+import FileCompressor, { UPLOAD_LIMITS } from "@/shared/utils/fileCompression";
+import {
+  FIELD_ORDER,
+  INITIAL_PROPERTY_FORM,
+  isShop,
+  validatePropertyForm,
+  type PropertyFormValues,
+} from "@/shared/utils/propertyFormValidation";
+import { useUnsavedChangesGuard } from "@/shared/ui/form/useUnsavedChangesGuard";
+import { saveDraft, takeDraft } from "@/shared/ui/form/property/draft";
+import { focusField } from "@/shared/ui/form/property/fields";
+import BasicsSection from "@/shared/ui/form/property/BasicsSection";
+import PriceSection from "@/shared/ui/form/property/PriceSection";
+import LocationSection from "@/shared/ui/form/property/LocationSection";
+import DetailsSection from "@/shared/ui/form/property/DetailsSection";
+import PhotosSection from "@/shared/ui/form/property/PhotosSection";
+import ContactSection from "@/shared/ui/form/property/ContactSection";
 
-const amenities = AMENITIES;
+const LOGIN_PATH = "/login?redirect=%2FuploadProperty";
 
-const propertyTypes = PROPERTY_TYPE_OPTIONS;
+/** The multipart body of POST /properties/addProperty (field names match server/modules/Property). */
+function toFormData(v: PropertyFormValues): FormData {
+  const fd = new FormData();
+  const add = (key: string, value: string | undefined | null) => {
+    if (value !== undefined && value !== null && value !== "") fd.append(key, value);
+  };
+  v.images.forEach((image) => fd.append("images", image));
+  add("category", v.operationType);
+  add("type", v.type);
+  add("title", v.title.trim());
+  add("description", v.description.trim());
+  add("price", v.price);
+  add("area", v.area);
+  // The server requires bedrooms; a shop has none.
+  add("bedrooms", isShop(v.type) ? "0" : v.bedrooms);
+  add("bathrooms", v.bathrooms);
+  add("location[city]", v.location);
+  add("location[district]", v.district.trim());
+  // The server requires an address: fall back to "district، city" when the owner left it empty.
+  add("location[address]", v.address.trim() || [v.district.trim(), v.location].filter(Boolean).join("، "));
+  add("location[latitude]", String(v.latitude));
+  add("location[longitude]", String(v.longitude));
+  add("floor", v.floor);
+  add("totalFloors", v.totalFloors);
+  add("contactInfo[name]", v.contactInfo.name.trim());
+  add("contactInfo[phone]", v.contactInfo.phone);
+  add("contactInfo[email]", v.contactInfo.email.trim());
+  add("contactInfo[whatsapp]", v.contactInfo.whatsapp);
+  fd.append("isNegotiable", String(v.isNegotiable));
+  // multer parses repeated `amenities[]` fields into an array.
+  v.amenities.forEach((amenity) => fd.append("amenities[]", amenity));
 
-const areaConstraints = {
-  'شقة': { min: 60, max: 220 },
-  'محل': { min: 60, max: 220 },
-  'استوديو': { min: 60, max: 100 },
-  'دوبلكس': { min: 180, max: 300 },
-  'فيلا': { min: 250, max: 600 },
+  if (v.operationType === "sale") {
+    add("ownershipType", v.ownershipType);
+    add("propertyStatus", v.propertyStatus);
+    add("paymentMethod", v.paymentMethod);
+    if (v.paymentMethod !== "cash") {
+      add("downPayment", v.downPayment);
+      add("installmentPeriodInYears", v.installmentPeriodInYears);
+      add("minInstallmentAmount", v.minInstallmentAmount);
+    }
+    add("deliveryDate", v.deliveryDate);
+    add("deliveryTerms", v.deliveryTerms.trim());
+  }
+
+  if (v.operationType === "rent" || v.operationType === "student") {
+    add("deposit", v.deposit);
+    add("leaseDuration", v.leaseDuration);
+    add("availableFrom", v.availableFrom);
+    fd.append("utilities[included]", String(v.utilitiesIncluded));
+    add("utilities[cost]", v.utilitiesCost);
+    add("utilities[details]", v.utilitiesDetails);
+    fd.append("rules[pets]", String(v.rulesPets));
+    fd.append("rules[parties]", String(v.rulesParties));
+    add("rules[other]", v.rulesOther.trim());
+  }
+
+  if (v.operationType === "student") {
+    fd.append("isStudentFriendly", "true");
+    fd.append("studentHousingDetails[isEnabled]", "true");
+    add("studentHousingDetails[roomType]", v.studentRoomType);
+    add("studentHousingDetails[studentsPerRoom]", v.studentsPerRoom);
+    add("studentHousingDetails[genderPolicy]", v.studentGenderPolicy);
+    fd.append("studentHousingDetails[academicYearOnly]", String(v.academicYearOnly));
+    add("studentHousingDetails[semester]", v.semester);
+    v.nearbyUniversities
+      .filter((u) => u.name.trim() && u.distanceInKm)
+      .forEach((u, i) => {
+        fd.append(`studentHousingDetails[nearbyUniversities][${i}][name]`, u.name.trim());
+        fd.append(`studentHousingDetails[nearbyUniversities][${i}][distanceInKm]`, u.distanceInKm);
+      });
+  }
+  return fd;
+}
+
+const isDirty = (v: PropertyFormValues) => {
+  const { images, ...rest } = v;
+  const { images: _initialImages, ...initial } = INITIAL_PROPERTY_FORM;
+  return images.length > 0 || JSON.stringify(rest) !== JSON.stringify(initial);
 };
 
-const cities = CITY_OPTIONS;
+/** True when the stored token is missing or past its expiry (checked before uploading photos). */
+function sessionExpired(): boolean {
+  const token = getToken();
+  if (!token) return true;
+  try {
+    const { exp } = jwtDecode<{ exp?: number }>(token);
+    return typeof exp === "number" && exp < Date.now() / 1000;
+  } catch {
+    return true;
+  }
+}
 
-const studentRoomTypes = [
-  { value: 'private', label: 'غرفة خاصة' },
-  { value: 'shared', label: 'غرفة مشتركة' },
-  { value: 'dormitory', label: 'سكن جماعي' },
-];
-
-const studentGenderPolicies = [
-  { value: 'male', label: 'ذكور' },
-  { value: 'female', label: 'إناث' },
-  { value: 'mixed', label: 'مختلط' },
-];
-
-const studentSemesters = [
-  { value: 'fall', label: 'الخريف' },
-  { value: 'spring', label: 'الربيع' },
-  { value: 'summer', label: 'الصيف' },
-  { value: 'academic-year', label: 'السنة الأكاديمية' },
-  { value: 'full-year', label: 'سنة كاملة' },
-];
-
-const initialFormData = {
-  operationType: '',
-  type: '',
-  ownershipType: 'firstOwner',
-  area: '',
-  bedrooms: '',
-  bathrooms: '',
-  amenities: [] as string[],
-  title: '',
-  description: '',
-  location: '',
-  district: '',
-  latitude: 30.0444,
-  longitude: 31.2357,
-  price: '',
-  contactInfo: { name: '', phone: '', email: '', whatsapp: '' },
-  isNegotiable: false,
-  floor: '',
-  totalFloors: '',
-  images: [] as File[],
-  deliveryDate: '',
-  deliveryTerms: '',
-  propertyStatus: 'ready',
-  paymentMethod: 'cash',
-  downPayment: '',
-  installmentPeriodInYears: '',
-  minInstallmentAmount: '',
-  // Rent/Student
-  deposit: '',
-  leaseDuration: '',
-  availableFrom: '',
-  utilitiesIncluded: false,
-  utilitiesCost: '',
-  utilitiesDetails: '',
-  rulesPets: false,
-  rulesParties: false,
-  rulesOther: '',
-  // Student
-  isStudentFriendly: false,
-  studentRoomType: '',
-  studentsPerRoom: '',
-  studentGenderPolicy: '',
-  academicYearOnly: false,
-  semester: '',
-  nearbyUniversities: [{ name: '', distanceInKm: '' }],
-};
-
-const colors = {
-  primary: {
-    50: "#eff6ff",
-    100: "#dbeafe",
-    200: "#bfdbfe",
-    300: "#93c5fd",
-    400: "#60a5fa",
-    500: "#3b82f6",
-    600: "#2563eb",
-    700: "#1d4ed8",
-    800: "#1e40af",
-    900: "#1e3a8a",
-    950: "#172554",
-  },
-  secondary: {
-    800: "#1e293b",
-    700: "#334155",
-    500: "#64748b",
-    300: "#cbd5e1",
-  },
-  danger: {
-    500: "#ef4444",
-    600: "#dc2626",
-  },
-};
-
+/**
+ * The publish-listing form: six sections sharing one state, a draft kept across an expired session, an
+ * unsaved-changes guard, and a review notice. Uploads stay on fetch (multipart with photos) so a 401 can be
+ * handled here without the shared client's redirect dropping the form.
+ */
 export default function PropertyFormForSale() {
   const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-    const { showToast } = useToast();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+  const isAdmin = user?.role === "admin";
 
-  // --- State ---
-  const [formData, setFormData] = useState(initialFormData);
-  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const [values, setValues] = useState<PropertyFormValues>(INITIAL_PROPERTY_FORM);
+  const [previews, setPreviews] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [pendingOpen, setPendingOpen] = useState(false);
-  const [showMapPicker, setShowMapPicker] = useState(false);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'error' as 'error' | 'success' | 'info' | 'warning' });
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [processingPhotos, setProcessingPhotos] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [restored, setRestored] = useState(false);
+  const [done, setDone] = useState(false);
+  const [leaveTo, setLeaveTo] = useState<string | null>(null);
+  /** Set once the user chose to leave (or must sign in again), so the guard lets the navigation through. */
+  const [leaving, setLeaving] = useState(false);
+  const previewsRef = useRef<string[]>([]);
+  previewsRef.current = previews;
 
-  // Check if user is admin
+  // Restore the text fields saved when the session expired (photos cannot be saved).
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        const decoded: any = jwtDecode(token);
-        setIsAdmin(decoded.role === 'admin');
-      } catch (error) {
-        console.error('Error decoding token:', error);
-      }
+    const draft = takeDraft();
+    if (draft) {
+      setValues({ ...INITIAL_PROPERTY_FORM, ...draft, images: [] });
+      setRestored(true);
     }
   }, []);
 
-  // Get current area constraints based on selected property type
-  const getCurrentAreaConstraints = () => {
-    return areaConstraints[formData.type as keyof typeof areaConstraints] || { min: 1, max: 1000 };
-  };
+  // Release the photo previews when leaving the page.
+  useEffect(() => () => previewsRef.current.forEach((url) => URL.revokeObjectURL(url)), []);
 
-  // Add this function near the top, after useState declarations:
-  const validateField = (name: string, value: any) => {
-    const fieldError = validatePropertyForm({ ...formData, [name]: value }).newErrors[name];
-    setErrors(prev => ({ ...prev, [name]: fieldError }));
-  };
+  const dirty = isDirty(values);
+  useUnsavedChangesGuard(dirty && !done && !submitting && !leaving, setLeaveTo);
 
-  // --- Handlers ---
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value, type } = e.target;
-    const newValue = type === 'checkbox'
-      ? (e.target as HTMLInputElement).checked
-      : value;
-
-    if (name.startsWith("contactInfo.")) {
-      const field = name.split(".")[1];
-      setFormData(prev => ({
-        ...prev,
-        contactInfo: { ...prev.contactInfo, [field]: newValue }
-      }));
-      validateField(`contactInfo.${field}`, newValue);
-    } else {
-      setFormData(prev => ({ ...prev, [name]: newValue }));
-      validateField(name, newValue);
-    }
-  };
-
-  const handleSelectChange = (e: SelectChangeEvent<string>) => {
-    const { name, value } = e.target;
-    
-    if (name === 'operationType' && value === 'student' && formData.type === 'محل') {
-      setFormData(prev => ({ 
-        ...prev, 
-        [name]: value,
-        type: '',
-        isStudentFriendly: true,
-        utilitiesIncluded: true
-      }));
-    } else if (name === 'operationType' && value === 'student') {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value,
-        isStudentFriendly: true,
-        utilitiesIncluded: true
-      }));
-    } else if (name === 'operationType' && value !== 'student') {
-      setFormData(prev => ({ 
-        ...prev, 
-        [name]: value,
-        isStudentFriendly: false,
-        utilitiesIncluded: false
-      }));
-    } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
-    }
-    validateField(name, value);
-  };
-
-  const handleAmenitiesChange = (event: SelectChangeEvent<string[]>) => {
-    const value = event.target.value;
-    const selectedAmenities = typeof value === 'string' ? value.split(',') : value;
-    setFormData(prev => ({ ...prev, amenities: selectedAmenities }));
-  };
-
-  const compressImage = async (file: File): Promise<File> => {
-    try {
-      const compressed = await FileCompressor.compressImage(file);
-      return compressed.file;
-    } catch (error) {
-      console.error('Error compressing image:', error);
-      return file; // Return original if compression fails
-    }
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) return;
-
-    try {
-      setIsSubmitting(true);
-      const files = Array.from(e.target.files);
-      
-      // Check total files count (reduced from 20 to 8)
-      if (formData.images.length + files.length > 8) {
-        setErrors(prev => ({ ...prev, images: 'الحد الأقصى لعدد الصور هو 8' }));
-        return;
-      }
-
-      // Validate files first
-      for (const file of files) {
-        const validation = FileCompressor.validateFile(file);
-        if (!validation.isValid) {
-          setErrors(prev => ({ ...prev, images: validation.error || 'Invalid file' }));
-          return;
+  const setField = useCallback(
+    (name: string, value: unknown) => {
+      setValues((prev) => {
+        let next: PropertyFormValues;
+        if (name.startsWith("contactInfo.")) {
+          next = { ...prev, contactInfo: { ...prev.contactInfo, [name.slice("contactInfo.".length)]: value } };
+        } else {
+          next = { ...prev, [name]: value } as PropertyFormValues;
         }
+        if (name === "operationType") {
+          const student = value === "student";
+          next.isStudentFriendly = student;
+          next.utilitiesIncluded = student;
+          if (student && isShop(next.type)) next.type = "";
+        }
+        if (name === "type" && isShop(String(value))) next.bedrooms = "";
+        return next;
+      });
+      // After a failed submit, re-check as the user fixes fields.
+      if (submitted) {
+        setErrors((prev) => {
+          if (!prev[name]) return prev;
+          const rest = { ...prev };
+          delete rest[name];
+          return rest;
+        });
       }
+    },
+    [submitted],
+  );
 
-      // Check total size
-      const totalSize = FileCompressor.getTotalSize([...formData.images, ...files]);
-      if (totalSize > 32 * 1024 * 1024) { // 32MB total limit
-        setErrors(prev => ({ ...prev, images: 'الحد الأقصى للحجم الإجمالي هو 32MB' }));
+  const addPhotos = async (files: File[]) => {
+    const room = UPLOAD_LIMITS.maxFiles - values.images.length;
+    if (files.length > room) {
+      setErrors((prev) => ({ ...prev, images: `يمكنك إضافة ${UPLOAD_LIMITS.maxFiles} صور كحد أقصى.` }));
+      return;
+    }
+    for (const file of files) {
+      const check = FileCompressor.validateFile(file);
+      if (!check.isValid) {
+        setErrors((prev) => ({ ...prev, images: check.error ?? "هذا الملف غير مدعوم." }));
         return;
       }
-
-      // Compress all images in parallel
-      const compressedFiles = await FileCompressor.compressFiles(files);
-      const validFiles = compressedFiles.map(cf => cf.file);
-
-      // Update form data with compressed files
-      const newImages = [...formData.images, ...validFiles];
-      setFormData(prev => ({ ...prev, images: newImages }));
-      
-      // Create preview URLs
-      const newPreviewUrls = await Promise.all(
-        validFiles.map(file => {
-          return new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target?.result as string);
-            reader.readAsDataURL(file);
-          });
-        })
-      );
-      
-      setPreviewUrls(prev => [...prev, ...newPreviewUrls]);
-      
-      // Clear any previous errors
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors.images;
-        return newErrors;
+    }
+    setProcessingPhotos(true);
+    try {
+      const compressed = (await FileCompressor.compressFiles(files)).map((c) => c.file);
+      const tooBig = compressed.find((f) => f.size > UPLOAD_LIMITS.maxFileBytes);
+      if (tooBig) {
+        setErrors((prev) => ({ ...prev, images: `«${tooBig.name}» أكبر من 4 ميجابايت حتى بعد التصغير.` }));
+        return;
+      }
+      const total = FileCompressor.getTotalSize([...values.images, ...compressed]);
+      if (total > UPLOAD_LIMITS.maxTotalBytes) {
+        setErrors((prev) => ({
+          ...prev,
+          images: `حجم الصور معًا ${FileCompressor.formatFileSize(total)}، والحد 4 ميجابايت. احذف صورة أو اختر صورًا أصغر.`,
+        }));
+        return;
+      }
+      setValues((prev) => ({ ...prev, images: [...prev.images, ...compressed] }));
+      setPreviews((prev) => [...prev, ...compressed.map((f) => URL.createObjectURL(f))]);
+      setErrors((prev) => {
+        const rest = { ...prev };
+        delete rest.images;
+        return rest;
       });
-
-      // Show compression info
-      const totalOriginal = compressedFiles.reduce((sum, cf) => sum + cf.originalSize, 0);
-      const totalCompressed = compressedFiles.reduce((sum, cf) => sum + cf.compressedSize, 0);
-      const savings = ((totalOriginal - totalCompressed) / totalOriginal * 100).toFixed(1);
-      
-      if (totalCompressed < totalOriginal) {
-        showSnackbar(`تم ضغط الصور بنجاح. تم توفير ${savings}% من الحجم`, 'success');
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'حدث خطأ أثناء معالجة الصور';
-      setErrors(prev => ({ ...prev, images: errorMessage }));
-      console.error('Error processing images:', error);
     } finally {
-      setIsSubmitting(false);
+      setProcessingPhotos(false);
     }
   };
 
-  const removeImage = (index: number) => {
-    const newImages = [...formData.images];
-    newImages.splice(index, 1);
-    const newPreviewUrls = [...previewUrls];
-    URL.revokeObjectURL(newPreviewUrls[index]);
-    newPreviewUrls.splice(index, 1);
-    setFormData(prev => ({ ...prev, images: newImages }));
-    setPreviewUrls(newPreviewUrls);
-    setErrors(prev => {
-      const newErrors = { ...prev };
-      if (newImages.length < 1) {
-        newErrors.images = 'يجب تحميل صورة واحدة على الأقل';
-      } else {
-        delete newErrors.images;
-      }
-      return newErrors;
-    });
+  const removePhoto = (index: number) => {
+    URL.revokeObjectURL(previews[index]);
+    setPreviews((prev) => prev.filter((_, i) => i !== index));
+    setValues((prev) => ({ ...prev, images: prev.images.filter((_, i) => i !== index) }));
   };
 
-  // University handlers
-  const handleUniversityChange = (idx: number, field: string, value: string) => {
-    setFormData(prev => {
-      const updated = [...prev.nearbyUniversities];
-      updated[idx] = { ...updated[idx], [field]: value };
-      return { ...prev, nearbyUniversities: updated };
-    });
-  };
-
-  const addUniversity = () => {
-    setFormData(prev => ({
-      ...prev,
-      nearbyUniversities: [...prev.nearbyUniversities, { name: '', distanceInKm: '' }]
-    }));
-  };
-
-  const removeUniversity = (idx: number) => {
-    setFormData(prev => {
-      const updated = [...prev.nearbyUniversities];
-      updated.splice(idx, 1);
-      return { ...prev, nearbyUniversities: updated };
-    });
-  };
-
-  const handleLocationSelect = (lat: number, lng: number) => {
-    setFormData(prev => ({
-      ...prev,
-      latitude: lat,
-      longitude: lng
-    }));
-  };
-
-  // عند فتح نافذة اختيار الموقع، فقط افتح الـ Dialog بدون أي setTimeout أو أكواد إضافية
-  const handleMapPickerOpen = () => {
-    setShowMapPicker(true);
-  };
-
-  const showSnackbar = (message: string, severity: 'error' | 'success' | 'info' | 'warning' = 'error') => {
-    setSnackbar({ open: true, message, severity });
-  };
-
-
-  // --- Submit Handler ---
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validate form data
-    const { isValid, newErrors } = validatePropertyForm(formData);
-    if (!isValid) {
-      setErrors(newErrors);
-      showSnackbar('يوجد أخطاء في النموذج، يرجى مراجعة الحقول المطلوبة');
-      return;
-    }
-
-    // Validate images
-    if (formData.images.length === 0) {
-      setErrors(prev => ({ ...prev, images: 'يجب تحميل صورة واحدة على الأقل' }));
-      showSnackbar('الرجاء تحميل صورة واحدة على الأقل');
-      return;
-    }
-
-    // Check if any image is still being processed
-    if (isSubmitting) {
-      showSnackbar('جاري معالجة الصور، الرجاء الانتظار...', 'info');
-      return;
-    }
-    
+  const resetForm = () => {
+    previews.forEach((url) => URL.revokeObjectURL(url));
+    setPreviews([]);
+    setValues(INITIAL_PROPERTY_FORM);
     setErrors({});
-    if (isSubmitting) return;
-    setIsSubmitting(true);
+    setSubmitted(false);
+    setSubmitError(null);
+    setRestored(false);
+    setDone(false);
+    window.scrollTo({ top: 0 });
+  };
 
-    // Check authentication
-    const token = localStorage.getItem('token');
-    if (!token) {
-      showToast('يجب تسجيل الدخول أولاً', 'error');
-      router.push('/login');
-      setIsSubmitting(false);
+  /** Keep the text fields, then send the user to sign in again and back here. */
+  const reLogin = () => {
+    saveDraft(values);
+    clearAuthToken();
+    showToast("انتهت جلستك. سجّل الدخول، وسنعيد إليك ما كتبته عدا الصور.", "warning");
+    setLeaving(true);
+    router.push(LOGIN_PATH);
+  };
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (submitting || processingPhotos) return;
+    setSubmitted(true);
+    setSubmitError(null);
+
+    const { isValid, newErrors } = validatePropertyForm(values);
+    setErrors(newErrors);
+    if (!isValid) {
+      const first = FIELD_ORDER.find((name) => newErrors[name]);
+      if (first) focusField(first);
+      return;
+    }
+    if (sessionExpired()) {
+      reLogin();
       return;
     }
 
-    // Validate token
+    setSubmitting(true);
     try {
-      const decoded: any = jwtDecode(token);
-      if (!decoded.role || !decoded.exp || decoded.exp < Date.now() / 1000) {
-        throw new Error('توكن غير صالح');
-      }
-    } catch (err) {
-      clearAuthToken();
-      showSnackbar('جلسة العمل منتهية، يرجى تسجيل الدخول مرة أخرى', 'error');
-      router.push('/login');
-      setIsSubmitting(false);
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
-      
-      // Prepare form data
-      const formDataToSend = new FormData();
-    
-    // Add compressed images
-    for (const image of formData.images) {
-      formDataToSend.append('images', image);
-    }
-    formDataToSend.append('category', formData.operationType);
-    formDataToSend.append('type', formData.type);
-    formDataToSend.append('title', formData.title);
-    formDataToSend.append('description', formData.description);
-    formDataToSend.append('price', formData.price);
-    formDataToSend.append('area', formData.area);
-    formDataToSend.append('bedrooms', formData.bedrooms);
-    formDataToSend.append('bathrooms', formData.bathrooms);
-    formDataToSend.append('location[city]', formData.location);
-    formDataToSend.append('location[address]', formData.location);
-    if (formData.district) formDataToSend.append('location[district]', formData.district);
-    formDataToSend.append('location[latitude]', formData.latitude.toString());
-    formDataToSend.append('location[longitude]', formData.longitude.toString());
-    if (formData.totalFloors) formDataToSend.append('totalFloors', formData.totalFloors);
-    formDataToSend.append('contactInfo[name]', formData.contactInfo.name);
-    formDataToSend.append('contactInfo[phone]', formData.contactInfo.phone);
-    if (formData.contactInfo.email) formDataToSend.append('contactInfo[email]', formData.contactInfo.email);
-    if (formData.contactInfo.whatsapp) formDataToSend.append('contactInfo[whatsapp]', formData.contactInfo.whatsapp);
-    formDataToSend.append('isNegotiable', String(formData.isNegotiable));
-    if (formData.floor) formDataToSend.append('floor', formData.floor);
-    // multer parses repeated `amenities[]` fields into an array
-    formData.amenities.forEach((amenity) => formDataToSend.append('amenities[]', amenity));
-
-    // Sale fields
-    if (formData.operationType === 'sale') {
-      formDataToSend.append('ownershipType', formData.ownershipType);
-      formDataToSend.append('propertyStatus', formData.propertyStatus);
-      formDataToSend.append('paymentMethod', formData.paymentMethod);
-      if (formData.paymentMethod !== 'cash') {
-        if (formData.downPayment) formDataToSend.append('downPayment', formData.downPayment);
-        if (formData.installmentPeriodInYears) formDataToSend.append('installmentPeriodInYears', formData.installmentPeriodInYears);
-        if (formData.minInstallmentAmount) formDataToSend.append('minInstallmentAmount', formData.minInstallmentAmount);
-      }
-      if (formData.deliveryDate) formDataToSend.append('deliveryDate', formData.deliveryDate);
-      if (formData.deliveryTerms) formDataToSend.append('deliveryTerms', formData.deliveryTerms);
-    }
-
-    // Rent/Student fields
-    if (['rent', 'student'].includes(formData.operationType)) {
-      if (formData.deposit) formDataToSend.append('deposit', formData.deposit);
-      if (formData.leaseDuration) formDataToSend.append('leaseDuration', formData.leaseDuration);
-      if (formData.availableFrom) formDataToSend.append('availableFrom', formData.availableFrom);
-      formDataToSend.append('utilities[included]', String(formData.utilitiesIncluded));
-      if (formData.utilitiesCost) formDataToSend.append('utilities[cost]', formData.utilitiesCost);
-      if (formData.utilitiesDetails) formDataToSend.append('utilities[details]', formData.utilitiesDetails);
-      formDataToSend.append('rules[pets]', String(formData.rulesPets));
-      formDataToSend.append('rules[parties]', String(formData.rulesParties));
-      if (formData.rulesOther) formDataToSend.append('rules[other]', formData.rulesOther);
-    }
-
-    // Student fields
-    if (formData.operationType === 'student') {
-      formDataToSend.append('isStudentFriendly', String(formData.isStudentFriendly));
-      formDataToSend.append('studentHousingDetails[isEnabled]', 'true');
-      if (formData.studentRoomType) formDataToSend.append('studentHousingDetails[roomType]', formData.studentRoomType);
-      if (formData.studentsPerRoom) formDataToSend.append('studentHousingDetails[studentsPerRoom]', formData.studentsPerRoom);
-      if (formData.studentGenderPolicy) formDataToSend.append('studentHousingDetails[genderPolicy]', formData.studentGenderPolicy);
-      formDataToSend.append('studentHousingDetails[academicYearOnly]', String(formData.academicYearOnly));
-      if (formData.semester) formDataToSend.append('studentHousingDetails[semester]', formData.semester);
-      formData.nearbyUniversities.forEach((uni, idx) => {
-        if (uni.name && uni.distanceInKm) {
-          formDataToSend.append(`studentHousingDetails[nearbyUniversities][${idx}][name]`, uni.name);
-          formDataToSend.append(`studentHousingDetails[nearbyUniversities][${idx}][distanceInKm]`, uni.distanceInKm);
-        }
+      const res = await fetch(`${API_URL}/properties/addProperty`, {
+        method: "POST",
+        headers: authHeader(),
+        body: toFormData(values),
       });
-    }
-
-      // Submit to API
-      const response = await fetch(`${API_URL}/properties/addProperty`, {
-        method: 'POST',
-        headers: authHeader(token),
-        body: formDataToSend
-      });
-
-      if (response.status === 401) {
-        clearAuthToken();
-        showSnackbar('انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى', 'error');
-        router.push('/login');
+      if (res.status === 401) {
+        reLogin();
         return;
       }
-
-      const result = await response.json().catch(() => ({
-        message: 'فشل في معالجة الاستجابة من الخادم'
-      }));
-
-      if (!response.ok) {
-        throw new Error(result.message || `خطأ من الخادم: ${response.status}`);
+      if (!res.ok) {
+        setSubmitError(
+          res.status === 413
+            ? "حجم الصور أكبر من المسموح. احذف صورة أو أكثر ثم حاول مرة أخرى."
+            : res.status === 400
+              ? "رفض الخادم بعض البيانات. راجع الحقول ثم حاول مرة أخرى."
+              : "لم نتمكن من إرسال الإعلان الآن. بياناتك ما زالت هنا؛ حاول مرة أخرى بعد قليل.",
+        );
+        return;
       }
-
-      // Handle successful response
-      const decoded: any = jwtDecode(token);
-      if (decoded.role === 'admin') {
-        showSnackbar('تمت إضافة العقار بنجاح وسيظهر مباشرة', 'success');
-        router.push('/properties');
+      setDone(true);
+      if (isAdmin) {
+        showToast("نُشر العقار", "success");
+        router.push("/properties");
       } else {
-        setPendingOpen(true);
+        showToast("أُرسل الإعلان للمراجعة", "success");
+        window.scrollTo({ top: 0 });
       }
-    } catch (err) {
-      console.error('Error submitting form:', err);
-      showSnackbar(
-        `حدث خطأ أثناء إرسال البيانات: ${err instanceof Error ? err.message : 'خطأ غير معروف'}`,
-        'error'
-      );
+    } catch {
+      setSubmitError("تعذّر الاتصال بالخادم. تحقق من اتصالك ثم حاول مرة أخرى؛ بياناتك ما زالت هنا.");
     } finally {
-      setIsSubmitting(false);
+      setSubmitting(false);
     }
   };
 
-  // --- Clean up preview URLs ---
-  useEffect(() => {
-    return () => previewUrls.forEach(url => URL.revokeObjectURL(url));
-  }, [previewUrls]);
+  if (done && !isAdmin) {
+    return (
+      <Box
+        role="status"
+        sx={{
+          border: 1,
+          borderColor: "divider",
+          borderRadius: "10px",
+          bgcolor: "background.paper",
+          p: { xs: 3, md: 5 },
+          textAlign: "center",
+        }}
+      >
+        <CheckCircleOutlined aria-hidden sx={{ fontSize: 48, color: "success.main" }} />
+        <Typography component="h2" variant="h4" sx={{ mt: 1 }}>
+          أُرسل إعلانك للمراجعة
+        </Typography>
+        <Typography variant="body1" color="text.secondary" sx={{ mt: 1, maxWidth: "52ch", mx: "auto" }}>
+          سيراجعه فريق سكنلي، ويظهر في نتائج البحث بعد قبوله. تابع حالته من «حسابي».
+        </Typography>
+        <Box sx={{ mt: 3, display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 1.5 }}>
+          <Button component={Link} href="/userProfile" variant="contained">
+            متابعة إعلاناتي
+          </Button>
+          <Button onClick={resetForm} variant="outlined">
+            إضافة عقار آخر
+          </Button>
+        </Box>
+      </Box>
+    );
+  }
 
-  // --- Render ---
+  const errorCount = Object.keys(errors).length;
+  const sectionProps = { values, errors, setField };
+
   return (
     <>
-      <Box component="form" onSubmit={handleSubmit} sx={{
-        background: "#fff", 
-        p: { xs: 2, md: 6 }, 
-        borderRadius: "24px",
-        boxShadow: `0 8px 32px 0 rgba(37, 99, 235, 0.18)`, // Using primary[600] rgba
-        maxWidth: "800px",
-        mx: "auto", 
-        mt: 5, 
-        mb: 5, 
-        border: `2px solid ${colors.primary[600]}`,
-        gap: 4, 
-        display: "flex",
-        flexDirection: "column",
-      }}>
-        <Typography variant="h5" fontWeight="bold" gutterBottom sx={{
-          color: colors.primary[600], 
-          letterSpacing: "1px", 
-          textAlign: "center", 
-          mb: 2,
-          textShadow: `0 2px 8px ${colors.primary[100]}`
-        }}>
-          إضافة عقار
-        </Typography>
+      {restored && (
+        <Alert
+          severity="info"
+          variant="outlined"
+          sx={{ mb: 3 }}
+          action={
+            <Button color="inherit" size="small" onClick={resetForm}>
+              البدء من جديد
+            </Button>
+          }
+        >
+          استعدنا ما كتبته قبل تسجيل الدخول. الصور لا تُحفظ، فأضفها من جديد.
+        </Alert>
+      )}
 
-        {/* Category and Type */}
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2 }}>
-          <FormControl fullWidth error={!!errors.operationType}>
-            <InputLabel sx={{ color: colors.primary[600] }}>نوع العملية</InputLabel>
-            <Select
-              name="operationType"
-              value={formData.operationType}
-              onChange={handleSelectChange}
-              label="نوع العملية"
-              sx={{ 
-                color: colors.secondary[800], 
-                '& .MuiSelect-icon': { color: colors.primary[600] } 
-              }}
-            >
-              <MenuItem value="rent">ايجار</MenuItem>
-              <MenuItem value="sale">بيع</MenuItem>
-              <MenuItem value="student">سكن طلبة</MenuItem>
-            </Select>
-            {errors.operationType && <Typography color="error" variant="caption">{errors.operationType}</Typography>}
-          </FormControl>
-          <FormControl fullWidth error={!!errors.type}>
-            <InputLabel sx={{ color: colors.primary[600] }}>نوع العقار</InputLabel>
-            <Select
-              name="type"
-              value={formData.type}
-              onChange={handleSelectChange}
-              label="نوع العقار"
-              sx={{ 
-                color: colors.secondary[800], 
-                '& .MuiSelect-icon': { color: colors.primary[600] } 
-              }}
-            >
-              {propertyTypes.map(opt => (
-                <MenuItem 
-                  key={opt.value} 
-                  value={opt.value}
-                  disabled={formData.operationType === 'student' && opt.value === 'محل'}
-                >
-                  {opt.label}
-                </MenuItem>
-              ))}
-            </Select>
-            {errors.type && <Typography color="error" variant="caption">{errors.type}</Typography>}
-            {formData.operationType === 'student' && (
-              <Typography variant="caption" sx={{ color: '#666', mt: 0.5, display: 'block' }}>
-                سكن الطلبة متاح فقط للشقق والاستديوهات
-              </Typography>
+      <Box
+        component="form"
+        onSubmit={onSubmit}
+        noValidate
+        aria-label="بيانات الإعلان"
+        sx={{ display: "flex", flexDirection: "column", gap: 3 }}
+      >
+        <BasicsSection {...sectionProps} />
+        <PriceSection {...sectionProps} />
+        <LocationSection {...sectionProps} />
+        <DetailsSection {...sectionProps} />
+        <PhotosSection
+          previews={previews}
+          error={errors.images}
+          processing={processingPhotos}
+          onAdd={addPhotos}
+          onRemove={removePhoto}
+        />
+        <ContactSection {...sectionProps} />
+
+        <Box
+          sx={{
+            border: 1,
+            borderColor: "divider",
+            borderRadius: "10px",
+            bgcolor: "var(--c-surface-2)",
+            p: { xs: 2, md: 3 },
+            display: "flex",
+            flexDirection: "column",
+            gap: 2,
+          }}
+        >
+          <div aria-live="polite">
+            {submitted && errorCount > 0 && (
+              <Alert severity="error" variant="outlined">
+                {errorCount === 1 ? "حقل واحد يحتاج إلى مراجعة." : `${errorCount} حقول تحتاج إلى مراجعة.`} انتقلنا إلى
+                أولها.
+              </Alert>
             )}
-          </FormControl>
-        </Box>
-
-        {/* Sale fields */}
-        {formData.operationType === 'sale' && (
-          <>
-            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, mt: 2 }}>
-              <FormControl fullWidth>
-                <InputLabel sx={{ color: colors.primary[600] }}>نوع الملكية</InputLabel>
-                <Select
-                  name="ownershipType"
-                  value={formData.ownershipType}
-                  onChange={handleSelectChange}
-                  label="نوع الملكية"
-                  sx={{ 
-                    color: colors.secondary[800], 
-                    '& .MuiSelect-icon': { color: colors.primary[600] } 
-                  }}
-                >
-                  <MenuItem value="firstOwner">تمليك (مالك أول)</MenuItem>
-                  <MenuItem value="resale">تمليك (إعادة بيع)</MenuItem>
-                </Select>
-              </FormControl>
-              <FormControl fullWidth>
-                <InputLabel sx={{ color: colors.primary[600] }}>حالة العقار</InputLabel>
-                <Select
-                  name="propertyStatus"
-                  value={formData.propertyStatus}
-                  onChange={handleSelectChange}
-                  label="حالة العقار"
-                  sx={{ 
-                    color: colors.secondary[800], 
-                    '& .MuiSelect-icon': { color: colors.primary[600] } 
-                  }}
-                >
-                  <MenuItem value="ready">جاهز</MenuItem>
-                  <MenuItem value="underConstruction">قيد الإنشاء</MenuItem>
-                </Select>
-              </FormControl>
-              <FormControl fullWidth>
-                <InputLabel sx={{ color: colors.primary[600] }}>طريقة الدفع</InputLabel>
-                <Select
-                  name="paymentMethod"
-                  value={formData.paymentMethod}
-                  onChange={handleSelectChange}
-                  label="طريقة الدفع"
-                  sx={{ 
-                    color: colors.secondary[800], 
-                    '& .MuiSelect-icon': { color: colors.primary[600] } 
-                  }}
-                >
-                  <MenuItem value="cash">كاش</MenuItem>
-                  <MenuItem value="installment">تقسيط</MenuItem>
-                  <MenuItem value="cashOrInstallment">كاش أو تقسيط</MenuItem>
-                </Select>
-              </FormControl>
-            </Box>
-            {formData.paymentMethod !== 'cash' && (
-              <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, mt: 2 }}>
-                <TextField 
-                  label="المقدم" 
-                  name="downPayment" 
-                  value={formData.downPayment} 
-                  onChange={handleInputChange} 
-                  fullWidth 
-                  error={!!errors.downPayment}
-                  helperText={errors.downPayment}
-                />
-                <FormControl fullWidth error={!!errors.installmentPeriodInYears}>
-                  <InputLabel sx={{ color: colors.primary[600] }}>فترة التقسيط (سنوات)</InputLabel>
-                  <Select
-                    name="installmentPeriodInYears"
-                    value={formData.installmentPeriodInYears}
-                    onChange={handleSelectChange}
-                    label="فترة التقسيط (سنوات)"
-                    sx={{ 
-                      color: colors.secondary[800], 
-                      '& .MuiSelect-icon': { color: colors.primary[600] } 
-                    }}
-                  >
-                    {Array.from({ length: 30 }, (_, i) => i + 1).map(num => (
-                      <MenuItem key={num} value={num.toString()}>{num}</MenuItem>
-                    ))}
-                  </Select>
-                  {errors.installmentPeriodInYears && <Typography color="error" variant="caption">{errors.installmentPeriodInYears}</Typography>}
-                </FormControl>
-                <TextField 
-                  label="الحد الأدنى للقسط" 
-                  name="minInstallmentAmount" 
-                  value={formData.minInstallmentAmount} 
-                  onChange={handleInputChange} 
-                  fullWidth 
-                />
-              </Box>
+            {submitError && (
+              <Alert severity="error" variant="outlined">
+                {submitError}
+              </Alert>
             )}
-            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, mt: 2 }}>
-              <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={arSA}>
-                <DatePicker
-                  label="تاريخ التسليم"
-                  value={formData.deliveryDate ? new Date(formData.deliveryDate) : null}
-                  onChange={(newValue) => {
-                    const formattedDate = newValue ? format(newValue, 'yyyy-MM-dd') : '';
-                    // Create a proper event-like object with the expected structure
-                    const event = {
-                      target: { 
-                        name: 'deliveryDate', 
-                        value: formattedDate,
-                        // Add required properties to satisfy TypeScript
-                        addEventListener: () => {},
-                        dispatchEvent: () => true,
-                        removeEventListener: () => {}
-                      } as unknown as HTMLInputElement
-                    };
-                    handleInputChange(event as unknown as React.ChangeEvent<HTMLInputElement>);
-                  }}
-                  slotProps={{
-                    textField: {
-                      fullWidth: true,
-                      name: 'deliveryDate',
-                    },
-                  }}
-                  format="dd/MM/yyyy"
-                />
-              </LocalizationProvider>
-              <TextField 
-                label="شروط التسليم" 
-                name="deliveryTerms" 
-                value={formData.deliveryTerms} 
-                onChange={handleInputChange} 
-                fullWidth 
-                multiline 
-                rows={2} 
-                error={!!errors.deliveryTerms}
-                helperText={
-                  errors.deliveryTerms ? 
-                    <span style={{color: colors.danger[600]}}>{errors.deliveryTerms}</span> : 
-                    <span style={{color: colors.secondary[500]}}>{`${formData.deliveryTerms.length}/300 حرف`}</span>
-                }
-                inputProps={{ maxLength: 300 }}
-                sx={{
-                  '& .MuiFormHelperText-root': {
-                    color: errors.deliveryTerms ? 'error.main' : 'text.secondary',
-                  }
-                }}
-              />
-            </Box>
-          </>
-        )}
-
-        {/* Rent/Student fields */}
-        {(formData.operationType === 'rent' || formData.operationType === 'student') && (
-          <>
-            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, mt: 2 }}>
-              <TextField 
-                label="التأمين (مبلغ التأمين)" 
-                name="deposit" 
-                value={formData.deposit} 
-                onChange={handleInputChange} 
-                fullWidth 
-                error={!!errors.deposit}
-                helperText={errors.deposit}
-                type="number"
-                inputProps={{ 
-                  min: 0,
-                  max: 100000000
-                }}
-                onKeyDown={(e) => {
-                  // Allow: backspace, delete, tab, escape, enter, and numbers
-                  if ([8, 9, 27, 13, 46].indexOf(e.keyCode) !== -1 ||
-                      // Allow Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
-                      (e.keyCode === 65 && e.ctrlKey === true) ||
-                      (e.keyCode === 67 && e.ctrlKey === true) ||
-                      (e.keyCode === 86 && e.ctrlKey === true) ||
-                      (e.keyCode === 88 && e.ctrlKey === true) ||
-                      // Allow numbers only
-                      (e.keyCode >= 48 && e.keyCode <= 57)) {
-                    return;
-                  }
-                  e.preventDefault();
-                }}
-                onPaste={(e) => {
-                  const pastedText = e.clipboardData.getData('text');
-                  const numericRegex = /^[0-9]+$/;
-                  if (!numericRegex.test(pastedText)) {
-                    e.preventDefault();
-                  }
-                }}
-                sx={{
-                  '& .MuiFormHelperText-root': {
-                    color: errors.deposit ? 'error.main' : 'text.secondary',
-                  },
-                  '& input[type=number]::-webkit-outer-spin-button, & input[type=number]::-webkit-inner-spin-button': {
-                    WebkitAppearance: 'none',
-                    margin: 0,
-                  },
-                  '& input[type=number]': {
-                    MozAppearance: 'textfield',
-                  },
-                }}
-              />
-              <FormControl fullWidth error={!!errors.leaseDuration}>
-                <InputLabel sx={{ color: colors.primary[600] }}>عدد أشهر الايجار</InputLabel>
-                <Select
-                  name="leaseDuration"
-                  value={formData.leaseDuration}
-                  onChange={handleSelectChange}
-                  label="عدد أشهر الايجار"
-                  sx={{ 
-                    color: colors.secondary[800], 
-                    '& .MuiSelect-icon': { color: colors.primary[600] } 
-                  }}
-                >
-                  {Array.from({ length: 120 }, (_, i) => i + 1).map(num => (
-                    <MenuItem key={num} value={num.toString()}>{num}</MenuItem>
-                  ))}
-                </Select>
-                {errors.leaseDuration && <Typography color="error" variant="caption">{errors.leaseDuration}</Typography>}
-              </FormControl>
-              <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={arSA}>
-                <DatePicker
-                  label="تاريخ التوفر"
-                  value={formData.availableFrom ? new Date(formData.availableFrom) : null}
-                  onChange={(newValue) => {
-                    const formattedDate = newValue ? format(newValue, 'yyyy-MM-dd') : '';
-                    // Create a proper event-like object with the expected structure
-                    const event = {
-                      target: { 
-                        name: 'availableFrom', 
-                        value: formattedDate,
-                        // Add required properties to satisfy TypeScript
-                        addEventListener: () => {},
-                        dispatchEvent: () => true,
-                        removeEventListener: () => {}
-                      } as unknown as HTMLInputElement
-                    };
-                    handleInputChange(event as unknown as React.ChangeEvent<HTMLInputElement>);
-                  }}
-                  slotProps={{
-                    textField: {
-                      fullWidth: true,
-                      name: 'availableFrom',
-                    },
-                  }}
-                  format="dd/MM/yyyy"
-                />
-              </LocalizationProvider>
-            </Box>
-            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, mt: 2 }}>
-              <TextField 
-                label="شروط أخرى" 
-                name="rulesOther" 
-                value={formData.rulesOther} 
-                onChange={handleInputChange} 
-                fullWidth 
-                disabled={formData.type === 'محل'}
-                error={!!errors.rulesOther}
-                helperText={
-                  errors.rulesOther ? 
-                    <span style={{color: colors.danger[600]}}>{errors.rulesOther}</span> : 
-                    <span style={{color: colors.secondary[500]}}>{`${formData.rulesOther.length}/300 حرف`}</span>
-                }
-                inputProps={{ maxLength: 300 }}
-                sx={{
-                  '& .MuiFormHelperText-root': {
-                    color: errors.rulesOther ? 'error.main' : 'text.secondary',
-                  }
-                }}
-              />
-            </Box>
-          </>
-        )}
-
-        {/* Student Housing fields */}
-        {formData.operationType === 'student' && (
-          <>
-            <Divider sx={{ 
-              my: 2,
-              backgroundColor: colors.secondary[300],
-              borderColor: colors.secondary[300]
-            }} />
-            <Typography variant="h6" sx={{ color: colors.primary[600] }}>تفاصيل سكن الطلبة</Typography>
-            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, mt: 2 }}>
-              <FormControl fullWidth error={!!errors.studentRoomType}>
-                <InputLabel sx={{ color: colors.primary[600] }}>نوع الغرفة</InputLabel>
-                <Select
-                  name="studentRoomType"
-                  value={formData.studentRoomType}
-                  onChange={handleSelectChange}
-                  label="نوع الغرفة"
-                  sx={{ 
-                    color: colors.secondary[800], 
-                    '& .MuiSelect-icon': { color: colors.primary[600] } 
-                  }}
-                >
-                  {studentRoomTypes.map(opt => (
-                    <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
-                  ))}
-                </Select>
-                {errors.studentRoomType && <Typography color="error" variant="caption">{errors.studentRoomType}</Typography>}
-              </FormControl>
-              <FormControl fullWidth error={!!errors.studentsPerRoom}>
-                <InputLabel sx={{ color: colors.primary[600] }}>عدد الطلاب في الغرفة</InputLabel>
-                <Select
-                  name="studentsPerRoom"
-                  value={formData.studentsPerRoom}
-                  onChange={handleSelectChange}
-                  label="عدد الطلاب في الغرفة"
-                  sx={{ 
-                    color: colors.secondary[800], 
-                    '& .MuiSelect-icon': { color: colors.primary[600] } 
-                  }}
-                >
-                  {Array.from({ length: 4 }, (_, i) => i + 1).map(num => (
-                    <MenuItem key={num} value={num.toString()}>{num}</MenuItem>
-                  ))}
-                </Select>
-                {errors.studentsPerRoom && <Typography color="error" variant="caption">{errors.studentsPerRoom}</Typography>}
-              </FormControl>
-              <FormControl fullWidth error={!!errors.studentGenderPolicy}>
-                <InputLabel sx={{ color: colors.primary[600] }}>سياسة النوع</InputLabel>
-                <Select
-                  name="studentGenderPolicy"
-                  value={formData.studentGenderPolicy}
-                  onChange={handleSelectChange}
-                  label="سياسة النوع"
-                  sx={{ 
-                    color: colors.secondary[800], 
-                    '& .MuiSelect-icon': { color: colors.primary[600] } 
-                  }}
-                >
-                  {studentGenderPolicies.map(opt => (
-                    <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
-                  ))}
-                </Select>
-                {errors.studentGenderPolicy && <Typography color="error" variant="caption">{errors.studentGenderPolicy}</Typography>}
-              </FormControl>
-            </Box>
-            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, mt: 2 }}>
-              <FormControlLabel 
-                control={<Checkbox name="academicYearOnly" checked={formData.academicYearOnly} onChange={handleInputChange} />} 
-                label="للعام الأكاديمي فقط" 
-              />
-              <FormControl fullWidth>
-                <InputLabel sx={{ color: colors.primary[600] }}>الفصل الدراسي</InputLabel>
-                <Select
-                  name="semester"
-                  value={formData.semester}
-                  onChange={handleSelectChange}
-                  label="الفصل الدراسي"
-                  sx={{ 
-                    color: colors.secondary[800], 
-                    '& .MuiSelect-icon': { color: colors.primary[600] } 
-                  }}
-                >
-                  {studentSemesters.map(opt => (
-                    <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Box>
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="subtitle1">الجامعات القريبة</Typography>
-              {formData.nearbyUniversities.map((uni, idx) => (
-                <Box key={idx} sx={{ display: 'flex', gap: 2, alignItems: 'center', mt: 1 }}>
-                  <TextField 
-                    label="اسم الجامعة" 
-                    value={uni.name} 
-                    onChange={e => handleUniversityChange(idx, 'name', e.target.value)} 
-                  />
-                  <TextField 
-                    label="المسافة (كم)" 
-                    value={uni.distanceInKm} 
-                    onChange={e => handleUniversityChange(idx, 'distanceInKm', e.target.value)} 
-                  />
-                  <IconButton onClick={() => removeUniversity(idx)} disabled={formData.nearbyUniversities.length === 1}>
-                    <DeleteIcon sx={{ color: colors.danger[600], fontSize: 20 }} />
-                  </IconButton>
-                </Box>
-              ))}
-              <Button onClick={addUniversity} sx={{ mt: 1 }}>إضافة جامعة</Button>
-              {errors.nearbyUniversities && (
-                <Typography color="error" variant="caption" sx={{ mt: 1, display: 'block' }}>
-                  {errors.nearbyUniversities}
-                </Typography>
-              )}
-            </Box>
-          </>
-        )}
-
-        {/* Area, Bedrooms, Bathrooms */}
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2 }}>
-          <TextField 
-            label={`المساحة (م²) ${formData.type ? `(${getCurrentAreaConstraints().min}-${getCurrentAreaConstraints().max})` : ''}`}
-            name="area" 
-            value={formData.area} 
-            onChange={handleInputChange} 
-            fullWidth 
-            error={!!errors.area}
-            helperText={
-              errors.area ? 
-                <span style={{color: colors.danger[600]}}>{errors.area}</span> : 
-                <span style={{color: colors.secondary[500]}}>{formData.type ? `المساحة المطلوبة: ${getCurrentAreaConstraints().min}-${getCurrentAreaConstraints().max} متر مربع` : ''}</span>
-            }
-            placeholder={formData.type ? `${getCurrentAreaConstraints().min}-${getCurrentAreaConstraints().max}` : ''}
-            type="number"
-            inputProps={{ 
-              min: formData.type ? getCurrentAreaConstraints().min : 0,
-              max: formData.type ? getCurrentAreaConstraints().max : 1000
-            }}
-            onKeyDown={(e) => {
-              // Allow: backspace, delete, tab, escape, enter, and numbers
-              if ([8, 9, 27, 13, 46].indexOf(e.keyCode) !== -1 ||
-                  // Allow Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
-                  (e.keyCode === 65 && e.ctrlKey === true) ||
-                  (e.keyCode === 67 && e.ctrlKey === true) ||
-                  (e.keyCode === 86 && e.ctrlKey === true) ||
-                  (e.keyCode === 88 && e.ctrlKey === true) ||
-                  // Allow numbers only
-                  (e.keyCode >= 48 && e.keyCode <= 57)) {
-                return;
-              }
-              e.preventDefault();
-            }}
-            onPaste={(e) => {
-              const pastedText = e.clipboardData.getData('text');
-              const numericRegex = /^[0-9]+$/;
-              if (!numericRegex.test(pastedText)) {
-                e.preventDefault();
-              }
-            }}
-            sx={{
-              '& .MuiFormHelperText-root': {
-                color: errors.area ? 'error.main' : 'text.secondary',
-              },
-              // Hide arrows in Chrome, Safari, Edge, Opera
-              '& input[type=number]::-webkit-outer-spin-button, & input[type=number]::-webkit-inner-spin-button': {
-                WebkitAppearance: 'none',
-                margin: 0,
-              },
-              // Hide arrows in Firefox
-              '& input[type=number]': {
-                MozAppearance: 'textfield',
-              },
-            }}
-          />
-          <FormControl fullWidth error={!!errors.bedrooms}
-            disabled={formData.type === 'محل'}
-          >
-            <InputLabel sx={{ color: colors.primary[600] }}>غرف نوم</InputLabel>
-            <Select
-              name="bedrooms"
-              value={formData.bedrooms}
-              onChange={handleSelectChange}
-              label="غرف نوم"
-              sx={{ 
-                color: colors.secondary[800], 
-                '& .MuiSelect-icon': { color: colors.primary[600] } 
-              }}
-              disabled={formData.type === 'محل'}
-            >
-              {Array.from({ length: 11 }, (_, i) => i+1).map(num => (
-                <MenuItem key={num} value={num.toString()}>{num}</MenuItem>
-              ))}
-            </Select>
-            {errors.bedrooms && <Typography color="error" variant="caption">{errors.bedrooms}</Typography>}
-          </FormControl>
-          <FormControl fullWidth error={!!errors.bathrooms}>
-            <InputLabel sx={{ color: colors.primary[600] }}>حمامات</InputLabel>
-            <Select
-              name="bathrooms"
-              value={formData.bathrooms}
-              onChange={handleSelectChange}
-              label="حمامات"
-              sx={{ 
-                color: colors.secondary[800], 
-                '& .MuiSelect-icon': { color: colors.primary[600] } 
-              }}
-            >
-              {Array.from({ length: 10 }, (_, i) => i + 1).map(num => (
-                <MenuItem key={num} value={num.toString()}>{num}</MenuItem>
-              ))}
-            </Select>
-            {errors.bathrooms && <Typography color="error" variant="caption">{errors.bathrooms}</Typography>}
-          </FormControl>
-        </Box>
-
-        {/* Floor, Total Floors, Location, District */}
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2 }}>
-          <FormControl fullWidth error={!!errors.floor}>
-            <InputLabel sx={{ color: colors.primary[600] }}>الطابق</InputLabel>
-            <Select
-              name="floor"
-              value={formData.floor}
-              onChange={handleSelectChange}
-              label="الطابق"
-              sx={{ 
-                color: colors.secondary[800], 
-                '& .MuiSelect-icon': { color: colors.primary[600] } 
-              }}
-            >
-              {Array.from({ length: 30 }, (_, i) => i + 1).map(num => (
-                <MenuItem key={num} value={num}>{num}</MenuItem>
-              ))}
-            </Select>
-            {errors.floor === 'لا يمكن أن يكون الطابق أكبر من إجمالي الطوابق' && (
-              <Typography variant="caption" sx={{ color: colors.danger[600], mt: 1 }}>
-                لا يمكن أن يكون الطابق أكبر من عدد الطوابق الكلي للعقار
-              </Typography>
-            )}
-          </FormControl>
-          <FormControl fullWidth>
-            <InputLabel sx={{ color: colors.primary[600] }}>إجمالي الطوابق</InputLabel>
-            <Select
-              name="totalFloors"
-              value={formData.totalFloors}
-              onChange={handleSelectChange}
-              label="إجمالي الطوابق"
-              sx={{ 
-                color: colors.secondary[800], 
-                '& .MuiSelect-icon': { color: colors.primary[600] } 
-              }}
-            >
-              {Array.from({ length: 30 }, (_, i) => i + 1).map(num => (
-                <MenuItem key={num} value={num.toString()}>{num}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Box>
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2 }}>
-          <FormControl fullWidth error={!!errors.location}>
-            <InputLabel sx={{ color: colors.primary[600] }}>المدينة</InputLabel>
-            <Select
-              name="location"
-              value={formData.location}
-              onChange={handleSelectChange}
-              label="المدينة"
-              sx={{ 
-                color: colors.secondary[800], 
-                '& .MuiSelect-icon': { color: colors.primary[600] } 
-              }}
-            >
-              {cities.map(city => (
-                <MenuItem key={city} value={city}>{city}</MenuItem>
-              ))}
-            </Select>
-            {errors.location && <Typography color="error" variant="caption">{errors.location}</Typography>}
-          </FormControl>
-          <TextField 
-            label="الحي/المنطقة" 
-            name="district" 
-            value={formData.district} 
-            onChange={handleInputChange} 
-            fullWidth 
-            error={!!errors.district}
-            helperText={
-              errors.district ? 
-                <span style={{color: colors.danger[600]}}>{errors.district}</span> : 
-                <span style={{color: colors.secondary[500]}}>{`${formData.district.length}/50 حرف`}</span>
-            }
-            inputProps={{ maxLength: 50 }}
-            sx={{
-              '& .MuiFormHelperText-root': {
-                color: errors.district ? 'error.main' : 'text.secondary',
-              }
-            }}
-          />
-        </Box>
-
-        {/* Location Coordinates */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: colors.primary[600] }}>
-            موقع العقار على الخريطة
+          </div>
+          <Typography variant="body2" color="text.secondary">
+            {isAdmin
+              ? "أنت مشرف، فسيُنشر الإعلان مباشرة دون مراجعة."
+              : "بعد الإرسال يراجع فريق سكنلي الإعلان، ويظهر في البحث بعد قبوله."}
           </Typography>
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-            <TextField
-              label="خط العرض (Latitude)"
-              value={formData.latitude}
-              size="small"
-              InputProps={{ readOnly: true }}
-              sx={{ flex: 1 }}
-            />
-            <TextField
-              label="خط الطول (Longitude)"
-              value={formData.longitude}
-              size="small"
-              InputProps={{ readOnly: true }}
-              sx={{ flex: 1 }}
-            />
+          <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "flex-end", gap: 1.5 }}>
+            <Button component={Link} href="/userProfile" color="inherit" disabled={submitting}>
+              إلغاء
+            </Button>
             <Button
-              variant="outlined"
-              onClick={handleMapPickerOpen}
-              sx={{ minWidth: 'auto', px: 3 }}
+              type="submit"
+              variant="contained"
+              disabled={submitting || processingPhotos}
+              aria-busy={submitting || undefined}
+              startIcon={submitting ? <CircularProgress size={16} color="inherit" aria-hidden /> : undefined}
+              sx={{ minWidth: 200 }}
             >
-              اختر الموقع
+              {submitting ? "جارٍ الإرسال…" : isAdmin ? "نشر الإعلان" : "إرسال الإعلان للمراجعة"}
             </Button>
           </Box>
         </Box>
-
-        {/* Amenities */}
-        <FormControl fullWidth>
-          <InputLabel sx={{ color: colors.primary[600] }}>المرافق والخدمات</InputLabel>
-          <Select
-            multiple
-            name="amenities"
-            value={formData.amenities}
-            onChange={handleAmenitiesChange}
-            input={<OutlinedInput label="المرافق والخدمات" />}
-            renderValue={(selected) => (
-              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                {(selected as string[]).map((value) => (
-                  <Chip key={value} label={value} />
-                ))}
-              </Box>
-            )}
-          >
-            {amenities.map((name) => (
-              <MenuItem key={name} value={name}>
-                <Checkbox checked={formData.amenities.indexOf(name) > -1} />
-                {name}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        {/* Title and Description */}
-        <TextField 
-          label="عنوان الإعلان" 
-          name="title" 
-          value={formData.title} 
-          onChange={handleInputChange} 
-          fullWidth 
-          error={!!errors.title}
-          helperText={
-            errors.title ? 
-              <span style={{color: colors.danger[600]}}>{errors.title}</span> : 
-              <span style={{color: colors.secondary[500]}}>{`${formData.title.length}/70 حرف`}</span>
-          }
-          inputProps={{ maxLength: 70 }}
-          sx={{
-            '& .MuiFormHelperText-root': {
-              color: errors.title ? 'error.main' : 'text.secondary',
-            }
-          }}
-        />
-        <TextField 
-          label="وصف العقار" 
-          name="description" 
-          value={formData.description} 
-          onChange={handleInputChange} 
-          multiline 
-          rows={4} 
-          fullWidth 
-          error={!!errors.description}
-          helperText={
-            errors.description ? 
-              <span style={{color: colors.danger[600]}}>{errors.description}</span> : 
-              <span style={{color: colors.secondary[500]}}>{`${formData.description.length}/400 حرف`}</span>
-          }
-          inputProps={{ maxLength: 400 }}
-          sx={{
-            '& .MuiFormHelperText-root': {
-              color: errors.description ? 'error.main' : 'text.secondary',
-            }
-          }}
-        />
-
-        <Divider sx={{ 
-          my: 2,
-          backgroundColor: colors.secondary[300],
-          borderColor: colors.secondary[300]
-        }} />
-
-        {/* Price and Contact Info */}
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2 }}>
-          <TextField 
-            label="السعر" 
-            name="price" 
-            value={formData.price} 
-            onChange={handleInputChange} 
-            fullWidth 
-            error={!!errors.price}
-            helperText={errors.price || 'أقصى سعر: 100 مليون جنيه'}
-            type="number"
-            sx={{
-              '& .MuiFormHelperText-root': {
-                color: errors.price ? 'error.main' : 'text.secondary',
-              },
-              '& input[type=number]::-webkit-outer-spin-button, & input[type=number]::-webkit-inner-spin-button': {
-                WebkitAppearance: 'none',
-                margin: 0,
-              },
-              '& input[type=number]': {
-                MozAppearance: 'textfield',
-              },
-            }}
-          />
-          <FormControlLabel 
-            control={<Checkbox name="isNegotiable" checked={formData.isNegotiable} onChange={handleInputChange} />} 
-            label="السعر قابل للتفاوض" 
-          />
-        </Box>
-
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2 }}>
-          <TextField 
-            label="اسم المسؤول" 
-            name="contactInfo.name" 
-            value={formData.contactInfo.name} 
-            onChange={handleInputChange} 
-            fullWidth 
-            error={!!errors['contactInfo.name']}
-            helperText={
-              errors['contactInfo.name']
-                ? errors['contactInfo.name']
-                : `${formData.contactInfo.name.length}/25 حرف`
-            }
-            inputProps={{ maxLength: 25 }}
-            onKeyDown={(e) => {
-              // Allow: backspace, delete, tab, escape, enter, and Arabic letters
-              if ([8, 9, 27, 13, 46, 32].indexOf(e.keyCode) !== -1 ||
-                  // Allow Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
-                  (e.keyCode === 65 && e.ctrlKey === true) ||
-                  (e.keyCode === 67 && e.ctrlKey === true) ||
-                  (e.keyCode === 86 && e.ctrlKey === true) ||
-                  (e.keyCode === 88 && e.ctrlKey === true) ||
-                  // Allow Arabic letters (Unicode range for Arabic)
-                  (e.keyCode >= 65 && e.keyCode <= 90) || // English letters
-                  (e.keyCode >= 97 && e.keyCode <= 122) || // English letters lowercase
-                  (e.keyCode >= 1570 && e.keyCode <= 1610)) { // Arabic letters
-                return;
-              }
-              e.preventDefault();
-            }}
-            onPaste={(e) => {
-              const pastedText = e.clipboardData.getData('text');
-              const arabicRegex = /^[ء-ي\s]+$/;
-              if (!arabicRegex.test(pastedText)) {
-                e.preventDefault();
-              }
-            }}
-            sx={{
-              '& .MuiFormHelperText-root': {
-                color: errors['contactInfo.name'] ? undefined : '#888',
-              }
-            }}
-          />
-          <TextField 
-            label="رقم الهاتف" 
-            name="contactInfo.phone" 
-            value={formData.contactInfo.phone} 
-            onChange={handleInputChange} 
-            fullWidth 
-            error={!!errors['contactInfo.phone']}
-            helperText={
-              errors['contactInfo.phone']
-                ? errors['contactInfo.phone']
-                : `${formData.contactInfo.phone.length}/11 رقم`
-            }
-            inputProps={{ maxLength: 11 }}
-            type="tel"
-            onKeyDown={(e) => {
-              // Allow: backspace, delete, tab, escape, enter, and numbers
-              if ([8, 9, 27, 13, 46].indexOf(e.keyCode) !== -1 ||
-                  // Allow Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
-                  (e.keyCode === 65 && e.ctrlKey === true) ||
-                  (e.keyCode === 67 && e.ctrlKey === true) ||
-                  (e.keyCode === 86 && e.ctrlKey === true) ||
-                  (e.keyCode === 88 && e.ctrlKey === true) ||
-                  // Allow numbers only
-                  (e.keyCode >= 48 && e.keyCode <= 57)) {
-                return;
-              }
-              e.preventDefault();
-            }}
-            onPaste={(e) => {
-              const pastedText = e.clipboardData.getData('text');
-              const numericRegex = /^[0-9]+$/;
-              if (!numericRegex.test(pastedText)) {
-                e.preventDefault();
-              }
-            }}
-            sx={{
-              '& .MuiFormHelperText-root': {
-                color: errors['contactInfo.phone'] ? undefined : '#888',
-              }
-            }}
-          />
-          <TextField
-            label="البريد الإلكتروني (اختياري)"
-            name="contactInfo.email"
-            value={formData.contactInfo.email}
-            onChange={handleInputChange}
-            fullWidth
-            error={!!errors['contactInfo.email']}
-            helperText={errors['contactInfo.email']}
-            type="email"
-          />
-          <TextField
-            label="رقم واتساب (اختياري)"
-            name="contactInfo.whatsapp"
-            value={formData.contactInfo.whatsapp}
-            onChange={handleInputChange}
-            fullWidth
-            error={!!errors['contactInfo.whatsapp']}
-            helperText={
-              errors['contactInfo.whatsapp'] ? 
-                <span style={{color: colors.danger[600]}}>{errors['contactInfo.whatsapp']}</span> : 
-                <span style={{color: colors.secondary[500]}}>{`${formData.contactInfo.whatsapp.length}/11 رقم`}</span>
-            }
-            inputProps={{ maxLength: 11 }}
-            type="tel"
-            onKeyDown={(e) => {
-              if ([8, 9, 27, 13, 46].indexOf(e.keyCode) !== -1 ||
-                  (e.keyCode === 65 && e.ctrlKey === true) ||
-                  (e.keyCode === 67 && e.ctrlKey === true) ||
-                  (e.keyCode === 86 && e.ctrlKey === true) ||
-                  (e.keyCode === 88 && e.ctrlKey === true) ||
-                  (e.keyCode >= 48 && e.keyCode <= 57)) {
-                return;
-              }
-              e.preventDefault();
-            }}
-            onPaste={(e) => {
-              const pastedText = e.clipboardData.getData('text');
-              const numericRegex = /^[0-9]+$/;
-              if (!numericRegex.test(pastedText)) {
-                e.preventDefault();
-              }
-            }}
-            sx={{
-              '& .MuiFormHelperText-root': {
-                color: errors['contactInfo.whatsapp'] ? 'error.main' : 'text.secondary',
-              }
-            }}
-          />
-        </Box>
-
-        {/* Image Upload */}
-        <FormControl fullWidth error={!!errors.images}>
-          <input
-            type="file"
-            multiple
-            accept="image/*"
-            onChange={handleFileChange}
-            style={{ display: 'none' }}
-            ref={fileInputRef}
-          />
-          <Button
-            variant="outlined"
-            onClick={() => fileInputRef.current?.click()}
-            fullWidth
-            sx={{
-              color: colors.primary[600],
-              borderColor: colors.primary[600],
-              '&:hover': { borderColor: colors.primary[700] },
-              borderRadius: 2,
-              fontWeight: 600
-            }}
-          >
-            تحميل الصور (5-20 صورة)
-          </Button>
-          {previewUrls.length > 0 && (
-            <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-              {previewUrls.map((url, index) => (
-                <Box
-                  key={index}
-                  sx={{
-                    position: 'relative',
-                    width: 200,
-                    height: 150,
-                    border: '1px solid #ddd',
-                    borderRadius: '8px',
-                    overflow: 'hidden'
-                  }}
-                >
-                  <img
-                    src={url}
-                    alt={`معاينة ${index + 1}`}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                  <IconButton
-                    onClick={() => removeImage(index)}
-                    sx={{
-                      position: 'absolute',
-                      top: 4,
-                      right: 4,
-                      backgroundColor: 'rgba(255,255,255,0.7)',
-                      '&:hover': { backgroundColor: 'rgba(255,255,255,0.9)' }
-                    }}
-                  >
-                    <DeleteIcon sx={{ color: colors.danger[600], fontSize: 20 }} />
-                  </IconButton>
-                </Box>
-              ))}
-            </Box>
-          )}
-          <Typography variant="body2" sx={{ mt: 1, color: errors.images ? 'error.main' : '#666' }}>
-            {errors.images ? errors.images : `${formData.images.length} / 20 صورة مختارة`}
-          </Typography>
-        </FormControl>
-
-
-
-        {/* Admin Import Button */}
-        {isAdmin && (
-          <Button
-            variant="outlined"
-            size="large"
-            fullWidth
-            onClick={() => router.push('/admin/import-properties')}
-            sx={{
-              borderColor: colors.primary[600],
-              color: colors.primary[600],
-              '&:hover': { 
-                borderColor: colors.primary[700],
-                backgroundColor: colors.primary[50]
-              },
-              borderRadius: 2,
-              fontWeight: 700,
-              mt: 2,
-              mb: 1
-            }}
-          >
-            استيراد العقارات من Word
-          </Button>
-        )}
-
-        {/* Submit Button */}
-        <Button
-          variant="contained"
-          size="large"
-          fullWidth
-          type="submit"
-          disabled={isSubmitting}
-          startIcon={isSubmitting ? <CircularProgress size={24} /> : null}
-          sx={{
-            backgroundColor: colors.primary[600],
-            '&:hover': { backgroundColor: colors.primary[700] },
-            color: '#fff',
-            borderRadius: 2,
-            fontWeight: 700,
-            mt: 3
-          }}
-        >
-          {isSubmitting ? 'جاري النشر...' : 'نشر الإعلان'}
-        </Button>
       </Box>
 
-      {/* Pending Approval Dialog */}
-      <Dialog open={pendingOpen} onClose={() => setPendingOpen(false)}>
-        <DialogTitle sx={{ 
-          backgroundColor: colors.primary[50],
-          color: colors.primary[900],
-          fontWeight: 'bold'
-        }}>في انتظار الموافقة</DialogTitle>
-        <DialogContent>
-          سيتم مراجعة إعلانك من قبل الإدارة قبل النشر. شكراً لاستخدامك سكنلي!
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => { setPendingOpen(false); router.push('/userProfile'); }}>
-            حسناً
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Map Picker Dialog */}
-      <Dialog 
-        open={showMapPicker} 
-        onClose={() => setShowMapPicker(false)}
-        maxWidth="lg"
-        fullWidth
-        PaperProps={{
-          sx: {
-            maxHeight: '90vh',
-            minHeight: '600px'
-          }
+      <ConfirmDialog
+        open={Boolean(leaveTo)}
+        title="مغادرة الصفحة؟"
+        description="لم ترسل الإعلان بعد. إن غادرت الآن ستفقد البيانات والصور التي أضفتها."
+        confirmLabel="مغادرة الصفحة"
+        cancelLabel="البقاء وإكمال الإعلان"
+        onConfirm={() => {
+          const target = leaveTo;
+          setLeaving(true);
+          setLeaveTo(null);
+          if (target) router.push(target);
         }}
-        TransitionProps={{
-          // احذف أي onEntered أو أكواد تخص invalidateSize هنا
-        }}
-      >
-        <DialogContent sx={{ p: 2, height: '100%' }}>
-          <MapPicker
-            latitude={formData.latitude}
-            longitude={formData.longitude}
-            onLocationSelect={handleLocationSelect}
-            onClose={() => setShowMapPicker(false)}
-            selectedCity={formData.location}
-          />
-        </DialogContent>
-      </Dialog>
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      >
-        <Alert
-          onClose={() => setSnackbar({ ...snackbar, open: false })}
-          severity={snackbar.severity}
-          sx={{ width: '100%' }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
+        onClose={() => setLeaveTo(null)}
+      />
     </>
   );
 }
