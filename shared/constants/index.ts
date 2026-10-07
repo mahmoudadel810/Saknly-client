@@ -216,11 +216,13 @@ export const SOCIAL_LINKS = {
   YOUTUBE: "https://youtube.com/saknly",
 } as const;
 
+/** Saknly's real contact details (owner, 2026-10-07). There is no public street address. */
 export const CONTACT_INFO = {
-  EMAIL: "info@saknly.com",
-  PHONE: "+20 100 123 4567",
-  WHATSAPP: "+20 100 123 4567",
-  ADDRESS: "Cairo, Egypt",
+  EMAIL: "ma.adel.810@gmail.com",
+  /** For tel: links. */
+  PHONE_E164: "+201012852525",
+  /** As Egyptians write it; render inside dir="ltr" so the groups keep their order. */
+  PHONE_DISPLAY: "0101 285 2525",
 } as const;
 
 // Language Configuration

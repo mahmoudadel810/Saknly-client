@@ -6,6 +6,9 @@ import Logo from "@/shared/ui/Logo";
 import Box from "@mui/material/Box";
 import MuiLink from "@mui/material/Link";
 import Typography from "@mui/material/Typography";
+import EmailOutlined from "@mui/icons-material/EmailOutlined";
+import PhoneOutlined from "@mui/icons-material/PhoneOutlined";
+import { CONTACT_INFO } from "@/shared/constants";
 
 const COLUMNS: { id: string; title: string; links: { href: string; label: string }[] }[] = [
   {
@@ -31,9 +34,19 @@ const COLUMNS: { id: string; title: string; links: { href: string; label: string
   },
 ];
 
+const contactLinkSx = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 1,
+  width: "fit-content",
+  color: "text.secondary",
+  fontSize: "0.875rem",
+  "&:hover": { color: "primary.main" },
+} as const;
+
 /**
- * Compact public footer in three columns (DESIGN-SYSTEM.md, Shells). Contact details live on /contact; the
- * old footer's street address, mailbox and "#" social links were placeholders, so they are not repeated here.
+ * Compact public footer in three columns (DESIGN-SYSTEM.md, Shells). The phone and email come from
+ * CONTACT_INFO, the only real contact details; there is no public street address.
  */
 export default function Footer() {
   return (
@@ -52,6 +65,25 @@ export default function Footer() {
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5, maxWidth: "36ch" }}>
               عقارات للبيع والإيجار وسكن الطلاب. ابحث عن العقار المناسب وتواصل مع مالكه مباشرة.
             </Typography>
+            <Box
+              component="address"
+              sx={{ mt: 2, display: "flex", flexDirection: "column", gap: 1, fontStyle: "normal" }}
+            >
+              <MuiLink
+                href={`tel:${CONTACT_INFO.PHONE_E164}`}
+                underline="hover"
+                sx={contactLinkSx}
+              >
+                <PhoneOutlined aria-hidden sx={{ fontSize: 18 }} />
+                <span dir="ltr" className="num">
+                  {CONTACT_INFO.PHONE_DISPLAY}
+                </span>
+              </MuiLink>
+              <MuiLink href={`mailto:${CONTACT_INFO.EMAIL}`} underline="hover" sx={contactLinkSx}>
+                <EmailOutlined aria-hidden sx={{ fontSize: 18 }} />
+                <span dir="ltr">{CONTACT_INFO.EMAIL}</span>
+              </MuiLink>
+            </Box>
           </div>
 
           {COLUMNS.map((column) => (
