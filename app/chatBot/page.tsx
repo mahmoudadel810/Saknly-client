@@ -1,60 +1,34 @@
-"use client";
-import { useState } from 'react';
-import Container from '@mui/material/Container';
-import TextField from '@mui/material/TextField';
-import Button from '@mui/material/Button';
-import Typography from '@mui/material/Typography';
-import Paper from '@mui/material/Paper';
-import { api, getErrorMessage } from '@/shared/services/api';
+import type { Metadata } from "next";
+import Box from "@mui/material/Box";
+import PageHeader from "@/shared/ui/PageHeader";
+import { ChatConversation } from "@/components/ChatbotButton";
 
-export default function Home() {
-    const [question, setQuestion] = useState('');
-    const [answer, setAnswer] = useState('');
+export const metadata: Metadata = {
+  title: "مساعد سكنلي",
+  description: "اسأل مساعد سكنلي عن العقارات المعروضة للبيع والإيجار وسكن الطلاب.",
+};
 
-    const handleAsk = async () => {
-        if (!question.trim()) return;
-        try {
-            const res = await api.post('/chat', { question });
-            setAnswer(res.data?.answer || 'حدث خطأ، حاول مرة أخرى');
-        } catch (err) {
-            setAnswer(getErrorMessage(err, 'حدث خطأ، حاول مرة أخرى'));
-        }
-    };
-
-    return (
-        <Container maxWidth="sm" className="flex flex-col items-center justify-center min-h-screen">
-            <Paper elevation={3} className="w-full p-8 flex flex-col items-center gap-6">
-                <Typography variant="h4" className="mb-4 font-bold text-center">
-                    Ask Our Chatbot
-                </Typography>
-                <TextField
-                    fullWidth
-                    variant="outlined"
-                    label="Ask a question..."
-                    value={question}
-                    onChange={(e) => setQuestion(e.target.value)}
-                    className="mb-4"
-                    inputProps={{ className: 'py-3' }}
-                />
-                <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={handleAsk}
-                    className="w-full py-3 text-lg font-semibold"
-                >
-                    Ask
-                </Button>
-                {answer && (
-                    <Paper elevation={1} className="w-full mt-6 p-4 bg-gray-50">
-                        <Typography variant="subtitle1" className="font-semibold mb-2">
-                            Answer:
-                        </Typography>
-                        <Typography variant="body1" className="whitespace-pre-wrap">
-                            {answer}
-                        </Typography>
-                    </Paper>
-                )}
-            </Paper>
-        </Container>
-    );
+/** A full-page conversation with the same assistant as the floating button (which is hidden here). */
+export default function ChatBotPage() {
+  return (
+    <Box component="main" sx={{ maxWidth: 840, mx: "auto", px: { xs: 2, md: 3 }, py: { xs: 3, md: 5 } }}>
+      <PageHeader
+        title="مساعد سكنلي"
+        description="اسأل عن العقارات المعروضة على سكنلي بلغتك: نوع العقار والمدينة والسعر. المساعد قد يخطئ، فراجع التفاصيل في صفحة العقار."
+      />
+      <Box
+        sx={{
+          height: { xs: "calc(100dvh - 220px)", md: "min(680px, calc(100dvh - 240px))" },
+          minHeight: 420,
+          border: 1,
+          borderColor: "divider",
+          borderRadius: "10px",
+          bgcolor: "background.paper",
+          overflow: "hidden",
+        }}
+      >
+        <ChatConversation showHeader={false} />
+      </Box>
+    </Box>
+  );
 }
