@@ -388,9 +388,13 @@ function ListingView({ listing }: { listing: Listing }) {
 
           {listing.category === "sale" && typeof listing.price === "number" && listing.price > 0 && (
             <Box sx={{ py: 3, borderTop: 1, borderColor: "divider" }}>
-              <Accordion disableGutters elevation={0} sx={{ border: 1, borderColor: "divider", borderRadius: "10px", "&::before": { display: "none" } }}>
+              <Accordion
+                disableGutters
+                elevation={0}
+                slotProps={{ heading: { component: "h2" } }}
+                sx={{ border: 1, borderColor: "divider", borderRadius: "10px", "&::before": { display: "none" } }}>
                 <AccordionSummary expandIcon={<ExpandMoreOutlined />} aria-controls="installment-panel" id="installment-header">
-                  <Typography component="h2" variant="h6">
+                  <Typography component="span" variant="h6">
                     احسب القسط الشهري
                   </Typography>
                 </AccordionSummary>

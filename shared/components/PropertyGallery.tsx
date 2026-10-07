@@ -178,8 +178,7 @@ export default function PropertyGallery({ images, title }: { images: GalleryImag
         open={open}
         onClose={() => setOpen(false)}
         fullScreen
-        aria-label={`صور ${title}`}
-        slotProps={{ paper: { sx: { bgcolor: "var(--c-bg)", borderRadius: 0 } } }}
+        slotProps={{ paper: { "aria-label": `صور ${title}`, sx: { bgcolor: "var(--c-bg)", borderRadius: 0 } } }}
       >
         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 2, height: 56 }}>
           <Typography component="p" variant="body2" sx={{ fontVariantNumeric: "tabular-nums" }} aria-live="polite">
