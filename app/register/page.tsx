@@ -161,7 +161,6 @@ export default function Register() {
         alignItems: "center",
         minHeight: "100vh",
         backgroundColor: "#f0f2f5",
-        fontFamily: "Inter, sans-serif",
         padding: { xs: "1rem", lg: "2rem" },
         boxSizing: "border-box",
         ...(isDarkMode && {

@@ -115,7 +115,6 @@ export default function Navbar() {
               sx={{ 
                 fontWeight: 800, 
                 ml: 1.2, 
-                fontFamily: 'Cairo, sans-serif',
                 letterSpacing: '-0.3px',
                 transition: 'color 0.2s ease',
                 '&:hover': { color: 'primary.light' }
@@ -166,7 +165,6 @@ export default function Navbar() {
                   className={"dark:text-white text-black" + (isActive ? " font-semibold" : " font-normal")}
                   sx={{
                     fontWeight: isActive ? 600 : 400,
-                    fontFamily: 'Cairo, sans-serif',
                     fontSize: '0.9rem',
                     px: 1.8,
                     py: 1,
@@ -212,7 +210,6 @@ export default function Navbar() {
               sx={{ 
                 color: "secondary.light", 
                 fontWeight: 500, 
-                fontFamily: 'Cairo, sans-serif',
                 fontSize: '0.85rem',
                 px: 1.8,
                 py: 0.8,
@@ -248,7 +245,6 @@ export default function Navbar() {
                 color: "#fff", 
                 bgcolor: "primary.light", 
                 fontWeight: 500, 
-                fontFamily: 'Cairo, sans-serif',
                 fontSize: '0.85rem',
                 px: 2.2,
                 py: 1,
@@ -315,7 +311,6 @@ export default function Navbar() {
                   href="/userProfile" 
                   onClick={handleClose} 
                   sx={{ 
-                    fontFamily: 'Cairo, sans-serif',
                     py: 1.2,
                     px: 2,
                     transition: 'all 0.2s ease',
@@ -329,7 +324,6 @@ export default function Navbar() {
                   onClick={() => { handleClose(); logout(); }} 
                   sx={{ 
                     color: "error.light", 
-                    fontFamily: 'Cairo, sans-serif',
                     py: 1.2,
                     px: 2,
                     transition: 'all 0.2s ease',
@@ -350,7 +344,6 @@ export default function Navbar() {
                 variant="contained" 
                 sx={{ 
                   fontWeight: 500, 
-                  fontFamily: 'Cairo, sans-serif',
                   px: 2.2,
                   py: 0.8,
                   borderRadius: 2,
@@ -410,7 +403,7 @@ export default function Navbar() {
         <Box sx={{ p: 2.5, display: "flex", alignItems: "center", borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
           <Link href="/" style={{ display: "flex", alignItems: "center", textDecoration: 'none' }} aria-label="سكنلي الرئيسية">
             <Image src="/logo.svg" alt="شعار سكنلي" width={32} height={32} style={{ marginLeft: 8 }} />
-            <Typography variant="h6" sx={{ fontWeight: 800, color: "primary.main", ml: 1, fontFamily: 'Cairo, sans-serif' }}>
+            <Typography variant="h6" sx={{ fontWeight: 800, color: "primary.main", ml: 1 }}>
               سكنلي
             </Typography>
           </Link>
@@ -457,7 +450,6 @@ export default function Navbar() {
                   primary={link.label} 
                   sx={{ 
                     textAlign: "right", 
-                    fontFamily: 'Cairo, sans-serif',
                     '& .MuiTypography-root': {
                       fontWeight: isActive ? 600 : 400,
                       fontSize: '0.95rem',
@@ -487,7 +479,6 @@ export default function Navbar() {
                 primary="لوحة تحكم الأدمن" 
                 sx={{ 
                   textAlign: "right", 
-                  fontFamily: 'Cairo, sans-serif',
                   '& .MuiTypography-root': {
                     fontWeight: 400,
                     fontSize: '0.95rem',
@@ -524,7 +515,6 @@ export default function Navbar() {
               primary="أضف عقارك" 
               sx={{ 
                 textAlign: "right", 
-                fontFamily: 'Cairo, sans-serif',
                 '& .MuiTypography-root': {
                   fontWeight: 400,
                   fontSize: '0.95rem',
@@ -544,7 +534,6 @@ export default function Navbar() {
                 startIcon={<AccountCircleIcon />}
                 sx={{ 
                   justifyContent: "flex-start", 
-                  fontFamily: 'Cairo, sans-serif',
                   py: 1.2,
                   borderRadius: 1.5,
                   transition: 'all 0.2s ease',
@@ -559,7 +548,6 @@ export default function Navbar() {
                 color="error"
                 sx={{ 
                   justifyContent: "flex-start", 
-                  fontFamily: 'Cairo, sans-serif',
                   py: 1.2,
                   borderRadius: 1.5,
                   transition: 'all 0.2s ease',
@@ -579,7 +567,6 @@ export default function Navbar() {
                 variant="contained" 
                 sx={{ 
                   fontWeight: 500, 
-                  fontFamily: 'Cairo, sans-serif',
                   py: 1.2,
                   borderRadius: 2,
                   bgcolor: 'primary.light',

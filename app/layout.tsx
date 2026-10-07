@@ -1,7 +1,7 @@
 /** @format */
 
 import type { Metadata } from "next";
-import { Inter, Cairo, Sanchez } from "next/font/google";
+import { IBM_Plex_Sans_Arabic } from "next/font/google";
 import "./globals.css";
 import InitColorSchemeScript from "@mui/material/InitColorSchemeScript";
 import AppThemeProvider from "@/shared/ui/AppThemeProvider";
@@ -22,22 +22,12 @@ import ChatbotButton from "@/components/ChatbotButton";
 import BackToTop from "../shared/components/BackToTop";
 import ErrorBoundary from "@/shared/components/ErrorBoundary";
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-});
-
-const cairo = Cairo({
+// One family for Arabic and Latin (DESIGN-SYSTEM.md, Typography); the theme and Tailwind read --font-sans.
+const plexArabic = IBM_Plex_Sans_Arabic({
   subsets: ["arabic", "latin"],
-  variable: "--font-cairo",
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-sans",
   display: "swap",
-});
-
-const sanchez = Sanchez({
-  subsets: ["latin"],
-  variable: "--font-sanchez",
-  weight: ["400"],
 });
 
 // The pre-redesign toggle stored 'true'/'false' under `darkMode`; MUI reads 'light'/'dark' from `mui-mode`.
@@ -116,7 +106,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ar" dir="rtl" suppressHydrationWarning>
+    <html lang="ar" dir="rtl" className={plexArabic.variable} suppressHydrationWarning>
       <head>
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />

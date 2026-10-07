@@ -38,7 +38,6 @@ const ERROR = "var(--error-500)";
 const BG = "var(--bg-secondary)";
 const WHITE = "var(--text-white)";
 const CARD_BG = "var(--card-bg)";
-const FONT_AR = "Cairo, Tajawal, Inter, sans-serif";
 
 type LoginFormData = {
   email: string;
@@ -209,7 +208,6 @@ const LoginPage = () => {
         minHeight: "100vh",
         backgroundColor: isDarkMode ? "var(--dark-800)" : BG,
         color: isDarkMode ? "var(--dark-text-900)" : undefined,
-        fontFamily: FONT_AR,
         padding: { xs: "1rem", md: "2rem" },
         boxSizing: "border-box",
       }}>
@@ -286,7 +284,6 @@ const LoginPage = () => {
             padding: { xs: "2rem", md: "4rem" },
             textAlign: "right",
             width: { xs: "100%", md: "unset" },
-            fontFamily: FONT_AR,
           }}>
           <Typography
             variant="h1"
@@ -296,7 +293,6 @@ const LoginPage = () => {
               marginBottom: "2rem",
               textAlign: "center",
               direction: "rtl",
-              fontFamily: FONT_AR,
             }}>
             تسجيل الدخول
           </Typography>
@@ -307,7 +303,6 @@ const LoginPage = () => {
               display: "grid",
               gap: "1rem",
               direction: "rtl",
-              fontFamily: FONT_AR,
             }}>
             {/* Email Field */}
             <TextField
@@ -464,7 +459,6 @@ const LoginPage = () => {
               sx={{
                 textAlign: "center",
                 direction: "rtl",
-                fontFamily: FONT_AR,
               }}>
               ليس لديك حساب؟{" "}
               <Link

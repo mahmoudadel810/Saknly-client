@@ -90,8 +90,7 @@ module.exports = {
         },
       },
       fontFamily: {
-        sans: ["Inter", "Cairo", "sans-serif"],
-        arabic: ["Cairo", "Amiri", "sans-serif"],
+        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
       },
       spacing: {
         18: "4.5rem",

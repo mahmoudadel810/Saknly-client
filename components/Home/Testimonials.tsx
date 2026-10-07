@@ -156,7 +156,6 @@ const Testimonials = () => {
                         fontWeight: 900,
                         letterSpacing: '0.5px',
                         textShadow: '0 2px 12px rgba(59,130,246,0.07)',
-                        fontFamily: 'Cairo, Tahoma, Arial, sans-serif',
                         lineHeight: 1.2
                     }}
                 >
@@ -305,7 +304,6 @@ const Testimonials = () => {
                                                     lineHeight: 1.6,
                                                     fontSize: { xs: '0.85rem', sm: '0.9rem', md: '1rem' },
                                                     px: { xs: 0.5, sm: 1 },
-                                                    fontFamily: 'Cairo, Tahoma, Arial, sans-serif',
                                                 }}
                                             >
                                                 "{t.text}"

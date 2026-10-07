@@ -41,19 +41,12 @@ const PropertyPieChart = ({ pending }: { pending: { sale: any[]; rent: any[]; st
         position: "bottom" as const,
         labels: {
           font: {
-            family: "Cairo, Tajawal, Arial",
             size: 14,
           },
           padding: 20,
         },
       },
       tooltip: {
-        bodyFont: {
-          family: "Cairo, Tajawal, Arial",
-        },
-        titleFont: {
-          family: "Cairo, Tajawal, Arial",
-        },
       },
     },
     maintainAspectRatio: false,
@@ -76,7 +69,6 @@ const PropertyPieChart = ({ pending }: { pending: { sale: any[]; rent: any[]; st
           mb: 2,
           fontWeight: "bold",
           color: "#1E3A8A",
-          fontFamily: "Cairo, Tajawal, Arial",
         }}
       >
         توزيع العقارات المعلقة حسب النوع
@@ -89,7 +81,6 @@ const PropertyPieChart = ({ pending }: { pending: { sale: any[]; rent: any[]; st
         sx={{
           mt: 1,
           color: "text.secondary",
-          fontFamily: "Cairo, Tajawal, Arial",
         }}
       >
         إجمالي العقارات المعلقة: {pending.rent.length + pending.sale.length + pending.student.length}

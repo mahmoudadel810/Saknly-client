@@ -145,7 +145,6 @@ export default function UserProfilePage() {
         display: "flex",
         flexDirection: "column",
         backgroundColor: isDarkMode ? "#111827" : "#f1f5f9",
-        fontFamily: "Cairo, sans-serif",
         direction: "rtl",
         py: 4,
         px: { xs: 1, sm: 2 },

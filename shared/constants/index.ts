@@ -309,20 +309,6 @@ export const SEO_CONFIG = {
   ],
 };
 
-// Font Configuration for Arabic
-export const FONT_CONFIG = {
-  arabic: {
-    primary: "Cairo",
-    secondary: "Amiri",
-    fallback: "sans-serif",
-  },
-  english: {
-    primary: "Inter",
-    secondary: "Sanchez",
-    fallback: "sans-serif",
-  },
-};
-
 // Direction Configuration
 export const DIRECTION_CONFIG = {
   rtl: {
