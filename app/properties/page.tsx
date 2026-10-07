@@ -11,6 +11,7 @@ import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
 import Drawer from "@mui/material/Drawer";
 import IconButton from "@mui/material/IconButton";
+import InputAdornment from "@mui/material/InputAdornment";
 import MenuItem from "@mui/material/MenuItem";
 import Pagination from "@mui/material/Pagination";
 import TextField from "@mui/material/TextField";
@@ -21,10 +22,11 @@ import CloseOutlined from "@mui/icons-material/CloseOutlined";
 import GridViewOutlined from "@mui/icons-material/GridViewOutlined";
 import MapOutlined from "@mui/icons-material/MapOutlined";
 import SearchOffOutlined from "@mui/icons-material/SearchOffOutlined";
+import SwapVertOutlined from "@mui/icons-material/SwapVertOutlined";
 import TuneOutlined from "@mui/icons-material/TuneOutlined";
 import FilterSidebar from "@/shared/components/FilterSidebar";
 import { api } from "@/shared/services/api";
-import PageHeader from "@/shared/ui/PageHeader";
+import PageBanner from "@/shared/ui/PageBanner";
 import PropertyCard, { toPropertyCardData, type ListingLike } from "@/shared/ui/PropertyCard";
 import LoadingState from "@/shared/ui/LoadingState";
 import ErrorState from "@/shared/ui/ErrorState";
@@ -180,29 +182,62 @@ function SearchPage() {
     results = <PropertyMap properties={properties} />;
   } else {
     results = (
-      // Next to the 280px filter column, three cards per row at most.
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      // Three cards per row at most (next to the 280px filter column from lg). MUI breakpoints, so the columns
+      // change at the same widths as the filter column and the drawer button.
+      <Box
+        sx={{
+          display: "grid",
+          gap: 2,
+          gridTemplateColumns: {
+            xs: "minmax(0, 1fr)",
+            sm: "repeat(2, minmax(0, 1fr))",
+            md: "repeat(3, minmax(0, 1fr))",
+          },
+        }}
+      >
         {properties.map((property, index) => (
           <PropertyCard key={property._id} property={toPropertyCardData(property)} priority={index < 3} />
         ))}
-      </div>
+      </Box>
     );
   }
 
   return (
     <main id="main">
-      <Box sx={{ maxWidth: 1240, mx: "auto", px: { xs: 2, md: 3 }, py: { xs: 3, md: 4 } }}>
-        <PageHeader
-          title={TITLES[applied.kind]}
-          description={
-            <Box component="span" role="status" aria-live="polite">
-              {countText}
-            </Box>
-          }
-        />
-
-        {/* Toolbar: listing kind, then filters (below lg), sort and view. */}
-        <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1.5, mb: 2 }}>
+      <PageBanner
+        variant="photo"
+        overlap
+        breadcrumbs={[{ label: "الرئيسية", href: "/" }, { label: TITLES[applied.kind] }]}
+        title={TITLES[applied.kind]}
+        description={
+          <Box component="span" role="status" aria-live="polite">
+            {countText}
+          </Box>
+        }
+      />
+      <Box sx={{ maxWidth: 1240, mx: "auto", px: { xs: 2, md: 3 }, pb: { xs: 4, md: 6 } }}>
+        {/*
+         * Toolbar on a white panel floating over the banner's bottom edge (as the home search panel does):
+         * listing kind, then filters (below lg), sort and view.
+         */}
+        <Box
+          sx={{
+            position: "relative",
+            zIndex: 1,
+            mt: -6,
+            mb: 2.5,
+            p: 1.5,
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            gap: 1.5,
+            border: 1,
+            borderColor: "divider",
+            borderRadius: "var(--r-card)",
+            bgcolor: "background.paper",
+            boxShadow: "var(--c-card-shadow-hover)",
+          }}
+        >
           <ToggleButtonGroup
             exclusive
             size="small"
@@ -213,16 +248,24 @@ function SearchPage() {
               flex: { xs: "1 1 100%", sm: "0 0 auto" },
               display: "grid",
               gridTemplateColumns: `repeat(${LISTING_KINDS.length}, minmax(0, 1fr))`,
+              gap: 0.5,
+              p: 0.5,
+              borderRadius: "var(--r-inner)",
+              bgcolor: "var(--c-field)",
               "& .MuiToggleButton-root": {
                 height: 40,
                 px: 2,
+                border: 0,
+                borderRadius: "10px !important",
                 whiteSpace: "nowrap",
                 fontWeight: 600,
                 color: "text.secondary",
+                "&:hover": { bgcolor: "color-mix(in srgb, var(--c-primary) 6%, transparent)" },
                 "&.Mui-selected": {
                   color: "primary.main",
-                  bgcolor: "var(--c-primary-soft)",
-                  "&:hover": { bgcolor: "var(--c-primary-soft)" },
+                  bgcolor: "background.paper",
+                  boxShadow: "0 1px 3px rgba(16, 24, 22, 0.12)",
+                  "&:hover": { bgcolor: "background.paper" },
                 },
               },
             }}
@@ -244,27 +287,41 @@ function SearchPage() {
           >
             <Button
               variant="outlined"
-              color="secondary"
               startIcon={<TuneOutlined aria-hidden />}
               onClick={() => setDrawerOpen(true)}
               aria-haspopup="dialog"
-              sx={{ height: 40 }}
+              sx={{ minHeight: 48 }}
             >
               الفلاتر
             </Button>
           </Badge>
 
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Typography id="sort-label" component="span" variant="body2" color="text.secondary">
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, flex: { xs: 1, sm: "0 0 auto" }, minWidth: 0 }}>
+            {/* Hidden on phones to leave the select room; aria-labelledby still reads it. */}
+            <Typography
+              id="sort-label"
+              component="span"
+              variant="body2"
+              color="text.secondary"
+              sx={{ whiteSpace: "nowrap", display: { xs: "none", sm: "inline" } }}
+            >
               الترتيب
             </Typography>
             <TextField
               select
-              size="small"
               value={applied.sort || DEFAULT_SORT}
               onChange={(event) => filters.setSort(event.target.value)}
-              sx={{ minWidth: 168, "& .MuiOutlinedInput-root": { height: 40 } }}
-              slotProps={{ select: { SelectDisplayProps: { "aria-labelledby": "sort-label" } } }}
+              sx={{ minWidth: 0, width: { xs: "100%", sm: 184 } }}
+              slotProps={{
+                select: { SelectDisplayProps: { "aria-labelledby": "sort-label" } },
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start" sx={{ display: { xs: "none", sm: "flex" } }}>
+                      <SwapVertOutlined aria-hidden />
+                    </InputAdornment>
+                  ),
+                },
+              }}
             >
               {SORT_OPTIONS.map((option) => (
                 <MenuItem key={option.value} value={option.value}>
@@ -280,7 +337,25 @@ function SearchPage() {
             value={view}
             onChange={(_, next: "grid" | "map" | null) => next && setView(next)}
             aria-label="طريقة العرض"
-            sx={{ "& .MuiToggleButton-root": { height: 40, width: 44 } }}
+            sx={{
+              gap: 0.5,
+              p: 0.5,
+              borderRadius: "var(--r-inner)",
+              bgcolor: "var(--c-field)",
+              "& .MuiToggleButton-root": {
+                height: 40,
+                width: 44,
+                border: 0,
+                borderRadius: "10px !important",
+                color: "text.secondary",
+                "&.Mui-selected": {
+                  color: "primary.main",
+                  bgcolor: "background.paper",
+                  boxShadow: "0 1px 3px rgba(16, 24, 22, 0.12)",
+                  "&:hover": { bgcolor: "background.paper" },
+                },
+              },
+            }}
           >
             <ToggleButton value="grid" aria-label="عرض البطاقات">
               <GridViewOutlined fontSize="small" />
@@ -316,7 +391,9 @@ function SearchPage() {
           </Box>
         )}
 
-        <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+        <Box
+          sx={{ display: "grid", gap: 3, gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "280px minmax(0, 1fr)" } }}
+        >
           <Box
             component="aside"
             aria-label="فلاتر البحث"
@@ -330,8 +407,9 @@ function SearchPage() {
               p: 2.5,
               border: 1,
               borderColor: "divider",
-              borderRadius: "10px",
+              borderRadius: "var(--r-card)",
               bgcolor: "background.paper",
+              boxShadow: "var(--c-card-shadow)",
             }}
           >
             <FiltersPanelHeader filters={filters} />
@@ -348,6 +426,7 @@ function SearchPage() {
                   onChange={handlePageChange}
                   color="primary"
                   shape="rounded"
+                  size="large"
                   siblingCount={1}
                   getItemAriaLabel={(type, page) =>
                     type === "page" ? `الصفحة ${page}` : type === "next" ? "الصفحة التالية" : type === "previous" ? "الصفحة السابقة" : type === "first" ? "الصفحة الأولى" : "الصفحة الأخيرة"
@@ -356,7 +435,7 @@ function SearchPage() {
               </Box>
             )}
           </Box>
-        </div>
+        </Box>
       </Box>
 
       {/* Below lg the same filters open in a drawer at the inline start ("left" is flipped by the RTL theme). */}
