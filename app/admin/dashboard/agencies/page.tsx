@@ -1,788 +1,237 @@
 "use client";
-import React, { useState, useEffect, useMemo } from 'react';
-import {
-  Box,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  Typography,
-  Avatar,
-  CircularProgress,
-  TextField,
-  Pagination,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  IconButton,
-  Chip,
-  Paper,
-  TableContainer,
-  useTheme,
-  useMediaQuery
-} from '@mui/material';
-import {
-  Delete,
-  Business,
-  Star,
-  StarBorder,
-  Edit,
-  Close
-} from '@mui/icons-material';
-import { useDebounce } from 'use-debounce';
-import { Agency } from '../../../../shared/types/index';
-import { useDarkMode } from "@/app/context/DarkModeContext";
-import { API_URL, authHeader } from "@/shared/utils/auth";
+
+import React, { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useDebounce } from "use-debounce";
+import Avatar from "@mui/material/Avatar";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Switch from "@mui/material/Switch";
+import Typography from "@mui/material/Typography";
+import AddOutlined from "@mui/icons-material/AddOutlined";
+import BusinessOutlined from "@mui/icons-material/BusinessOutlined";
+import DeleteOutlineOutlined from "@mui/icons-material/DeleteOutlineOutlined";
+import EditOutlined from "@mui/icons-material/EditOutlined";
+import OpenInNewOutlined from "@mui/icons-material/OpenInNewOutlined";
+import StarOutlineOutlined from "@mui/icons-material/StarOutlineOutlined";
 import ConfirmDialog from "@/shared/components/ConfirmDialog";
 import { useToast } from "@/shared/provider/ToastProvider";
+import { api } from "@/shared/services/api";
+import DataTable, { useDataTableState, type DataTableColumn } from "@/shared/ui/DataTable";
+import PageHeader from "@/shared/ui/PageHeader";
+import AgencyFormDialog from "@/shared/ui/admin/AgencyFormDialog";
+import SearchField from "@/shared/ui/admin/SearchField";
+import { adminErrorMessage } from "@/shared/ui/admin/errors";
+import { formatDate } from "@/shared/ui/admin/format";
+import { agenciesQuery, type AdminAgency } from "@/shared/ui/admin/queries";
 
-const PAGE_SIZE = 10;
-
-// Color palette
-const colors = {
-  primary: '#2563eb', // Blue
-  secondary: '#7c3aed', // Purple
-  success: '#059669', // Green
-  warning: '#d97706', // Orange
-  error: '#dc2626', // Red
-  background: '#f8fafc', // Light background
-  surface: '#ffffff', // Light surface
-  surfaceVariant: '#f1f5f9', // Light surface variant
-  onSurface: '#1e293b', // Dark text on light surface
-  onSurfaceVariant: '#64748b', // Muted text
-  accent: '#8b5cf6',
-  gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-};
-
-const AgencyTable = ({
-  agencies,
-  columns,
-  onRowClick,
-  onDelete,
-  onToggleFeatured,
-  isLoading
-}: {
-  agencies: Agency[];
-  columns: any[];
-  onRowClick: (agency: Agency) => void;
-  onDelete: (agency: Agency) => void;
-  onToggleFeatured: (agency: Agency) => Promise<void>;
-  isLoading: boolean;
-}) => {
-  const theme = useTheme();
-  const { isDarkMode } = useDarkMode();
-
-  return (
-    <Paper 
-      elevation={0} 
-      sx={{ 
-        borderRadius: { xs: 2, md: 3 }, 
-        overflow: 'hidden', 
-        mb: 3,
-        border: isDarkMode ? '1px solid var(--dark-700)' : `1px solid ${colors.surfaceVariant}`,
-        backgroundColor: isDarkMode ? 'var(--dark-800)' : colors.surface,
-        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)'
-      }}
-    >
-      <TableContainer sx={{ minWidth: { xs: 600, sm: 'auto' }, background: isDarkMode ? 'var(--dark-800)' : undefined }}>
-        <Table>
-          <TableHead>
-            <TableRow sx={{ 
-              background: isDarkMode ? 'var(--dark-700)' : colors.gradient,
-              '& .MuiTableCell-head': {
-                color: isDarkMode ? '#fff' : colors.surface,
-                fontWeight: 600
-              }
-            }}>
-              {columns.map((column) => (
-                <TableCell 
-                  key={column.key} 
-                  sx={{ 
-                    fontWeight: 600,
-                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                    px: { xs: 1, sm: 2 },
-                    py: { xs: 1, sm: 1.5 },
-                    color: isDarkMode ? '#fff' : colors.surface,
-                    display: ['logo', 'description', 'isFeatured', 'createdAt'].includes(column.key) ? { xs: 'none', sm: 'table-cell' } : undefined
-                  }}
-                >
-                  {column.label}
-                </TableCell>
-              ))}
-              <TableCell 
-                sx={{ 
-                  fontWeight: 600,
-                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                  px: { xs: 1, sm: 2 },
-                  py: { xs: 1, sm: 1.5 },
-                  color: isDarkMode ? '#fff' : colors.surface
-                }}
-              >
-                إجراءات
-              </TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={columns.length + 1} align="center" sx={{ py: 4 }}>
-                  <CircularProgress size={24} sx={{ color: isDarkMode ? '#fff' : colors.primary }} />
-                </TableCell>
-              </TableRow>
-            ) : agencies.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={columns.length + 1} align="center" sx={{ 
-                  py: 4,
-                  color: isDarkMode ? '#fff' : colors.onSurfaceVariant
-                }}>
-                  لا توجد وكالات
-                </TableCell>
-              </TableRow>
-            ) : (
-              agencies.map((agency) => (
-                <TableRow
-                  key={agency._id}
-                  hover
-                  sx={{ 
-                    '&:hover': { 
-                      cursor: 'pointer',
-                      backgroundColor: isDarkMode ? 'var(--dark-700)' : colors.surfaceVariant + '40'
-                    },
-                    '&:nth-of-type(even)': {
-                      backgroundColor: isDarkMode ? 'var(--dark-800)' : colors.background
-                    }
-                  }}
-                  onClick={() => onRowClick(agency)}
-                >
-                  {columns.map((column) => (
-                    <TableCell 
-                      key={column.key}
-                      sx={{
-                        fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                        px: { xs: 1, sm: 2 },
-                        py: { xs: 1, sm: 1.5 },
-                        color: isDarkMode ? '#fff' : colors.onSurface,
-                        display: ['logo', 'description', 'isFeatured', 'createdAt'].includes(column.key) ? { xs: 'none', sm: 'table-cell' } : undefined
-                      }}
-                    >
-                      {column.render ? column.render(agency) : agency[column.key as keyof Agency]}
-                    </TableCell>
-                  ))}
-                  <TableCell
-                    sx={{
-                      px: { xs: 1, sm: 2 },
-                      py: { xs: 1, sm: 1.5 }
-                    }}
-                  >
-                    <Box display="flex" gap={0.5}>
-                      <IconButton
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onToggleFeatured(agency);
-                        }}
-                        sx={{
-                          color: isDarkMode ? '#fff' : (agency.isFeatured ? colors.warning : colors.onSurfaceVariant),
-                          '&:hover': {
-                            backgroundColor: isDarkMode ? 'var(--dark-700)' : (agency.isFeatured ? colors.warning + '20' : colors.onSurfaceVariant + '20')
-                          }
-                        }}
-                        size="small"
-                      >
-                        {agency.isFeatured ? <Star fontSize="small" /> : <StarBorder fontSize="small" />}
-                      </IconButton>
-                      <IconButton
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDelete(agency);
-                        }}
-                        sx={{
-                          color: isDarkMode ? '#fff' : colors.error,
-                          '&:hover': {
-                            backgroundColor: isDarkMode ? 'var(--dark-700)' : colors.error + '20'
-                          }
-                        }}
-                        size="small"
-                      >
-                        <Delete fontSize="small" />
-                      </IconButton>
-                    </Box>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    </Paper>
-  );
-};
-
-const AgenciesPage = () => {
-  const { isDarkMode } = useDarkMode();
-  const [agencies, setAgencies] = useState<Agency[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [search, setSearch] = useState('');
-  const [debouncedSearch] = useDebounce(search, 500);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [selectedAgency, setSelectedAgency] = useState<Agency | null>(null);
-  const [deleteDialog, setDeleteDialog] = useState(false);
-  const [actionLoading, setActionLoading] = useState(false);
+export default function AdminAgenciesPage() {
+  const queryClient = useQueryClient();
   const { showToast } = useToast();
+  const table = useDataTableState({ pageSize: 10 });
+  const [search, setSearch] = useState("");
+  const [debouncedSearch] = useDebounce(search, 400);
+  const params = { page: table.page + 1, limit: table.pageSize, search: debouncedSearch.trim() };
+  const agencies = useQuery(agenciesQuery(params));
 
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<AdminAgency | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<AdminAgency | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [togglingIds, setTogglingIds] = useState<string[]>([]);
 
-  const fetchAgencies = async (searchValue = '', pageValue = 1) => {
-    setLoading(true);
+  const refresh = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["admin", "agencies"] }),
+      queryClient.invalidateQueries({ queryKey: ["admin", "analytics"] }),
+    ]);
+
+  const openCreate = () => {
+    setEditing(null);
+    setFormOpen(true);
+  };
+  const openEdit = (agency: AdminAgency) => {
+    setEditing(agency);
+    setFormOpen(true);
+  };
+
+  const toggleFeatured = async (agency: AdminAgency) => {
+    if (togglingIds.includes(agency._id)) return;
+    const next = !agency.isFeatured;
+    setTogglingIds((ids) => [...ids, agency._id]);
     try {
-      const params = new URLSearchParams({
-        search: searchValue,
-        page: String(pageValue),
-        limit: String(PAGE_SIZE),
-      });
-      
-      const res = await fetch(`${API_URL}/agencies?${params.toString()}`, {
-        headers: authHeader(),
-      });
-      
-      if (!res.ok) throw new Error('فشل في جلب الوكالات');
-      
-      const data = await res.json();
-      setError('');
-      setAgencies(data.data || []);
-      setTotalPages(data.totalPages || 1);
-    } catch (err: any) {
-      setError(err.message || 'حدث خطأ غير متوقع');
+      await api.patch(`/agencies/${agency._id}/feature`, { isFeatured: next });
+      await queryClient.invalidateQueries({ queryKey: ["admin", "agencies"] });
+      showToast(next ? "أصبحت الوكالة مميزة." : "أُلغي تمييز الوكالة.", "success");
+    } catch (err) {
+      showToast(adminErrorMessage(err, "تعذّر تغيير تمييز الوكالة. حاول مرة أخرى."), "error");
     } finally {
-      setLoading(false);
+      setTogglingIds((ids) => ids.filter((id) => id !== agency._id));
     }
   };
 
-  useEffect(() => {
-    fetchAgencies(debouncedSearch, page);
-  }, [debouncedSearch, page]);
-
-  const handleToggleFeatured = async (agency: Agency) => {
-    setActionLoading(true);
+  const confirmDelete = async () => {
+    if (!deleteTarget || deleting) return;
+    setDeleting(true);
     try {
-      const res = await fetch(`${API_URL}/agencies/${agency._id}/feature`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', ...authHeader() },
-        // Sent for servers that read the desired state; a pure toggle ignores it.
-        body: JSON.stringify({ isFeatured: !agency.isFeatured }),
-      });
-
-      if (!res.ok) throw new Error('فشل في تحديث حالة الوكالة');
-
-      const data = await res.json().catch(() => ({}));
-      const nextFeatured: boolean =
-        typeof data?.data?.isFeatured === 'boolean' ? data.data.isFeatured : !agency.isFeatured;
-      setAgencies((prev) =>
-        prev.map((a) =>
-          a._id === agency._id
-            ? { ...a, isFeatured: nextFeatured }
-            : a
-        )
-      );
-    } catch (err: any) {
-      showToast(err?.message || 'فشل في تحديث حالة الوكالة', 'error');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleDeleteAgency = async () => {
-    if (!selectedAgency) return;
-    setActionLoading(true);
-    try {
-      const res = await fetch(`${API_URL}/agencies/${selectedAgency._id}`, {
-        method: 'DELETE',
-        headers: authHeader(),
-      });
-
-      if (!res.ok) throw new Error('فشل حذف الوكالة');
-
-      setAgencies((prev) =>
-        prev.filter((a) => a._id !== selectedAgency._id)
-      );
-      setSelectedAgency(null);
-      setDeleteDialog(false);
-      showToast('تم حذف الوكالة', 'success');
-    } catch (err: any) {
+      await api.delete(`/agencies/${deleteTarget._id}`);
+      await refresh();
+      setDeleteTarget(null);
+      showToast("تم حذف الوكالة.", "success");
+    } catch (err) {
       // The dialog stays open so the admin can retry or cancel.
-      showToast(err?.message || 'فشل حذف الوكالة', 'error');
+      showToast(adminErrorMessage(err, "تعذّر حذف الوكالة. حاول مرة أخرى."), "error");
     } finally {
-      setActionLoading(false);
+      setDeleting(false);
     }
   };
 
-  const columns = [
+  const columns: DataTableColumn<AdminAgency>[] = [
     {
-      key: 'logo',
-      label: 'الشعار',
-      render: (agency: Agency) => (
-        <Avatar 
-          src={agency.logo?.url} 
-          alt={agency.name}
-          sx={{ 
-            width: { xs: 32, sm: 40 }, 
-            height: { xs: 32, sm: 40 },
-            background: colors.gradient,
-            color: colors.surface,
-            fontWeight: 600
-          }}
-        >
-          {agency.name?.charAt(0)}
-        </Avatar>
+      id: "name",
+      header: "الوكالة",
+      card: "title",
+      cell: (a) => (
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, minWidth: 0 }}>
+          <Avatar
+            src={a.logo?.url}
+            alt=""
+            variant="rounded"
+            sx={{ width: 40, height: 40, borderRadius: "6px", bgcolor: "var(--c-bg)", color: "var(--c-muted)", border: 1, borderColor: "divider" }}
+          >
+            <BusinessOutlined fontSize="small" />
+          </Avatar>
+          <Typography variant="body2" sx={{ fontWeight: 600, fontSize: "0.875rem", overflowWrap: "anywhere" }}>
+            {a.name}
+          </Typography>
+        </Box>
       ),
     },
     {
-      key: 'name',
-      label: 'اسم الوكالة',
-      render: (agency: Agency) => (
-        <Typography 
-          fontWeight={700}
-          sx={{ 
-            fontSize: { xs: '0.75rem', sm: '0.875rem' },
-            color: colors.onSurface
-          }}
-        >
-          {agency.name}
-        </Typography>
-      ),
-    },
-    {
-      key: 'description',
-      label: 'الوصف',
-      render: (agency: Agency) => (
+      id: "description",
+      header: "الوصف",
+      hideBelow: "lg",
+      cell: (a) => (
         <Typography
           variant="body2"
-          sx={{
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            fontSize: { xs: '0.7rem', sm: '0.8rem' },
-            maxWidth: { xs: 120, sm: 200 },
-            color: colors.onSurfaceVariant
-          }}
+          color="text.secondary"
+          sx={{ fontSize: "0.8125rem", maxWidth: 420, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}
         >
-          {agency.description || '-'}
+          {a.description || "—"}
         </Typography>
       ),
     },
     {
-      key: 'isFeatured',
-      label: 'الحالة',
-      render: (agency: Agency) => (
-        <Chip
-          label={agency.isFeatured ? 'مميزة' : 'عادية'}
-          sx={{
-            fontSize: { xs: '0.65rem', sm: '0.75rem' },
-            backgroundColor: agency.isFeatured ? colors.warning : colors.surfaceVariant,
-            color: agency.isFeatured ? colors.surface : colors.onSurfaceVariant,
-            fontWeight: 600
-          }}
+      id: "featured",
+      header: "مميزة",
+      cell: (a) => (
+        <Switch
           size="small"
+          checked={a.isFeatured}
+          disabled={togglingIds.includes(a._id)}
+          onClick={(event) => event.stopPropagation()}
+          onChange={() => toggleFeatured(a)}
+          slotProps={{ input: { "aria-label": `وكالة مميزة: ${a.name}` } }}
         />
       ),
     },
-    {
-      key: 'createdAt',
-      label: 'تاريخ الإنشاء',
-      render: (agency: Agency) => (
-        <Typography sx={{ 
-          fontSize: { xs: '0.7rem', sm: '0.875rem' },
-          color: colors.onSurfaceVariant
-        }}>
-          {agency.createdAt
-            ? new Date(agency.createdAt).toLocaleDateString()
-            : '-'}
-        </Typography>
-      ),
-    },
+    { id: "created", header: "تاريخ الإضافة", cell: (a) => formatDate(a.createdAt), hideBelow: "lg" },
   ];
 
   return (
-    <Box sx={{
-      minHeight: '100vh',
-      background: isDarkMode ? 'var(--dark-900)' : colors.background,
-      color: isDarkMode ? '#fff' : colors.onSurface,
-      p: { xs: 1, sm: 2, md: 4 }
-    }}>
-      {/* Header */}
-      <Box sx={{ 
-        mb: { xs: 2, md: 4 }, 
-        textAlign: 'center',
-        p: { xs: 2, md: 4 },
-        background: isDarkMode ? 'var(--dark-800)' : colors.gradient,
-        borderRadius: { xs: 2, md: 3 },
-        color: isDarkMode ? '#fff' : colors.surface
-      }}>
-        <Typography
-          variant="h4"
-          fontWeight="bold"
-          gutterBottom
-          sx={{ 
-            fontSize: { xs: '1.25rem', sm: '1.5rem', md: '2.125rem' }, 
-            mb: { xs: 0.5, md: 2 },
-            color: isDarkMode ? '#fff' : colors.surface
-          }}
-        >
-          إدارة الوكالات
-        </Typography>
-        <Typography
-          variant="body1"
-          sx={{ 
-            fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' },
-            color: isDarkMode ? '#fff' : colors.surface,
-            opacity: 0.9
-          }}
-        >
-          عرض وإدارة جميع الوكالات المسجلة
-        </Typography>
-      </Box>
-
-      <Box sx={{ width: '100%', overflowX: { xs: 'auto', md: 'visible' } }}>
-        {/* Search and Filters */}
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            mb: { xs: 2, md: 3 },
-            gap: 2,
-            flexDirection: { xs: 'column', sm: 'row' },
-          }}
-        >
-          
-        </Box>
-
-        {/* Error Handling */}
-        {error && (
-          <Box sx={{ 
-            mb: 3, 
-            p: 2, 
-            backgroundColor: isDarkMode ? 'color-mix(in srgb, var(--c-error) 20%, var(--c-surface))' : colors.error + '20',
-            borderRadius: 2,
-            border: isDarkMode ? '1px solid var(--error-700)' : `1px solid ${colors.error}40`
-          }}>
-            <Typography 
-              sx={{ 
-                fontSize: { xs: '0.875rem', sm: '1rem' },
-                color: isDarkMode ? '#fff' : colors.error,
-                fontWeight: 600
-              }}
-            >
-              {error}
-            </Typography>
-            <Button
-              size="small"
-              onClick={() => fetchAgencies(debouncedSearch, page)}
-              disabled={loading}
-              sx={{ mt: 1, color: isDarkMode ? '#fff' : colors.error }}
-            >
-              إعادة المحاولة
-            </Button>
-          </Box>
-        )}
-
-        {/* Mobile Cards */}
-        {isMobile ? (
-          <Box>
-            {agencies.map((agency) => (
-              <Paper 
-                key={agency._id} 
-                sx={{ 
-                  mb: 2, 
-                  p: 2, 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center',
-                  backgroundColor: isDarkMode ? 'var(--dark-800)' : colors.surface,
-                  border: isDarkMode ? '1px solid var(--dark-700)' : `1px solid ${colors.surfaceVariant}`,
-                  borderRadius: 2,
-                  boxShadow: '0 2px 4px -1px rgb(0 0 0 / 0.1)'
-                }}
-              >
-                <Typography 
-                  fontWeight={700}
-                  sx={{ color: isDarkMode ? '#fff' : colors.onSurface }}
-                >
-                  {agency.name}
-                </Typography>
-                <Box>
-                  <IconButton 
-                    onClick={() => handleToggleFeatured(agency)} 
-                    sx={{ 
-                      color: isDarkMode ? '#fff' : (agency.isFeatured ? colors.warning : colors.onSurfaceVariant),
-                      '&:hover': {
-                        backgroundColor: isDarkMode ? 'var(--dark-700)' : (agency.isFeatured ? colors.warning + '20' : colors.onSurfaceVariant + '20')
-                      }
-                    }}
-                  >
-                    {agency.isFeatured ? <Star fontSize="small" /> : <StarBorder fontSize="small" />}
-                  </IconButton>
-                  <IconButton 
-                    onClick={() => { setSelectedAgency(agency); setDeleteDialog(true); }} 
-                    sx={{ 
-                      color: isDarkMode ? '#fff' : colors.error,
-                      '&:hover': {
-                        backgroundColor: isDarkMode ? 'var(--dark-700)' : colors.error + '20'
-                      }
-                    }}
-                  >
-                    <Delete fontSize="small" />
-                  </IconButton>
-                </Box>
-              </Paper>
-            ))}
-          </Box>
-        ) : (
-          <AgencyTable
-            agencies={agencies}
-            columns={columns}
-            onRowClick={setSelectedAgency}
-            onDelete={(agency) => {
-              setSelectedAgency(agency);
-              setDeleteDialog(true);
-            }}
-            onToggleFeatured={handleToggleFeatured}
-            isLoading={loading}
-          />
-        )}
-
-        {/* Pagination */}
-        {agencies.length > 0 && (
-          <Box display="flex" justifyContent="center" mt={3}>
-            <Pagination
-              count={totalPages}
-              page={page}
-              onChange={(_, value) => setPage(value)}
-              disabled={loading}
-              size="small"
-              sx={{
-                '& .MuiPaginationItem-root': {
-                  color: isDarkMode ? '#fff' : colors.onSurface,
-                  '&.Mui-selected': {
-                    backgroundColor: isDarkMode ? 'var(--dark-700)' : colors.primary,
-                    color: isDarkMode ? '#fff' : colors.surface,
-                    '&:hover': {
-                      backgroundColor: isDarkMode ? 'var(--dark-600)' : colors.primary + 'dd',
-                    },
-                  },
-                  '&:hover': {
-                    backgroundColor: isDarkMode ? 'var(--dark-700)' : colors.primary + '20',
-                  },
-                },
-              }}
-            />
-          </Box>
-        )}
-      </Box>
-
-      {/* Agency Details Dialog */}
-      <Dialog
-        open={!!selectedAgency}
-        onClose={() => setSelectedAgency(null)}
-        maxWidth="sm"
-        fullWidth
-        PaperProps={{
-          sx: { 
-            m: { xs: 1, sm: 2 },
-            maxHeight: { xs: '90vh', sm: 'auto' },
-            backgroundColor: isDarkMode ? 'var(--dark-800)' : colors.surface,
-            borderRadius: 3
-          }
-        }}
-      >
-        <DialogTitle sx={{ pb: 1 }}>
-          <Box display="flex" justifyContent="space-between" alignItems="center">
-            <Typography sx={{ 
-              fontSize: { xs: '1rem', sm: '1.25rem' },
-              fontWeight: 700,
-              color: isDarkMode ? '#fff' : colors.onSurface
-            }}>
-              تفاصيل الوكالة
-            </Typography>
-            <IconButton 
-              onClick={() => setSelectedAgency(null)} 
-              size="small"
-              sx={{
-                color: isDarkMode ? '#fff' : colors.onSurfaceVariant,
-                '&:hover': {
-                  backgroundColor: isDarkMode ? 'var(--dark-700)' : colors.onSurfaceVariant + '20'
-                }
-              }}
-            >
-              <Close />
-            </IconButton>
-          </Box>
-        </DialogTitle>
-        <DialogContent sx={{ px: { xs: 2, sm: 3 } }}>
-          {selectedAgency && (
-            <Box
-              sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 2,
-                pt: 2,
-              }}
-            >
-              <Avatar
-                src={selectedAgency.logo?.url}
-                sx={{ 
-                  width: { xs: 60, sm: 80 }, 
-                  height: { xs: 60, sm: 80 }, 
-                  fontSize: { xs: 24, sm: 32 },
-                  background: isDarkMode ? 'var(--dark-700)' : colors.gradient,
-                  color: isDarkMode ? '#fff' : colors.surface,
-                  fontWeight: 700
-                }}
-              >
-                {selectedAgency.name?.charAt(0)}
-              </Avatar>
-              <Typography 
-                variant="h6" 
-                fontWeight="bold"
-                sx={{ 
-                  fontSize: { xs: '1rem', sm: '1.25rem' },
-                  color: isDarkMode ? '#fff' : colors.onSurface
-                }}
-              >
-                {selectedAgency.name}
-              </Typography>
-              <Chip
-                label={selectedAgency.isFeatured ? 'مميزة' : 'عادية'}
-                sx={{
-                  mb: 1,
-                  backgroundColor: selectedAgency.isFeatured ? (isDarkMode ? 'var(--warning-700)' : colors.warning) : (isDarkMode ? 'var(--dark-700)' : colors.surfaceVariant),
-                  color: isDarkMode ? '#fff' : (selectedAgency.isFeatured ? colors.surface : colors.onSurfaceVariant),
-                  fontWeight: 600
-                }}
-                size="small"
-              />
-              <Typography
-                variant="body1"
-                textAlign="center"
-                sx={{ 
-                  maxWidth: 400,
-                  fontSize: { xs: '0.875rem', sm: '1rem' },
-                  color: isDarkMode ? '#fff' : colors.onSurfaceVariant
-                }}
-              >
-                {selectedAgency.description || 'لا يوجد وصف'}
-              </Typography>
-              <Box
-                sx={{
-                  display: 'flex',
-                  gap: { xs: 2, sm: 4 },
-                  mt: 2,
-                  width: '100%',
-                  justifyContent: 'space-around',
-                  flexDirection: { xs: 'column', sm: 'row' }
-                }}
-              >
-                <Box sx={{ textAlign: { xs: 'center', sm: 'left' } }}>
-                  <Typography 
-                    variant="caption" 
-                    sx={{ 
-                      fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                      color: isDarkMode ? '#fff' : colors.onSurfaceVariant
-                    }}
-                  >
-                    تاريخ الإنشاء
-                  </Typography>
-                  <Typography sx={{ 
-                    fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                    color: isDarkMode ? '#fff' : colors.onSurface
-                  }}>
-                    {selectedAgency.createdAt
-                      ? new Date(selectedAgency.createdAt).toLocaleDateString()
-                      : '-'}
-                  </Typography>
-                </Box>
-                <Box sx={{ textAlign: { xs: 'center', sm: 'left' } }}>
-                  <Typography 
-                    variant="caption" 
-                    sx={{ 
-                      fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                      color: isDarkMode ? '#fff' : colors.onSurfaceVariant
-                    }}
-                  >
-                    آخر تحديث
-                  </Typography>
-                  <Typography sx={{ 
-                    fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                    color: isDarkMode ? '#fff' : colors.onSurface
-                  }}>
-                    {selectedAgency.updatedAt
-                      ? new Date(selectedAgency.updatedAt).toLocaleDateString()
-                      : '-'}
-                  </Typography>
-                </Box>
-              </Box>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ px: { xs: 2, sm: 3 }, pb: 2 }}>
-          <Button
-            onClick={() => setSelectedAgency(null)}
-            variant="outlined"
-            size="small"
-            sx={{ 
-              fontSize: { xs: '0.8rem', sm: '0.875rem' },
-              borderColor: isDarkMode ? '#fff' : colors.primary,
-              color: isDarkMode ? '#fff' : colors.primary,
-              '&:hover': {
-                backgroundColor: isDarkMode ? 'var(--dark-700)' : colors.primary + '20',
-                borderColor: isDarkMode ? '#fff' : colors.primary,
-              }
-            }}
-          >
-            إغلاق
+    <>
+      <PageHeader
+        title="الوكالات"
+        description="أضف الوكالات العقارية وعدّل بياناتها، واختر ما يظهر منها في الصفحة الرئيسية."
+        breadcrumbs={[{ label: "لوحة الإدارة", href: "/admin/dashboard" }, { label: "الوكالات" }]}
+        actions={
+          <Button variant="contained" startIcon={<AddOutlined />} onClick={openCreate}>
+            إضافة وكالة
           </Button>
-          <Button
-            onClick={() => {
-              setDeleteDialog(true);
-            }}
-            variant="contained"
-            startIcon={<Delete />}
-            size="small"
-            sx={{ 
-              fontSize: { xs: '0.8rem', sm: '0.875rem' },
-              backgroundColor: isDarkMode ? 'color-mix(in srgb, var(--c-error) 20%, var(--c-surface))' : colors.error,
-              color: isDarkMode ? '#fff' : undefined,
-              '&:hover': {
-                backgroundColor: isDarkMode ? 'var(--error-700)' : colors.error + 'dd',
-              }
-            }}
-          >
-            حذف الوكالة
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Delete Confirmation Dialog */}
-      <ConfirmDialog
-        open={deleteDialog}
-        title="حذف الوكالة"
-        description={`سيتم حذف الوكالة "${selectedAgency?.name ?? ''}" وشعارها نهائيًا، ولا يمكن التراجع عن ذلك. عقاراتها تبقى منشورة ولكن بدون وكالة.`}
-        confirmLabel="تأكيد الحذف"
-        loadingLabel="جاري الحذف..."
-        loading={actionLoading}
-        onConfirm={handleDeleteAgency}
-        onClose={() => setDeleteDialog(false)}
+        }
       />
-    </Box>
-  );
-};
 
-export default AgenciesPage;
+      <DataTable
+        label="الوكالات"
+        mode="server"
+        rows={agencies.data?.rows ?? []}
+        columns={columns}
+        getRowId={(a) => a._id}
+        getRowLabel={(a) => a.name}
+        pagination={{
+          page: table.page,
+          pageSize: table.pageSize,
+          onPageChange: table.setPage,
+          onPageSizeChange: table.setPageSize,
+          pageSizeOptions: [10, 25, 50],
+          total: agencies.data?.total ?? 0,
+        }}
+        toolbar={
+          <SearchField
+            label="بحث باسم الوكالة"
+            value={search}
+            onChange={(value) => {
+              setSearch(value);
+              table.setPage(0);
+            }}
+          />
+        }
+        rowActions={(a) => [
+          { label: "تعديل", icon: <EditOutlined fontSize="small" />, onClick: openEdit },
+          {
+            label: a.isFeatured ? "إلغاء التمييز" : "تمييز الوكالة",
+            icon: <StarOutlineOutlined fontSize="small" />,
+            onClick: toggleFeatured,
+            disabled: togglingIds.includes(a._id),
+          },
+          {
+            label: "عرض صفحة الوكالة",
+            icon: <OpenInNewOutlined fontSize="small" />,
+            onClick: (row) => window.open(`/agencies/${row._id}`, "_blank", "noopener"),
+          },
+          { label: "حذف", icon: <DeleteOutlineOutlined fontSize="small" />, destructive: true, onClick: setDeleteTarget },
+        ]}
+        loading={agencies.isFetching}
+        error={agencies.isError}
+        errorTitle="تعذّر تحميل الوكالات"
+        onRetry={() => agencies.refetch()}
+        empty={
+          debouncedSearch.trim()
+            ? { title: "لا توجد وكالات مطابقة", description: "جرّب اسمًا آخر." }
+            : {
+                icon: <BusinessOutlined />,
+                title: "لا توجد وكالات بعد",
+                description: "أضف أول وكالة لتظهر في الموقع.",
+                action: (
+                  <Button variant="contained" startIcon={<AddOutlined />} onClick={openCreate}>
+                    إضافة وكالة
+                  </Button>
+                ),
+              }
+        }
+      />
+
+      <AgencyFormDialog
+        open={formOpen}
+        agency={editing}
+        onClose={() => setFormOpen(false)}
+        onSaved={async (_, created) => {
+          setFormOpen(false);
+          showToast(created ? "تمت إضافة الوكالة." : "تم حفظ التعديلات.", "success");
+          await refresh();
+        }}
+      />
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="حذف الوكالة"
+        description={`ستُحذف وكالة «${deleteTarget?.name ?? ""}» وشعارها نهائيًا. تبقى عقاراتها كما هي، لكن دون ربطها بأي وكالة. لا يمكن التراجع عن ذلك.`}
+        confirmLabel="حذف"
+        loadingLabel="جارٍ الحذف…"
+        loading={deleting}
+        onConfirm={confirmDelete}
+        onClose={() => !deleting && setDeleteTarget(null)}
+      />
+    </>
+  );
+}
