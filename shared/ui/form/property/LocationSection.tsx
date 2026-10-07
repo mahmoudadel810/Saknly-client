@@ -105,7 +105,7 @@ export default function LocationSection(p: SectionProps) {
           p: 2,
           border: 1,
           borderColor: "divider",
-          borderRadius: "10px",
+          borderRadius: "var(--r-inner)",
           bgcolor: "var(--c-surface-2)",
         }}
       >

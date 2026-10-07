@@ -334,8 +334,9 @@ export default function PropertyFormForSale() {
         sx={{
           border: 1,
           borderColor: "divider",
-          borderRadius: "10px",
+          borderRadius: "var(--r-card)",
           bgcolor: "background.paper",
+          boxShadow: "var(--c-card-shadow)",
           p: { xs: 3, md: 5 },
           textAlign: "center",
         }}
@@ -403,9 +404,10 @@ export default function PropertyFormForSale() {
           sx={{
             border: 1,
             borderColor: "divider",
-            borderRadius: "10px",
-            bgcolor: "var(--c-surface-2)",
-            p: { xs: 2, md: 3 },
+            borderRadius: "var(--r-card)",
+            bgcolor: "background.paper",
+            boxShadow: "var(--c-card-shadow)",
+            p: { xs: 2.5, md: 3 },
             display: "flex",
             flexDirection: "column",
             gap: 2,

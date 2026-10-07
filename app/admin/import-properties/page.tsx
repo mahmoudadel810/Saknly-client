@@ -173,7 +173,15 @@ function Panel({ title, children }: { title?: string; children: React.ReactNode 
   return (
     <Box
       component="section"
-      sx={{ border: 1, borderColor: 'divider', borderRadius: '10px', bgcolor: 'background.paper', p: { xs: 2, md: 3 }, mb: 3 }}
+      sx={{
+        border: 1,
+        borderColor: 'divider',
+        borderRadius: 'var(--r-card)',
+        bgcolor: 'background.paper',
+        boxShadow: 'var(--c-card-shadow)',
+        p: { xs: 2, md: 3 },
+        mb: 3,
+      }}
     >
       {title && (
         <Typography component="h2" sx={{ fontSize: '1.125rem', fontWeight: 600, mb: 2 }}>
@@ -187,7 +195,7 @@ function Panel({ title, children }: { title?: string; children: React.ReactNode 
 
 function Tally({ label, value, token }: { label: string; value: number; token: string }) {
   return (
-    <Box sx={{ border: 1, borderColor: 'divider', borderRadius: '10px', px: 2, py: 1.5, minWidth: 120 }}>
+    <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 'var(--r-inner)', px: 2, py: 1.5, minWidth: 120 }}>
       <Typography variant="caption" color="text.secondary" component="p">
         {label}
       </Typography>

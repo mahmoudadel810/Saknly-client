@@ -127,7 +127,8 @@ export default function PropertyMap({ properties }: { properties: MapListing[] }
           height: { xs: 420, md: 560 },
           border: 1,
           borderColor: "divider",
-          borderRadius: "10px",
+          borderRadius: "var(--r-card)",
+          boxShadow: "var(--c-card-shadow)",
           overflow: "hidden",
           bgcolor: "var(--c-bg)",
         }}
