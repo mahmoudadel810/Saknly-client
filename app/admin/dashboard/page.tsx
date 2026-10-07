@@ -44,6 +44,7 @@ function CountValue({
   onRetry,
   label,
   size = "1.75rem",
+  retrying = false,
 }: {
   value: number | null | undefined;
   loading: boolean;
@@ -51,6 +52,7 @@ function CountValue({
   onRetry: () => void;
   label: string;
   size?: string;
+  retrying?: boolean;
 }) {
   if (loading && value == null) return <Skeleton variant="text" width={56} sx={{ fontSize: size }} />;
   if (error || value == null) {
@@ -60,7 +62,7 @@ function CountValue({
           —
         </Typography>
         <Tooltip title="إعادة المحاولة">
-          <IconButton size="small" onClick={onRetry} aria-label={`إعادة تحميل: ${label}`}>
+          <IconButton size="small" onClick={onRetry} disabled={retrying} aria-label={`إعادة تحميل: ${label}`}>
             <RefreshOutlined fontSize="small" />
           </IconButton>
         </Tooltip>
@@ -94,6 +96,7 @@ function AttentionTile({
   loading: boolean;
   error: boolean;
   onRetry: () => void;
+  retrying?: boolean;
 }) {
   const waiting = typeof count.value === "number" && count.value > 0;
   return (
@@ -202,6 +205,7 @@ export default function AdminDashboardPage() {
             loading={pending.isLoading}
             error={pending.isError}
             onRetry={() => pending.refetch()}
+            retrying={pending.isFetching}
             detail={pendingDetail}
             href="/admin/dashboard/properties"
             linkLabel="مراجعة الإعلانات"
@@ -213,6 +217,7 @@ export default function AdminDashboardPage() {
             loading={pendingTestimonials.isLoading}
             error={pendingTestimonials.isError}
             onRetry={() => pendingTestimonials.refetch()}
+            retrying={pendingTestimonials.isFetching}
             href="/admin/dashboard/testimonials"
             linkLabel="مراجعة الآراء"
           />
@@ -223,6 +228,7 @@ export default function AdminDashboardPage() {
             loading={newInquiries.isLoading}
             error={newInquiries.isError}
             onRetry={() => newInquiries.refetch()}
+            retrying={newInquiries.isFetching}
             href="/admin/dashboard/inquiries"
             linkLabel="عرض الاستفسارات"
           />
@@ -233,6 +239,7 @@ export default function AdminDashboardPage() {
             loading={contacts.isLoading}
             error={contacts.isError}
             onRetry={() => contacts.refetch()}
+            retrying={contacts.isFetching}
             href="/admin/dashboard/inquiries"
             linkLabel="عرض الرسائل"
           />
@@ -272,6 +279,7 @@ export default function AdminDashboardPage() {
                 loading={analytics.isLoading}
                 error={analytics.isError}
                 onRetry={() => analytics.refetch()}
+                retrying={analytics.isFetching}
                 label={t.label}
                 size="1.5rem"
               />

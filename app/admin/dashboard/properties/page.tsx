@@ -273,7 +273,7 @@ export default function AdminPropertiesPage() {
       cell: (p) => formatDate(p.createdAt),
       sortable: true,
       sortValue: (p) => dateValue(p.createdAt),
-      hideBelow: "xl",
+      hideBelow: "lg",
     },
   ];
 
@@ -295,7 +295,7 @@ export default function AdminPropertiesPage() {
     { id: "type", header: "النوع", cell: (p) => <ListingTypeTag category={p.category} /> },
     { id: "price", header: "السعر", align: "end", cell: (p) => <Price amount={p.price} category={p.category} size="table" /> },
     { id: "status", header: "الحالة", cell: () => <StatusBadge status="approved" label="منشور" /> },
-    { id: "date", header: "تاريخ الإضافة", cell: (p) => formatDate(p.createdAt), hideBelow: "xl" },
+    { id: "date", header: "تاريخ الإضافة", cell: (p) => formatDate(p.createdAt), hideBelow: "lg" },
   ];
 
   const pendingCount = pending.data ? allPending.length : null;
