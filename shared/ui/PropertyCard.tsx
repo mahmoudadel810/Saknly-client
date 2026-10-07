@@ -257,7 +257,7 @@ export default function PropertyCard({
               alignItems: "center",
               paddingInline: 1.5,
               paddingBlock: 0.5,
-              borderRadius: "10px",
+              borderRadius: "var(--r-inner)",
               bgcolor: "primary.main",
               color: "primary.contrastText",
               boxShadow: "0 2px 8px rgba(16, 24, 22, 0.25)",

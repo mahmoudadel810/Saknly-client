@@ -70,7 +70,7 @@ export default function PropertyGallery({ images, title }: { images: GalleryImag
       <Box
         sx={{
           aspectRatio: "16 / 10",
-          borderRadius: "10px",
+          borderRadius: "var(--r-card)",
           border: 1,
           borderColor: "divider",
           bgcolor: "var(--c-bg)",
@@ -101,7 +101,7 @@ export default function PropertyGallery({ images, title }: { images: GalleryImag
           display: "block",
           width: "100%",
           aspectRatio: { xs: "4 / 3", sm: "16 / 10" },
-          borderRadius: "10px",
+          borderRadius: "var(--r-card)",
           overflow: "hidden",
           bgcolor: "var(--c-bg)",
           "&.Mui-focusVisible": { outline: "2px solid var(--c-primary)", outlineOffset: 2 },

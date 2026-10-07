@@ -226,7 +226,7 @@ export default function MapPicker({ latitude = 30.5546, longitude = 31.0117, onL
           minHeight: { xs: 320, md: 420 },
           border: 1,
           borderColor: "divider",
-          borderRadius: "10px",
+          borderRadius: "var(--r-inner)",
           overflow: "hidden",
           bgcolor: "var(--c-surface-2)",
         }}

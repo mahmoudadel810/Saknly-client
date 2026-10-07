@@ -167,7 +167,7 @@ export default function AgencyFormDialog({ open, agency, onClose, onSaved }: Age
               src={shownLogo ?? undefined}
               alt={shownLogo ? "معاينة الشعار" : ""}
               variant="rounded"
-              sx={{ width: 64, height: 64, borderRadius: "10px", bgcolor: "var(--c-bg)", color: "var(--c-muted)", border: 1, borderColor: "divider" }}
+              sx={{ width: 64, height: 64, borderRadius: "var(--r-inner)", bgcolor: "var(--c-bg)", color: "var(--c-muted)", border: 1, borderColor: "divider" }}
             >
               <BusinessOutlined />
             </Avatar>

@@ -64,7 +64,7 @@ export default function PropertyLocationMap({ latitude, longitude, title }: Prop
           height: { xs: 260, md: 340 },
           border: 1,
           borderColor: "divider",
-          borderRadius: "10px",
+          borderRadius: "var(--r-card)",
           overflow: "hidden",
           bgcolor: "var(--c-bg)",
         }}

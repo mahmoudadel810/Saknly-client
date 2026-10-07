@@ -111,7 +111,7 @@ export default function ContactCard({
     <Box
       component="section"
       aria-labelledby="contact-title"
-      sx={{ border: 1, borderColor: "divider", borderRadius: "10px", bgcolor: "background.paper", p: { xs: 2, md: 2.5 } }}
+      sx={{ border: 1, borderColor: "divider", borderRadius: "var(--r-card)", bgcolor: "background.paper", p: { xs: 2, md: 2.5 } }}
     >
       <Typography id="contact-title" component="h2" variant="h5">
         تواصل مع المالك

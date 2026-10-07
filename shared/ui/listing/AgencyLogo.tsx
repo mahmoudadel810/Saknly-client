@@ -21,7 +21,7 @@ export default function AgencyLogo({ src, size = 56 }: { src?: string; size?: nu
         flexShrink: 0,
         width: size,
         height: size,
-        borderRadius: "10px",
+        borderRadius: "var(--r-inner)",
         border: 1,
         borderColor: "divider",
         bgcolor: "var(--c-surface)",

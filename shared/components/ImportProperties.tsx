@@ -160,7 +160,7 @@ const ImportProperties: React.FC<ImportPropertiesProps> = ({ onImportComplete })
           py: 5,
           border: '1px dashed',
           borderColor: isDragActive ? 'primary.main' : 'var(--c-border-strong)',
-          borderRadius: '10px',
+          borderRadius: 'var(--r-inner)',
           bgcolor: isDragActive ? 'var(--c-primary-soft)' : 'background.paper',
           cursor: loading ? 'progress' : 'pointer',
           transition: 'background-color 150ms ease-out, border-color 150ms ease-out',
