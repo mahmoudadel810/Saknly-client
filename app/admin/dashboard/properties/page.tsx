@@ -350,13 +350,16 @@ const PropertyTypeSection = ({
   properties,
   onApprove,
   onDeny,
-  isLoading
+  isLoading,
+  busyId
 }: {
   typeConfig: PropertyTypeConfig;
   properties: Property[];
   onApprove: (id: string) => void;
   onDeny: (id: string) => void;
   isLoading: boolean;
+  /** The listing an approve/deny request is running for; its buttons stay disabled. */
+  busyId: string | null;
 }) => {
   const { isDarkMode } = useDarkMode();
   return (
@@ -480,7 +483,7 @@ const PropertyTypeSection = ({
                       property={property}
                       onApprove={() => onApprove(property._id)}
                       onDeny={() => onDeny(property._id)}
-                      loading={isLoading}
+                      loading={isLoading || busyId === property._id}
                     />
                   </div>
                 </Slide>
@@ -552,13 +555,15 @@ const PropertiesAdminPage = () => {
       if (!res.ok) throw new Error('Failed to approve property');
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pending-properties'] });
+    // Returning the refetch keeps the mutation pending until the approved card is gone,
+    // so its button cannot be clicked again in between.
+    onSuccess: async () => {
       setSnackbar({ 
         open: true, 
         message: 'تمت الموافقة على العقار بنجاح', 
         severity: 'success' 
       });
+      await queryClient.invalidateQueries({ queryKey: ['pending-properties'] });
     },
     onError: () => {
       setSnackbar({ 
@@ -579,8 +584,7 @@ const PropertiesAdminPage = () => {
       if (!res.ok) throw new Error('Failed to deny property');
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pending-properties'] });
+    onSuccess: async () => {
       setSnackbar({ 
         open: true, 
         message: 'تم رفض العقار وحذفه', 
@@ -588,6 +592,7 @@ const PropertiesAdminPage = () => {
       });
       setDenyDialog({ open: false, id: null });
       setDenyReason('');
+      await queryClient.invalidateQueries({ queryKey: ['pending-properties'] });
     },
     onError: () => {
       setSnackbar({ 
@@ -597,6 +602,12 @@ const PropertiesAdminPage = () => {
       });
     }
   });
+
+  const busyId: string | null = approveMutation.isPending
+    ? approveMutation.variables ?? null
+    : denyMutation.isPending
+      ? denyMutation.variables?.id ?? null
+      : null;
 
   const handleOpenDenyDialog = (id: string) => {
     setDenyDialog({ open: true, id });
@@ -610,7 +621,7 @@ const PropertiesAdminPage = () => {
   };
 
   const handleDeny = () => {
-    if (denyDialog.id && denyReason.trim()) {
+    if (denyDialog.id && denyReason.trim() && !denyMutation.isPending) {
       denyMutation.mutate({ id: denyDialog.id, reason: denyReason });
     }
   };
@@ -701,6 +712,7 @@ const PropertiesAdminPage = () => {
                 onApprove={approveMutation.mutate}
                 onDeny={handleOpenDenyDialog}
                 isLoading={isLoading}
+                busyId={busyId}
               />
             </Box>
           ))}
