@@ -139,7 +139,7 @@ export const VALIDATION_RULES = {
   DESCRIPTION_MAX_LENGTH: 2000,
   MAX_FILE_SIZE: 10 * 1024 * 1024, // 10MB
   MAX_IMAGES_PER_PROPERTY: 10,
-  PHONE_PATTERN: /^[\+]?[1-9][\d]{0,15}$/,
+  PHONE_PATTERN: /^[+]?[1-9][\d]{0,15}$/,
   PASSWORD_PATTERN: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
   ARABIC_NAME_PATTERN: /^[a-zA-Z\u0600-\u06FF\s]+$/,
 } as const;
