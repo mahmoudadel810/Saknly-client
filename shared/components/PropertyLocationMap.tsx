@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Box, Typography, Button, Tooltip } from '@mui/material';
 import { Navigation, ExternalLink } from 'lucide-react';
+import { escapeHtml } from '@/shared/utils/escapeHtml';
 
 interface PropertyLocationMapProps {
   latitude: number;
@@ -78,8 +79,8 @@ const PropertyLocationMap: React.FC<PropertyLocationMapProps> = ({
       .addTo(mapInstance)
       .bindPopup(`
         <div style="width: 250px; text-align: center;">
-          <h3 style="margin: 0 0 8px 0; font-size: 16px; font-weight: bold; color: #333;">${title}</h3>
-          <p style="margin: 0; color: #666; font-size: 14px;">📍 ${address}</p>
+          <h3 style="margin: 0 0 8px 0; font-size: 16px; font-weight: bold; color: #333;">${escapeHtml(title)}</h3>
+          <p style="margin: 0; color: #666; font-size: 14px;">📍 ${escapeHtml(address)}</p>
         </div>
       `)
       .openPopup();

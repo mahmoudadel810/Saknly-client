@@ -2,6 +2,53 @@ import React, { useState, useEffect, useRef } from 'react';
 import { MapPin, Navigation, X, Home, Search, Plus } from 'lucide-react';
 import { Property } from '@/shared/types';
 import axios from 'axios';
+import { escapeHtml } from '@/shared/utils/escapeHtml';
+
+type MapProperty = {
+  id: string;
+  title: string;
+  price: string;
+  type: string;
+  bedrooms: number;
+  bathrooms: number;
+  area: string;
+  image: string;
+  address: string;
+};
+
+// Built from DOM nodes with textContent, so listing fields can never be parsed as HTML or script.
+function buildPropertyPopup(property: MapProperty): HTMLElement {
+  const el = <K extends keyof HTMLElementTagNameMap>(tag: K, style: string, text?: string) => {
+    const node = document.createElement(tag);
+    node.setAttribute('style', style);
+    if (text !== undefined) node.textContent = text;
+    return node;
+  };
+
+  const root = el('div', 'width: 250px;');
+  const img = el('img', 'width: 100%; height: 120px; object-fit: cover; border-radius: 8px; margin-bottom: 8px;');
+  img.src = property.image;
+  img.alt = property.title;
+  root.append(
+    img,
+    el('h3', 'margin: 0 0 8px 0; font-size: 16px; font-weight: bold;', property.title),
+    el('p', 'margin: 0 0 4px 0; color: #3b82f6; font-weight: bold; font-size: 14px;', property.price),
+    el('p', 'margin: 0 0 4px 0; color: #666; font-size: 12px;', `${property.type} • ${property.bedrooms} beds • ${property.bathrooms} baths`),
+    el('p', 'margin: 0 0 4px 0; color: #666; font-size: 12px;', property.area),
+    el('p', 'margin: 0 0 8px 0; color: #666; font-size: 11px;', `📍 ${property.address}`),
+  );
+
+  const actions = el('div', 'display: flex; gap: 8px;');
+  const directions = el('button', 'background: #3b82f6; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;', 'Get Directions');
+  directions.type = 'button';
+  directions.addEventListener('click', () => window.showDirections?.(property.id));
+  const details = el('button', 'background: #10b981; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;', 'View Details');
+  details.type = 'button';
+  details.addEventListener('click', () => window.selectProperty?.(property.id));
+  actions.append(directions, details);
+  root.append(actions);
+  return root;
+}
 
 interface PropertyMapProps {
   properties?: Property[];
@@ -108,20 +155,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
         try {
           const marker = window.L.marker([property.lat, property.lng], { icon: propertyIcon })
             .addTo(mapInstance)
-            .bindPopup(`
-              <div style="width: 250px;">
-                <img src="${property.image}" alt="${property.title}" style="width: 100%; height: 120px; object-fit: cover; border-radius: 8px; margin-bottom: 8px;">
-                <h3 style="margin: 0 0 8px 0; font-size: 16px; font-weight: bold;">${property.title}</h3>
-                <p style="margin: 0 0 4px 0; color: #3b82f6; font-weight: bold; font-size: 14px;">${property.price}</p>
-                <p style="margin: 0 0 4px 0; color: #666; font-size: 12px;">${property.type} • ${property.bedrooms} beds • ${property.bathrooms} baths</p>
-                <p style="margin: 0 0 4px 0; color: #666; font-size: 12px;">${property.area}</p>
-                <p style="margin: 0 0 8px 0; color: #666; font-size: 11px;">📍 ${property.address}</p>
-                <div style="display: flex; gap: 8px;">
-                  <button onclick="window.showDirections('${property.id}')" style="background: #3b82f6; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">Get Directions</button>
-                  <button onclick="window.selectProperty('${property.id}')" style="background: #10b981; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">View Details</button>
-                </div>
-              </div>
-            `);
+            .bindPopup(buildPropertyPopup(property));
         } catch (error) {
           console.error('Error adding property marker:', error, property);
         }
@@ -283,7 +317,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
 
         window.L.marker([parseFloat(lat), parseFloat(lon)], { icon: searchIcon })
           .addTo(map)
-          .bindPopup(`Search Result: ${data[0].display_name}`)
+          .bindPopup(`Search Result: ${escapeHtml(data[0].display_name)}`)
           .openPopup();
       }
     } catch (error) {
