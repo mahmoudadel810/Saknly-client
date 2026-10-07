@@ -23,17 +23,21 @@ export interface PriceProps {
   /** The listing category; "rent" adds "/ شهر". */
   category?: string;
   size?: keyof typeof SIZES;
+  /** "inverse": every part takes the surrounding colour, for the price chip on a card photo. */
+  tone?: "default" | "inverse";
 }
 
 /**
  * The listing price, the one bold element on cards and the detail page (DESIGN-SYSTEM.md, Direction):
  * tabular Western digits, then "ج.م", then "/ شهر" for rent. A missing amount renders a dash.
  */
-export default function Price({ amount, category, size = "card" }: PriceProps) {
+export default function Price({ amount, category, size = "card", tone = "default" }: PriceProps) {
   const s = SIZES[size];
+  const inverse = tone === "inverse";
+  const unitColor = inverse || size === "table" ? "inherit" : "text.secondary";
   if (typeof amount !== "number" || !Number.isFinite(amount)) {
     return (
-      <Box component="span" sx={{ color: "text.secondary", fontSize: s.unit }}>
+      <Box component="span" sx={{ color: inverse ? "inherit" : "text.secondary", fontSize: s.unit }}>
         —
       </Box>
     );
@@ -41,7 +45,7 @@ export default function Price({ amount, category, size = "card" }: PriceProps) {
   return (
     <Box
       component="span"
-      sx={{ display: "inline-flex", alignItems: "baseline", flexWrap: "wrap", columnGap: 0.5, color: "text.primary" }}
+      sx={{ display: "inline-flex", alignItems: "baseline", flexWrap: "wrap", columnGap: 0.5, color: inverse ? "inherit" : "text.primary" }}
     >
       <Box
         component="span"
@@ -54,11 +58,11 @@ export default function Price({ amount, category, size = "card" }: PriceProps) {
       >
         {formatNumber(amount)}
       </Box>
-      <Box component="span" sx={{ fontSize: s.unit, fontWeight: 500, color: size === "table" ? "inherit" : "text.secondary" }}>
+      <Box component="span" sx={{ fontSize: s.unit, fontWeight: 500, color: unitColor }}>
         ج.م
       </Box>
       {isMonthly(category) && (
-        <Box component="span" sx={{ fontSize: s.unit, color: "text.secondary" }}>
+        <Box component="span" sx={{ fontSize: s.unit, color: unitColor }}>
           / شهر
         </Box>
       )}

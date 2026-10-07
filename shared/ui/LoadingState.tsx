@@ -34,14 +34,20 @@ function CardSkeleton() {
   return (
     <Box
       aria-hidden
-      sx={{ border: 1, borderColor: "divider", borderRadius: "10px", overflow: "hidden", bgcolor: "background.paper" }}
+      sx={{
+        border: 1,
+        borderColor: "divider",
+        borderRadius: "var(--r-card)",
+        overflow: "hidden",
+        bgcolor: "background.paper",
+        boxShadow: "var(--c-card-shadow)",
+      }}
     >
       <Skeleton variant="rectangular" animation="wave" sx={{ width: "100%", height: "auto", aspectRatio: "4 / 3" }} />
       <Box sx={{ p: 2, display: "flex", flexDirection: "column", gap: 1 }}>
-        <Skeleton variant="text" width="45%" sx={{ fontSize: "1.125rem" }} />
         <Skeleton variant="text" width="90%" />
         <Skeleton variant="text" width="60%" />
-        <Skeleton variant="text" width="70%" sx={{ fontSize: "0.8125rem" }} />
+        <Skeleton variant="text" width="70%" sx={{ fontSize: "0.8125rem", mt: 1 }} />
       </Box>
     </Box>
   );
@@ -51,7 +57,7 @@ function DetailSkeleton() {
   return (
     <div aria-hidden className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
       <div className="flex flex-col gap-4">
-        <Skeleton variant="rounded" animation="wave" sx={{ width: "100%", height: "auto", aspectRatio: "16 / 10", borderRadius: "10px" }} />
+        <Skeleton variant="rounded" animation="wave" sx={{ width: "100%", height: "auto", aspectRatio: "16 / 10", borderRadius: "var(--r-card)" }} />
         <Skeleton variant="text" width="35%" sx={{ fontSize: "1.75rem" }} />
         <Skeleton variant="text" width="70%" sx={{ fontSize: "1.5rem" }} />
         <Skeleton variant="text" width="50%" />
@@ -64,7 +70,7 @@ function DetailSkeleton() {
         <Skeleton variant="text" width="95%" />
         <Skeleton variant="text" width="80%" />
       </div>
-      <Skeleton variant="rounded" sx={{ width: "100%", height: 280, borderRadius: "10px" }} />
+      <Skeleton variant="rounded" sx={{ width: "100%", height: 280, borderRadius: "var(--r-card)" }} />
     </div>
   );
 }

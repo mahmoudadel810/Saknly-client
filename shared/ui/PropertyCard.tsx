@@ -32,7 +32,7 @@ export interface PropertyCardData {
   area?: number | null;
   bedrooms?: number | null;
   bathrooms?: number | null;
-  location?: { address?: string; city?: string; district?: string };
+  location?: { address?: string; governorate?: string; city?: string; district?: string };
   images: PropertyCardImage[];
 }
 
@@ -47,7 +47,7 @@ export interface ListingLike {
   area?: number | string | { total?: number } | null;
   bedrooms?: number | null;
   bathrooms?: number | null;
-  location?: { address?: string; city?: string; district?: string } | null;
+  location?: { address?: string; governorate?: string; city?: string; district?: string } | null;
   images?: Array<PropertyCardImage | string> | null;
 }
 
@@ -141,11 +141,10 @@ export function FavoriteToggle({ property }: { property: PropertyCardData }) {
         width: 36,
         height: 36,
         bgcolor: "var(--c-surface)",
-        border: 1,
-        borderColor: "divider",
-        color: saved ? "error.main" : "text.secondary",
-        "&:hover": { bgcolor: "var(--c-surface)", borderColor: "color-mix(in srgb, var(--c-secondary) 40%, transparent)" },
-        "&.Mui-disabled": { bgcolor: "var(--c-surface)", color: saved ? "error.main" : "text.secondary", opacity: 0.7 },
+        boxShadow: "0 1px 4px rgba(16, 24, 22, 0.2)",
+        color: saved ? "error.main" : "text.primary",
+        "&:hover": { bgcolor: "var(--c-surface)", color: "error.main" },
+        "&.Mui-disabled": { bgcolor: "var(--c-surface)", color: saved ? "error.main" : "text.primary", opacity: 0.7 },
       }}
     >
       {saved ? <Favorite fontSize="small" /> : <FavoriteBorderOutlined fontSize="small" />}
@@ -166,9 +165,12 @@ export interface PropertyCardProps {
 }
 
 /**
- * The one listing card (DESIGN-SYSTEM.md, Components): 4:3 image with the type tag at its top-start corner,
- * the price as the bold line, a two-line title, the location, the facts row and a favorite toggle. The title
- * link covers the whole card; the toggle and `actions` sit above it.
+ * The one listing card (DESIGN-SYSTEM.md v2, "Cards and elevation"). Grid variant: a 4:3 photo carrying the
+ * type tag at its top-start corner, the favorite in a round chip at the top end and the price as a solid
+ * primary chip at the bottom start (the card's one bold element); below it the two-line title, the location
+ * and the facts row. Radius 16, a soft shadow, and on hover a 2px lift and a slow 1.03 image zoom (none under
+ * prefers-reduced-motion). The compact variant keeps a small image at the start and the price in the text.
+ * The title link covers the whole card; the toggle and `actions` sit above it.
  */
 export default function PropertyCard({
   property,
@@ -192,11 +194,18 @@ export default function PropertyCard({
         height: "100%",
         border: 1,
         borderColor: "divider",
-        borderRadius: "10px",
+        borderRadius: "var(--r-card)",
         bgcolor: "background.paper",
+        boxShadow: "var(--c-card-shadow)",
         overflow: "hidden",
-        transition: "border-color 150ms ease-out",
-        "&:hover": { borderColor: "color-mix(in srgb, var(--c-secondary) 40%, transparent)" },
+        transition: "transform 200ms ease-out, box-shadow 200ms ease-out",
+        "& .property-card__image": { transition: "transform 300ms ease-out" },
+        "&:hover": { transform: "translateY(-2px)", boxShadow: "var(--c-card-shadow-hover)" },
+        "&:hover .property-card__image": { transform: compact ? "none" : "scale(1.03)" },
+        "@media (prefers-reduced-motion: reduce)": {
+          "&:hover": { transform: "none" },
+          "&:hover .property-card__image": { transform: "none" },
+        },
       }}
     >
       <Box
@@ -208,7 +217,7 @@ export default function PropertyCard({
           alignSelf: compact ? "flex-start" : undefined,
           m: compact ? 1.5 : 0,
           marginInlineEnd: compact ? 0 : undefined,
-          borderRadius: compact ? "6px" : 0,
+          borderRadius: compact ? "var(--r-inner)" : 0,
           overflow: "hidden",
           bgcolor: "var(--c-bg)",
         }}
@@ -219,6 +228,7 @@ export default function PropertyCard({
             alt=""
             fill
             sizes={compact ? "112px" : "(min-width: 1280px) 300px, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"}
+            className="property-card__image"
             style={{ objectFit: "cover" }}
             priority={priority}
             unoptimized={!canOptimize(src)}
@@ -234,7 +244,26 @@ export default function PropertyCard({
         )}
         {!compact && (
           <Box sx={{ position: "absolute", top: 12, insetInlineStart: 12, display: "flex" }}>
-            <ListingTypeTag category={property.category} />
+            <ListingTypeTag category={property.category} placement="photo" />
+          </Box>
+        )}
+        {!compact && property.price !== null && (
+          <Box
+            sx={{
+              position: "absolute",
+              bottom: 12,
+              insetInlineStart: 12,
+              display: "flex",
+              alignItems: "center",
+              paddingInline: 1.5,
+              paddingBlock: 0.5,
+              borderRadius: "10px",
+              bgcolor: "primary.main",
+              color: "primary.contrastText",
+              boxShadow: "0 2px 8px rgba(16, 24, 22, 0.25)",
+            }}
+          >
+            <Price amount={property.price} category={property.category} size="card" tone="inverse" />
           </Box>
         )}
       </Box>
@@ -245,7 +274,7 @@ export default function PropertyCard({
           minWidth: 0,
           display: "flex",
           flexDirection: "column",
-          gap: 0.5,
+          gap: compact ? 0.5 : 0.75,
           p: compact ? 1.5 : 2,
           paddingInlineEnd: compact && showFavorite ? 6 : undefined,
         }}
@@ -268,7 +297,7 @@ export default function PropertyCard({
             sx={{
               color: "inherit",
               textDecoration: "none",
-              "&::after": { content: '""', position: "absolute", inset: 0, borderRadius: "10px" },
+              "&::after": { content: '""', position: "absolute", inset: 0, borderRadius: "var(--r-card)" },
               "&:focus-visible": { outline: "none" },
               "&:focus-visible::after": { outline: "2px solid var(--c-primary)", outlineOffset: "-2px" },
               "&:hover": { color: "primary.main" },
@@ -278,11 +307,13 @@ export default function PropertyCard({
           </Box>
         </Typography>
 
-        {/* Visually first: the price is the card's bold line; in the DOM the heading comes first. */}
-        <Box sx={{ order: -1, display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
-          <Price amount={property.price} category={property.category} size="card" />
-          {compact && <ListingTypeTag category={property.category} />}
-        </Box>
+        {/* Compact: the price line comes visually first; in the DOM the heading comes first. Grid: on the photo. */}
+        {compact && (
+          <Box sx={{ order: -1, display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+            <Price amount={property.price} category={property.category} size="card" />
+            <ListingTypeTag category={property.category} />
+          </Box>
+        )}
 
         {where && (
           <Typography
@@ -297,7 +328,13 @@ export default function PropertyCard({
           </Typography>
         )}
 
-        <Box sx={{ mt: compact ? 0 : 0.5 }}>
+        <Box
+          sx={
+            compact
+              ? undefined
+              : { mt: "auto", pt: 1.5, borderTop: 1, borderColor: "divider", "&:empty": { display: "none" } }
+          }
+        >
           <ListingFacts area={property.area} bedrooms={property.bedrooms} bathrooms={property.bathrooms} />
         </Box>
 
@@ -309,7 +346,7 @@ export default function PropertyCard({
       </Box>
 
       {showFavorite && property.id && (
-        <Box sx={{ position: "absolute", zIndex: 1, top: compact ? 8 : 10, insetInlineEnd: compact ? 8 : 10 }}>
+        <Box sx={{ position: "absolute", zIndex: 1, top: compact ? 8 : 12, insetInlineEnd: compact ? 8 : 12 }}>
           <FavoriteToggle property={property} />
         </Box>
       )}
