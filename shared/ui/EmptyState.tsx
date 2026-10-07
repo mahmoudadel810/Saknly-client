@@ -31,7 +31,20 @@ export default function EmptyState({ title, description, icon, action, compact =
         px: 2,
       }}
     >
-      <Box aria-hidden sx={{ color: "var(--c-muted)", display: "flex", "& svg": { fontSize: compact ? 32 : 40 } }}>
+      <Box
+        aria-hidden
+        sx={{
+          width: compact ? 52 : 64,
+          height: compact ? 52 : 64,
+          mb: 0.5,
+          borderRadius: "50%",
+          display: "grid",
+          placeItems: "center",
+          color: "primary.main",
+          bgcolor: "var(--c-primary-soft)",
+          "& svg": { fontSize: compact ? 26 : 30 },
+        }}
+      >
         {icon ?? <InboxOutlined />}
       </Box>
       <Typography variant="h6" component="p">

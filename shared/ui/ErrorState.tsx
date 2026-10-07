@@ -44,7 +44,20 @@ export default function ErrorState({
         px: 2,
       }}
     >
-      <Box aria-hidden sx={{ color: "error.main", display: "flex", "& svg": { fontSize: compact ? 32 : 40 } }}>
+      <Box
+        aria-hidden
+        sx={{
+          width: compact ? 52 : 64,
+          height: compact ? 52 : 64,
+          mb: 0.5,
+          borderRadius: "50%",
+          display: "grid",
+          placeItems: "center",
+          color: "error.main",
+          bgcolor: "color-mix(in srgb, var(--c-error) 10%, var(--c-surface))",
+          "& svg": { fontSize: compact ? 26 : 30 },
+        }}
+      >
         <ErrorOutlineOutlined />
       </Box>
       <Typography variant="h6" component="p">
