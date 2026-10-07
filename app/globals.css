@@ -18,7 +18,9 @@
   --c-primary-soft: #E3F0EE;
   --c-on-primary: #FFFFFF;
   --c-secondary: #3F4A48;
-  --c-bg: #F6F7F7;
+  /* Surface hierarchy, lowest to highest: page background, section band, card, raised (menus, dialogs). */
+  --c-bg: #F1F4F3;
+  --c-surface-2: #F8FAF9;
   --c-surface: #FFFFFF;
   --c-surface-raised: #FFFFFF;
   --c-border: #DDE2E1;
@@ -39,7 +41,8 @@
   --c-primary-soft: #123A36;
   --c-on-primary: #0F1413;
   --c-secondary: #C9D1CF;
-  --c-bg: #0F1413;
+  --c-bg: #0D1312;
+  --c-surface-2: #121918;
   --c-surface: #161D1C;
   --c-surface-raised: #1D2625;
   --c-border: #2A3533;
