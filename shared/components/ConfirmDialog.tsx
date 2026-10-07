@@ -30,8 +30,8 @@ interface ConfirmDialogProps {
 
 /**
  * The one confirmation dialog (DESIGN-SYSTEM.md, Components). The theme styles the paper (raised surface,
- * 12px radius). For a destructive action the safe choice, Cancel, has the initial focus, so Enter does not
- * confirm by accident; a non-destructive dialog focuses the confirm button.
+ * 16px radius) and the title and action gutters. For a destructive action the safe choice, Cancel, has the
+ * initial focus, so Enter does not confirm by accident; a non-destructive dialog focuses the confirm button.
  */
 const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   open,
@@ -61,17 +61,21 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       aria-describedby={descriptionId}
       slotProps={{ paper: { sx: { m: { xs: 2, sm: 4 }, width: { xs: 'calc(100% - 32px)', sm: undefined } } } }}
     >
-      <DialogTitle id={titleId} sx={{ fontSize: '1.125rem', fontWeight: 600, pb: 1 }}>
-        {title}
-      </DialogTitle>
+      <DialogTitle id={titleId}>{title}</DialogTitle>
       <DialogContent>
         <DialogContentText id={descriptionId} component="div" sx={{ color: 'text.secondary', fontSize: '0.9375rem' }}>
           {description}
         </DialogContentText>
         {children}
       </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2.5, pt: 1, gap: 1 }}>
-        <Button onClick={onClose} disabled={loading} color="inherit" autoFocus={destructive}>
+      <DialogActions>
+        <Button
+          onClick={onClose}
+          disabled={loading}
+          color="inherit"
+          autoFocus={destructive}
+          sx={{ color: 'text.secondary' }}
+        >
           {cancelLabel}
         </Button>
         <Button

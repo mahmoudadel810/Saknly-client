@@ -435,6 +435,37 @@ export const theme = createTheme({
         paper: ({ theme }) => ({ borderRadius: radius.card, ...raisedSurface(theme) }),
       },
     },
+    /* Dialog anatomy (v2): a 1.125rem/700 title, 24px gutters, actions at the inline end with an 8px gap. */
+    MuiDialogTitle: {
+      styleOverrides: {
+        root: { fontSize: '1.125rem', fontWeight: 700, lineHeight: 1.5, paddingBlock: '20px 8px', paddingInline: 24 },
+      },
+    },
+    MuiDialogContent: {
+      styleOverrides: {
+        root: { paddingInline: 24 },
+      },
+    },
+    MuiDialogActions: {
+      styleOverrides: {
+        root: {
+          gap: 8,
+          paddingBlock: '12px 20px',
+          paddingInline: 24,
+          '& > :not(style) ~ :not(style)': { marginInlineStart: 0 },
+        },
+      },
+    },
+    MuiLinearProgress: {
+      styleOverrides: {
+        root: { borderRadius: 4 },
+      },
+    },
+    MuiAvatar: {
+      styleOverrides: {
+        root: { fontWeight: 600 },
+      },
+    },
     MuiPopover: {
       styleOverrides: {
         paper: ({ theme }) => ({
@@ -482,8 +513,75 @@ export const theme = createTheme({
         root: { borderRadius: radius.tag, fontWeight: 500 },
       },
     },
+    /* Tabs (v2): 600 labels, a 3px primary indicator with rounded block-start corners, a hairline under the row. */
+    MuiTabs: {
+      styleOverrides: {
+        root: ({ theme }) => ({ minHeight: 44, boxShadow: `inset 0 -1px 0 ${vars(theme).palette.divider}` }),
+        indicator: { height: 3, borderStartStartRadius: 3, borderStartEndRadius: 3 },
+      },
+    },
+    MuiTab: {
+      styleOverrides: {
+        root: ({ theme }) => ({
+          minHeight: 44,
+          minWidth: 0,
+          paddingInline: 16,
+          textTransform: 'none',
+          fontSize: '0.9375rem',
+          fontWeight: 600,
+          color: vars(theme).palette.text.secondary,
+          transition: 'color 150ms ease-out, background-color 150ms ease-out',
+          '&:hover': { color: vars(theme).palette.text.primary },
+          '&.Mui-selected': { color: vars(theme).palette.primary.main },
+          '&.Mui-focusVisible': { backgroundColor: tint('--c-primary', 10) },
+        }),
+      },
+    },
+    /* Pagination (browse): 40px rounded squares; the current page is filled primary. */
+    MuiPaginationItem: {
+      styleOverrides: {
+        root: ({ theme }) => ({
+          borderRadius: 10,
+          fontWeight: 600,
+          fontVariantNumeric: 'tabular-nums',
+          '&.Mui-selected': {
+            backgroundColor: vars(theme).palette.primary.main,
+            color: vars(theme).palette.primary.contrastText,
+            '&:hover': { backgroundColor: vars(theme).palette.primary.dark },
+          },
+        }),
+        sizeLarge: { minWidth: 44, height: 44 },
+      },
+    },
     MuiTable: {
       defaultProps: { size: 'small' },
+    },
+    /* The header row sits on the section-band surface, so it reads as a header without a heavier rule. */
+    MuiTableHead: {
+      styleOverrides: {
+        root: { '& .MuiTableCell-head': { backgroundColor: 'var(--c-surface-2)' } },
+      },
+    },
+    /*
+     * The rows-per-page select is MUI's standard (borderless) input: give it room for the arrow, which the
+     * MuiSelect override above moves to the inline end.
+     */
+    MuiTablePagination: {
+      styleOverrides: {
+        toolbar: { minHeight: 52, paddingInline: 16 },
+        selectLabel: { fontSize: '0.8125rem' },
+        displayedRows: { fontSize: '0.8125rem' },
+        input: { marginInlineStart: 4, marginInlineEnd: 24 },
+        select: {
+          paddingBlock: 6,
+          paddingInlineStart: 10,
+          paddingInlineEnd: '30px !important',
+          borderRadius: 8,
+          backgroundColor: 'var(--c-field)',
+          fontVariantNumeric: 'tabular-nums',
+        },
+        selectIcon: { insetInlineEnd: 6 },
+      },
     },
     MuiTableCell: {
       styleOverrides: {
