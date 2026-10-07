@@ -6,6 +6,7 @@ import { useAuth } from "../../../context/AuthContext";
 import { useDarkMode } from "@/app/context/DarkModeContext";
 import { API_URL, authHeader } from "@/shared/utils/auth";
 import PropertyInquiriesSection from "@/shared/components/admin/PropertyInquiriesSection";
+import ConfirmDialog from "@/shared/components/ConfirmDialog";
 
 interface Inquiry {
   _id: string;
@@ -24,6 +25,7 @@ const InquiriesPage = () => {
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState("");
+  const [confirmTarget, setConfirmTarget] = useState<Inquiry | null>(null);
   const [tab, setTab] = useState(0);
 
   const handleDelete = async (id: string) => {
@@ -36,6 +38,7 @@ const InquiriesPage = () => {
       });
       if (!res.ok) throw new Error("فشل في حذف الاستفسار");
       setInquiries((prev) => prev.filter((inq) => inq._id !== id));
+      setConfirmTarget(null);
     } catch (err: any) {
       setDeleteError(err.message || "حدث خطأ أثناء الحذف");
     } finally {
@@ -442,7 +445,7 @@ const InquiriesPage = () => {
                       <Tooltip title="تمت المعالجة" arrow>
                         <span>
                           <IconButton
-                            onClick={() => handleDelete(inq._id)}
+                            onClick={() => setConfirmTarget(inq)}
                             sx={{ color: isDarkMode ? '#fff' : "#22c55e", ml: 1 }}
                             size="small"
                             disabled={deletingId === inq._id}
@@ -462,6 +465,20 @@ const InquiriesPage = () => {
       {deleteError && (
         <Box sx={{ color: "#dc2626", textAlign: "center", mt: 2 }}>{deleteError}</Box>
       )}
+      <ConfirmDialog
+        open={!!confirmTarget}
+        title="إنهاء الاستفسار وحذفه"
+        message={`سيتم حذف رسالة "${confirmTarget?.name ?? ""}" نهائيًا من قائمة الاستفسارات، ولا يمكن التراجع عن ذلك.`}
+        confirmLabel="حذف نهائي"
+        pendingLabel="جاري الحذف..."
+        pending={!!confirmTarget && deletingId === confirmTarget._id}
+        onConfirm={() => confirmTarget && handleDelete(confirmTarget._id)}
+        onClose={() => { setConfirmTarget(null); setDeleteError(""); }}
+      >
+        {deleteError && (
+          <Typography role="alert" sx={{ color: "#dc2626", mt: 2 }}>{deleteError}</Typography>
+        )}
+      </ConfirmDialog>
       </>)}
     </Box>
   );

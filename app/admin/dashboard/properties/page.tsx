@@ -12,10 +12,6 @@ import {
   Divider,
   Snackbar,
   Alert,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   TextField,
   Avatar,
   IconButton,
@@ -33,7 +29,6 @@ import {
   Home as HomeIcon,
   Apartment as RentIcon,
   School as StudentIcon,
-  Close as CloseIcon,
   Info as InfoIcon,
   LocationOn as LocationIcon,
   SquareFoot as AreaIcon,
@@ -41,6 +36,7 @@ import {
   Schedule as DateIcon
 } from "@mui/icons-material";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import ConfirmDialog from "@/shared/components/ConfirmDialog";
 import { format } from "date-fns";
 import { ar } from "date-fns/locale";
 import { useDarkMode } from "@/app/context/DarkModeContext";
@@ -584,7 +580,7 @@ const PropertiesAdminPage = () => {
       queryClient.invalidateQueries({ queryKey: ['pending-properties'] });
       setSnackbar({ 
         open: true, 
-        message: 'تم رفض العقار بنجاح', 
+        message: 'تم رفض العقار وحذفه', 
         severity: 'success' 
       });
       setDenyDialog({ open: false, id: null });
@@ -692,98 +688,32 @@ const PropertiesAdminPage = () => {
           ))}
         </Box>
 
-        {/* Deny Dialog */}
-        <Dialog
+        {/* Deny Dialog — the server deletes the listing (DELETE /properties/:id/deny) */}
+        <ConfirmDialog
           open={denyDialog.open}
+          title="رفض العقار وحذفه"
+          message="سيتم حذف هذا العقار وصوره نهائيًا وإزالته من قوائم المفضلة، ولا يمكن التراجع عن ذلك. يُرسَل السبب إلى المالك بالبريد الإلكتروني إذا كان بريده مسجلًا في بيانات التواصل."
+          confirmLabel="رفض وحذف نهائي"
+          pendingLabel="جاري الرفض..."
+          pending={denyMutation.isPending}
+          confirmDisabled={!denyReason.trim()}
+          onConfirm={handleDeny}
           onClose={handleCloseDenyDialog}
-          maxWidth="sm"
-          fullWidth
-          PaperProps={{
-            sx: {
-              borderRadius: 4,
-              boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
-              background: isDarkMode ? 'var(--dark-800)' : undefined,
-              color: isDarkMode ? '#fff' : undefined,
-            }
-          }}
         >
-          <DialogTitle sx={{ 
-            background: isDarkMode ? 'var(--error-900)' : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-            color: isDarkMode ? '#fff' : 'white',
-            borderRadius: '16px 16px 0 0'
-          }}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center">
-              <Typography variant="h6" fontWeight={600}>
-                سبب رفض العقار
-              </Typography>
-              <IconButton 
-                onClick={handleCloseDenyDialog}
-                disabled={denyMutation.isPending}
-                sx={{ color: isDarkMode ? '#fff' : 'white' }}
-              >
-                <CloseIcon />
-              </IconButton>
-            </Stack>
-          </DialogTitle>
-          <DialogContent sx={{ p: 3 }}>
-            <TextField
-              autoFocus
-              margin="dense"
-              label="السبب (مطلوب)"
-              fullWidth
-              variant="outlined"
-              value={denyReason}
-              onChange={(e) => setDenyReason(e.target.value)}
-              multiline
-              rows={4}
-              sx={{ 
-                mt: 2,
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: 2,
-                  '&:hover fieldset': {
-                    borderColor: isDarkMode ? 'var(--error-700)' : '#ef4444'
-                  },
-                  '&.Mui-focused fieldset': {
-                    borderColor: isDarkMode ? 'var(--error-700)' : '#ef4444'
-                  }
-                }
-              }}
-            />
-          </DialogContent>
-          <DialogActions sx={{ p: 3, pt: 1 }}>
-            <Button 
-              onClick={handleCloseDenyDialog}
-              disabled={denyMutation.isPending}
-              sx={{ 
-                borderRadius: 2,
-                px: 3,
-                py: 1
-                ,color: isDarkMode ? '#fff' : undefined
-              }}
-            >
-              إلغاء
-            </Button>
-            <Button
-              onClick={handleDeny}
-              variant="contained"
-              disabled={denyMutation.isPending || !denyReason.trim()}
-              startIcon={<DenyIcon />}
-              sx={{ 
-                borderRadius: 2,
-                px: 3,
-                py: 1,
-                background: isDarkMode ? 'var(--error-900)' : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-                color: isDarkMode ? '#fff' : undefined,
-                '&:hover': {
-                  background: isDarkMode ? 'var(--error-800)' : 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
-                  color: isDarkMode ? '#fff' : undefined,
-                }
-              }}
-            >
-              {denyMutation.isPending ? 'جاري الرفض...' : 'تأكيد الرفض'}
-            </Button>
-          </DialogActions>
-        </Dialog>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="السبب (مطلوب)"
+            fullWidth
+            variant="outlined"
+            value={denyReason}
+            onChange={(e) => setDenyReason(e.target.value)}
+            multiline
+            rows={4}
+            inputProps={{ maxLength: 500 }}
+            sx={{ mt: 2 }}
+          />
+        </ConfirmDialog>
 
         {/* Snackbar */}
         <Snackbar

@@ -30,13 +30,13 @@ import {
   Star,
   StarBorder,
   Edit,
-  Close,
-  Check
+  Close
 } from '@mui/icons-material';
 import { useDebounce } from 'use-debounce';
 import { Agency } from '../../../../shared/types/index';
 import { useDarkMode } from "@/app/context/DarkModeContext";
 import { API_URL, authHeader } from "@/shared/utils/auth";
+import ConfirmDialog from "@/shared/components/ConfirmDialog";
 
 const PAGE_SIZE = 10;
 
@@ -759,67 +759,16 @@ const AgenciesPage = () => {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog
+      <ConfirmDialog
         open={deleteDialog}
-        onClose={() => !actionLoading && setDeleteDialog(false)}
-        PaperProps={{
-          sx: { 
-            m: { xs: 1, sm: 2 },
-            backgroundColor: isDarkMode ? 'var(--dark-800)' : colors.surface,
-            borderRadius: 3
-          }
-        }}
-      >
-        <DialogTitle sx={{ 
-          fontSize: { xs: '1rem', sm: '1.25rem' },
-          fontWeight: 700,
-          color: isDarkMode ? '#fff' : colors.onSurface
-        }}>
-          تأكيد الحذف
-        </DialogTitle>
-        <DialogContent sx={{ px: { xs: 2, sm: 3 } }}>
-          <Typography sx={{ 
-            fontSize: { xs: '0.875rem', sm: '1rem' },
-            color: isDarkMode ? '#fff' : colors.onSurfaceVariant
-          }}>
-            هل أنت متأكد أنك تريد حذف الوكالة "{selectedAgency?.name}"؟ لا يمكن
-            التراجع عن هذا الإجراء.
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ px: { xs: 2, sm: 3 }, pb: 2 }}>
-          <Button
-            onClick={() => setDeleteDialog(false)}
-            disabled={actionLoading}
-            size="small"
-            sx={{ 
-              fontSize: { xs: '0.8rem', sm: '0.875rem' },
-              color: isDarkMode ? '#fff' : colors.onSurfaceVariant,
-              '&:hover': {
-                backgroundColor: isDarkMode ? 'var(--dark-700)' : colors.onSurfaceVariant + '20',
-              }
-            }}
-          >
-            إلغاء
-          </Button>
-          <Button
-            onClick={handleDeleteAgency}
-            variant="contained"
-            startIcon={<Check />}
-            disabled={actionLoading}
-            size="small"
-            sx={{ 
-              fontSize: { xs: '0.8rem', sm: '0.875rem' },
-              backgroundColor: isDarkMode ? 'var(--error-900)' : colors.error,
-              color: isDarkMode ? '#fff' : undefined,
-              '&:hover': {
-                backgroundColor: isDarkMode ? 'var(--error-700)' : colors.error + 'dd',
-              }
-            }}
-          >
-            {actionLoading ? 'جاري الحذف...' : 'تأكيد الحذف'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        title="حذف الوكالة"
+        message={`سيتم حذف الوكالة "${selectedAgency?.name ?? ''}" وشعارها نهائيًا، ولا يمكن التراجع عن ذلك. عقاراتها تبقى منشورة ولكن بدون وكالة.`}
+        confirmLabel="تأكيد الحذف"
+        pendingLabel="جاري الحذف..."
+        pending={actionLoading}
+        onConfirm={handleDeleteAgency}
+        onClose={() => setDeleteDialog(false)}
+      />
     </Box>
   );
 };

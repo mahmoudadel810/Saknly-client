@@ -30,6 +30,7 @@ import ShareIcon from '@mui/icons-material/Share';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useWishlist } from '../context/WishlistContext';
 import { useToast } from '@/shared/provider/ToastProvider';
+import ConfirmDialog from '@/shared/components/ConfirmDialog';
 
 type PropertyCardProps = {
   property: any;
@@ -252,6 +253,16 @@ export default function WishlistPage() {
   const { wishlist, loading, removeFromWishlist, removeAllFromWishlist } = useWishlist();
   const { showToast } = useToast?.() || {};
   const [user, setUser] = useState<any>(null);
+  const [confirmClearOpen, setConfirmClearOpen] = useState(false);
+  const [clearing, setClearing] = useState(false);
+
+  const handleConfirmClear = async () => {
+    setClearing(true);
+    // The context shows the success or failure toast itself.
+    const ok = await removeAllFromWishlist();
+    setClearing(false);
+    if (ok) setConfirmClearOpen(false);
+  };
 
   // مشاركة العقار
   const handleShare = async (property: any) => {
@@ -366,7 +377,7 @@ export default function WishlistPage() {
                   </Typography>
                 </Box>
                 <Button
-                  onClick={removeAllFromWishlist}
+                  onClick={() => setConfirmClearOpen(true)}
                   variant="outlined"
                   color="error"
                   startIcon={<DeleteSweepIcon />}
@@ -402,6 +413,16 @@ export default function WishlistPage() {
           </>
         )}
       </Container>
+      <ConfirmDialog
+        open={confirmClearOpen}
+        title="إزالة كل العقارات من المفضلة"
+        message={`سيتم إزالة ${wishlist.length} عقار من قائمة المفضلة دفعة واحدة، ولا يمكن التراجع عن ذلك.`}
+        confirmLabel="إزالة الكل"
+        pendingLabel="جاري الإزالة..."
+        pending={clearing}
+        onConfirm={handleConfirmClear}
+        onClose={() => setConfirmClearOpen(false)}
+      />
     </Box>
   );
 }
