@@ -9,13 +9,19 @@ import {
   Paper,
   Alert,
   CircularProgress,
-  Button
+  Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow
 } from '@mui/material';
 import AdminIcon from '@mui/icons-material/AdminPanelSettings';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import ImportProperties from '../../../shared/components/ImportProperties';
+import ImportProperties, { ImportRow } from '../../../shared/components/ImportProperties';
 import { useToast } from '../../../shared/provider/ToastProvider';
-import { CITY_OPTIONS, normalizeCity } from '../../../shared/constants/property';
+import { normalizeCity, PROPERTY_TYPE_VALUES } from '../../../shared/constants/property';
 import { API_URL, authHeader } from '../../../shared/utils/auth';
 
 const colors = {
@@ -44,60 +50,153 @@ const colors = {
   },
 };
 
-const initialFormData = {
-  operationType: 'sale',
-  type: 'شقة',
-  ownershipType: 'firstOwner',
-  area: '',
-  bedrooms: '3',
-  bathrooms: '2',
-  amenities: [] as string[],
-  title: '',
-  description: '',
-  location: '',
-  district: '',
-  latitude: 30.0444,
-  longitude: 31.2357,
-  price: '',
-  contactInfo: { name: '', phone: '', email: '', whatsapp: '' },
-  isNegotiable: false,
-  floor: '',
-  totalFloors: '',
-  images: [] as File[],
-  deliveryDate: '',
-  deliveryTerms: '',
-  propertyStatus: 'ready',
-  paymentMethod: 'cash',
-  downPayment: '',
-  installmentPeriodInYears: '',
-  minInstallmentAmount: '',
-  deposit: '',
-  leaseDuration: '',
-  availableFrom: '',
-  utilitiesIncluded: false,
-  utilitiesCost: '',
-  utilitiesDetails: '',
-  rulesPets: false,
-  rulesParties: false,
-  rulesOther: '',
-  isStudentFriendly: false,
-  studentRoomType: '',
-  studentsPerRoom: '',
-  studentGenderPolicy: '',
-  academicYearOnly: false,
-  semester: '',
-  nearbyUniversities: [{ name: '', distanceInKm: '' }],
+// Server create rules (server/modules/Property/propertyValidation.js), checked here so each
+// failed row gets a specific reason. Nothing is ever filled in: a missing value fails the row.
+const CATEGORY_WORDS: Record<string, 'sale' | 'rent' | 'student'> = {
+  'بيع': 'sale',
+  'للبيع': 'sale',
+  'إيجار': 'rent',
+  'ايجار': 'rent',
+  'للإيجار': 'rent',
+  'للايجار': 'rent',
+  'سكن طلبة': 'student',
+  'سكن طلاب': 'student',
+  'طلبة': 'student',
 };
+const CATEGORY_LABEL = { sale: 'للبيع', rent: 'للإيجار', student: 'سكن طلبة' } as const;
+const UPLOADS_PER_WINDOW = 20; // server fileUpload rate limit: 20 requests per 15 minutes
+
+const toDigits = (text: string) =>
+  text.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
+
+/** The first number in the text ("1,200,000 جنيه" → 1200000, "120 م2" → 120, "1.5" → 1.5). */
+const parseNumber = (text?: string): number | null => {
+  if (!text) return null;
+  const match = toDigits(text).replace(/[,،٬](?=\d{3})/g, '').match(/\d+(?:[.٫]\d+)?/);
+  return match ? Number(match[0].replace('٫', '.')) : null;
+};
+
+const parseWholeNumber = (text?: string): number | null => {
+  const value = parseNumber(text);
+  return value !== null && Number.isInteger(value) ? value : null;
+};
+
+/** "1 مليون 200 الف" → 1200000; returns null when no number can be read. */
+const parsePrice = (text?: string): number | null => {
+  if (!text) return null;
+  const value = toDigits(text);
+  if (value.includes('مليون')) {
+    const [millionsPart, rest] = value.split('مليون');
+    const millions = parseNumber(millionsPart);
+    if (millions === null) return null;
+    const restValue = parseWholeNumber(rest);
+    if (restValue === null) return Math.round(millions * 1000000);
+    // "1 مليون 200" is ambiguous (200 or 200 thousand): only an explicit "ألف" is accepted.
+    if (!/[اأ]لف/.test(rest)) return null;
+    return Math.round(millions * 1000000 + restValue * 1000);
+  }
+  const number = parseNumber(value);
+  if (number === null) return null;
+  return Math.round(/[اأ]لف/.test(value) ? number * 1000 : number);
+};
+
+interface PreparedRow {
+  rowNumber: number;
+  label: string;
+  errors: string[];
+  form: FormData | null;
+}
+
+const prepareRow = (row: ImportRow): PreparedRow => {
+  const c = row.cells;
+  const errors: string[] = [];
+
+  // "[city] rest of address" or just the city
+  const locationText = c.location || '';
+  const cityText = locationText.includes(']')
+    ? locationText.split(']')[0].replace('[', '').trim()
+    : locationText.trim();
+  const city = normalizeCity(cityText);
+  if (!locationText) errors.push('الموقع مفقود');
+  else if (!city) errors.push(`مدينة غير مدعومة: "${cityText}"`);
+
+  const description = c.description || '';
+  if (!description) errors.push('الوصف مفقود');
+  else if (description.length > 400) errors.push('الوصف أطول من 400 حرف');
+
+  const price = parsePrice(c.price);
+  if (price === null) errors.push(c.price ? `سعر غير مفهوم: "${c.price}"` : 'السعر مفقود');
+  else if (price > 100000000) errors.push('السعر أكبر من 100 مليون');
+
+  const area = parseWholeNumber(c.area);
+  if (area === null) errors.push(c.area ? `مساحة غير مفهومة: "${c.area}"` : 'المساحة مفقودة');
+  else if (area < 60) errors.push('المساحة أقل من 60 متر');
+
+  const bedrooms = parseWholeNumber(c.bedrooms);
+  if (bedrooms === null) errors.push('عدد غرف النوم مفقود');
+  else if (bedrooms > 10) errors.push('عدد غرف النوم أكبر من 10');
+
+  const bathrooms = parseWholeNumber(c.bathrooms);
+  if (bathrooms === null) errors.push('عدد الحمامات مفقود');
+  else if (bathrooms < 1 || bathrooms > 10) errors.push('عدد الحمامات يجب أن يكون من 1 إلى 10');
+
+  const type = (c.type || '').trim();
+  if (!type) errors.push('نوع العقار مفقود');
+  else if (!(PROPERTY_TYPE_VALUES as readonly string[]).includes(type)) errors.push(`نوع عقار غير مدعوم: "${type}"`);
+
+  const category = CATEGORY_WORDS[(c.category || '').trim()];
+  if (!c.category) errors.push('الغرض (بيع/إيجار/سكن طلبة) مفقود');
+  else if (!category) errors.push(`غرض غير مفهوم: "${c.category}"`);
+
+  const contactName = (c.contactName || '').trim();
+  if (!contactName) errors.push('اسم التواصل مفقود');
+  const contactPhone = (c.contactPhone || '').trim();
+  if (!contactPhone) errors.push('رقم الهاتف مفقود');
+
+  const floor = parseWholeNumber(c.floor);
+
+  const title = type && category && city ? `${type} ${CATEGORY_LABEL[category]} في ${city}`.slice(0, 70) : '';
+  const label = title || locationText || `صف ${row.rowNumber}`;
+
+  if (errors.length > 0) {
+    return { rowNumber: row.rowNumber, label, errors, form: null };
+  }
+
+  // Only values read from the document; optional fields that are absent are omitted,
+  // so server-side defaults apply instead of client guesses.
+  const form = new FormData();
+  form.append('category', category);
+  form.append('type', type);
+  form.append('title', title);
+  form.append('description', description);
+  form.append('price', String(price));
+  form.append('area', String(area));
+  form.append('bedrooms', String(bedrooms));
+  form.append('bathrooms', String(bathrooms));
+  form.append('location[city]', city as string);
+  form.append('location[address]', locationText);
+  form.append('contactInfo[name]', contactName);
+  form.append('contactInfo[phone]', contactPhone);
+  if (floor !== null) form.append('floor', String(floor));
+
+  return { rowNumber: row.rowNumber, label, errors, form };
+};
+
+interface RowResult {
+  rowNumber: number;
+  label: string;
+  ok: boolean;
+  reason: string;
+}
 
 export default function AdminImportPropertiesPage() {
   const router = useRouter();
   const { showToast } = useToast();
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [importQueue, setImportQueue] = useState<any[]>([]);
-  const [currentImportIndex, setCurrentImportIndex] = useState(0);
+  const [prepared, setPrepared] = useState<PreparedRow[]>([]);
   const [isImporting, setIsImporting] = useState(false);
-  const [importStats, setImportStats] = useState({ success: 0, failed: 0, total: 0 });
+  const [results, setResults] = useState<RowResult[]>([]);
 
   // Check admin access on component mount
   useEffect(() => {
@@ -128,177 +227,74 @@ export default function AdminImportPropertiesPage() {
     checkAdminAccess();
   }, [router, showToast]);
 
-  // Import handling functions
-  const handleImportedProperties = (importedProperties: any[]) => {
-    const convertedProperties = importedProperties.map(prop => {
-      const extractNumbers = (str: string) => {
-        const match = str.match(/\d+/g);
-        return match ? match.join('') : '';
-      };
-
-      const parsePrice = (priceText: string) => {
-        if (priceText.includes('مليون')) {
-          const parts = priceText.split('مليون');
-          const million = parseInt(parts[0]) * 1000000;
-          const rest = parts[1] ? parseInt(extractNumbers(parts[1]) || '0') : 0;
-          return million + rest;
-        }
-        if (priceText.includes('الف')) {
-          const thousands = parseInt(extractNumbers(priceText)) * 1000;
-          return thousands;
-        }
-        return parseInt(extractNumbers(priceText)) || '';
-      };
-
-      const parseArea = (areaText: string) => {
-        return extractNumbers(areaText) || '';
-      };
-
-      const parseFloor = (floorText: string) => {
-        return extractNumbers(floorText) || '1';
-      };
-
-      return {
-        ...initialFormData,
-        location: prop.location.split(']')[0].replace('[', ''),
-        district: prop.location,
-        title: `شقة للبيع في ${prop.location}`,
-        description: prop.description,
-        floor: parseFloor(prop.floor),
-        price: parsePrice(prop.price).toString(),
-        area: parseArea(prop.area),
-      };
-    });
-
-    if (convertedProperties.length > 0) {
-      setImportQueue(convertedProperties);
-      setCurrentImportIndex(0);
-      setIsImporting(true);
-      setImportStats({ success: 0, failed: 0, total: convertedProperties.length });
-    }
+  // Parsed rows are validated first and shown for review; nothing is sent yet.
+  const handleImportedProperties = (rows: ImportRow[]) => {
+    setResults([]);
+    setPrepared(rows.map(prepareRow));
   };
 
-  // Auto-submit logic
-  useEffect(() => {
-    if (isImporting && importQueue.length > 0 && currentImportIndex < importQueue.length) {
-      const property = importQueue[currentImportIndex];
-      
-      const submitTimer = setTimeout(() => {
-        handleSubmitProperty(property);
-      }, 2000);
+  const validRows = prepared.filter((row) => row.form);
+  const invalidRows = prepared.filter((row) => !row.form);
 
-      return () => clearTimeout(submitTimer);
-    }
-  }, [isImporting, importQueue, currentImportIndex]);
-
-  const handleSubmitProperty = async (property: any) => {
+  const runImport = async () => {
+    if (isImporting) return;
     const token = localStorage.getItem('token');
     if (!token) {
       showToast('انتهت صلاحية الجلسة', 'error');
-      setIsImporting(false);
       return;
     }
+    setIsImporting(true);
 
-    // Supported cities list (shared constant identical to the server enum)
-    const supportedCities = CITY_OPTIONS;
-    
-    // Function to find a valid city or return default
-    const getValidCity = (inputCity: string) => {
-      if (!inputCity) return supportedCities[0]; // Default to first city
-      
-      // Exact enum value or a known alias (e.g. 'السادات' → 'مدينة السادات')
-      const exactMatch = normalizeCity(inputCity);
-      if (exactMatch) return exactMatch;
-      
-      // Try partial matching
-      const partialMatch = supportedCities.find(city => 
-        city.includes(inputCity.trim()) || inputCity.trim().includes(city)
-      );
-      if (partialMatch) return partialMatch;
-      
-      // Return default city if no match found
-      return supportedCities[0];
-    };
+    // Rows that failed validation are reported as failed with their reasons.
+    const collected: RowResult[] = invalidRows.map((row) => ({
+      rowNumber: row.rowNumber,
+      label: row.label,
+      ok: false,
+      reason: row.errors.join('، '),
+    }));
+    setResults([...collected]);
 
-    // Generate fallback values for missing required fields (outside try block)
-    const fallbackTitle = property.title || property.location || `عقار رقم ${currentImportIndex + 1}`;
-    const fallbackLocation = getValidCity(property.location);
-    const fallbackPrice = property.price || '0';
-    const fallbackArea = property.area || '100';
-
-    try {
-      // Log property being processed (no strict validation - accept all properties)
-      const originalLocation = property.location || 'N/A';
-      const locationChanged = originalLocation !== fallbackLocation;
-      
-      console.log(`Processing property: "${fallbackTitle}"`);
-      if (locationChanged) {
-        console.log(`  📍 Location changed: "${originalLocation}" → "${fallbackLocation}" (using supported city)`);
-      }
-      console.log(`  💰 Price: ${fallbackPrice}, 📐 Area: ${fallbackArea}`);
-
-      const formDataToSend = new FormData();
-      
-      // Add property data to FormData using fallback values for missing fields
-      formDataToSend.append('category', property.operationType || 'sale');
-      formDataToSend.append('type', property.type || 'شقة');
-      formDataToSend.append('title', fallbackTitle);
-      formDataToSend.append('description', property.description || 'عقار مستورد من ملف Word');
-      formDataToSend.append('price', fallbackPrice);
-      formDataToSend.append('area', fallbackArea);
-      formDataToSend.append('bedrooms', property.bedrooms || '3');
-      formDataToSend.append('bathrooms', property.bathrooms || '2');
-      formDataToSend.append('location[city]', fallbackLocation);
-      formDataToSend.append('location[address]', fallbackLocation);
-      formDataToSend.append('location[district]', property.district || fallbackLocation);
-      formDataToSend.append('location[latitude]', property.latitude?.toString() || '30.0444');
-      formDataToSend.append('location[longitude]', property.longitude?.toString() || '31.2357');
-      formDataToSend.append('contactInfo[name]', property.contactInfo?.name || 'إدارة سكنلي');
-      formDataToSend.append('contactInfo[phone]', property.contactInfo?.phone || '01000000000');
-      formDataToSend.append('contactInfo[email]', property.contactInfo?.email || '');
-      formDataToSend.append('contactInfo[whatsapp]', property.contactInfo?.whatsapp || '');
-      formDataToSend.append('isNegotiable', String(property.isNegotiable || false));
-      formDataToSend.append('floor', property.floor || '1');
-      formDataToSend.append('ownershipType', property.ownershipType || 'firstOwner');
-      formDataToSend.append('propertyStatus', property.propertyStatus || 'ready');
-      formDataToSend.append('paymentMethod', property.paymentMethod || 'cash');
-      
-      // Add amenities if any
-      if (property.amenities && property.amenities.length > 0) {
-        property.amenities.forEach((amenity: string) => {
-          formDataToSend.append('amenities[]', amenity);
-        });
-      }
-
-      const response = await fetch(`${API_URL}/properties/addProperty`, {
-        method: 'POST',
-        headers: authHeader(token),
-        body: formDataToSend
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log(`✅ Successfully imported property: "${fallbackTitle}" (Original: "${property.title || 'N/A'}")`);
-        setImportStats(prev => ({ ...prev, success: prev.success + 1 }));
+    let rateLimited = false;
+    for (const row of validRows) {
+      let result: RowResult;
+      if (rateLimited) {
+        result = { rowNumber: row.rowNumber, label: row.label, ok: false, reason: 'لم يُرسل: تم بلوغ حد الرفع، أعد المحاولة لاحقًا' };
       } else {
-        const errorResult = await response.json().catch(() => ({ message: 'Unknown server error' }));
-        console.error(`❌ Failed to import property "${fallbackTitle}": ${response.status} - ${errorResult.message}`);
-        setImportStats(prev => ({ ...prev, failed: prev.failed + 1 }));
+        try {
+          const response = await fetch(`${API_URL}/properties/addProperty`, {
+            method: 'POST',
+            headers: authHeader(token),
+            body: row.form as FormData,
+          });
+          if (response.ok) {
+            result = { rowNumber: row.rowNumber, label: row.label, ok: true, reason: '' };
+          } else {
+            const body = await response.json().catch(() => ({}));
+            if (response.status === 429) rateLimited = true;
+            result = {
+              rowNumber: row.rowNumber,
+              label: row.label,
+              ok: false,
+              reason: `${response.status}: ${body?.message || 'خطأ من الخادم'}`,
+            };
+          }
+        } catch (err) {
+          result = { rowNumber: row.rowNumber, label: row.label, ok: false, reason: 'تعذر الاتصال بالخادم' };
+        }
       }
-    } catch (err) {
-      console.error(`⚠️ Error submitting property "${fallbackTitle}": ${err instanceof Error ? err.message : 'Unknown error'}`);
-      setImportStats(prev => ({ ...prev, failed: prev.failed + 1 }));
+      collected.push(result);
+      setResults([...collected]);
     }
 
-    // Move to next property or finish
-    if (currentImportIndex < importQueue.length - 1) {
-      setCurrentImportIndex(prev => prev + 1);
-    } else {
-      setIsImporting(false);
-      setImportQueue([]);
-      setCurrentImportIndex(0);
-      showToast(`تم الانتهاء من الاستيراد. نجح: ${importStats.success + 1}, فشل: ${importStats.failed}`, 'success');
-    }
+    collected.sort((a, b) => a.rowNumber - b.rowNumber);
+    setResults([...collected]);
+    setPrepared([]);
+    setIsImporting(false);
+
+    // Counted from the finished results, not from state captured mid-run.
+    const succeeded = collected.filter((r) => r.ok).length;
+    const failed = collected.length - succeeded;
+    showToast(`تم الانتهاء من الاستيراد. نجح: ${succeeded}، فشل: ${failed}`, failed ? 'warning' : 'success');
   };
 
   if (loading) {
@@ -339,28 +335,98 @@ export default function AdminImportPropertiesPage() {
           </Typography>
         </Alert>
 
-        {/* Import Progress */}
-        {isImporting && (
-          <Paper elevation={2} sx={{ p: 3, mb: 4, backgroundColor: colors.primary[50] }}>
-            <Box sx={{ textAlign: 'center' }}>
-              <CircularProgress size={40} />
-              <Typography variant="h6" sx={{ mt: 2, color: colors.primary[700] }}>
-                جاري استيراد العقار {currentImportIndex + 1} من {importQueue.length}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                {importQueue[currentImportIndex]?.title || 'جاري المعالجة...'}
-              </Typography>
-              <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center', gap: 3 }}>
-                <Typography color="success.main">نجح: {importStats.success}</Typography>
-                <Typography color="error.main">فشل: {importStats.failed}</Typography>
-                <Typography>المجموع: {importStats.total}</Typography>
-              </Box>
+        {/* Review before import */}
+        {prepared.length > 0 && !isImporting && (
+          <Paper elevation={2} sx={{ p: 3, mb: 4 }}>
+            <Typography variant="h6" gutterBottom>
+              مراجعة الصفوف: {validRows.length} جاهز، {invalidRows.length} ناقص أو غير صالح
+            </Typography>
+            {invalidRows.length > 0 && (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                الصفوف الناقصة لن تُستورد وستظهر كفاشلة مع السبب. أكمل بياناتها في الملف ثم أعد رفعه.
+              </Alert>
+            )}
+            {validRows.length > UPLOADS_PER_WINDOW && (
+              <Alert severity="info" sx={{ mb: 2 }}>
+                الخادم يسمح بـ {UPLOADS_PER_WINDOW} عملية رفع كل 15 دقيقة؛ الصفوف بعد ذلك ستفشل وتحتاج إعادة.
+              </Alert>
+            )}
+            <TableContainer sx={{ maxHeight: 400, mb: 2 }}>
+              <Table size="small" stickyHeader>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>#</TableCell>
+                    <TableCell>العقار</TableCell>
+                    <TableCell>الحالة</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {prepared.map((row) => (
+                    <TableRow key={row.rowNumber}>
+                      <TableCell>{row.rowNumber}</TableCell>
+                      <TableCell>{row.label}</TableCell>
+                      <TableCell sx={{ color: row.form ? 'success.main' : 'error.main' }}>
+                        {row.form ? 'جاهز' : row.errors.join('، ')}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <Button variant="contained" onClick={runImport} disabled={validRows.length === 0}>
+                استيراد {validRows.length} عقار
+              </Button>
+              <Button variant="outlined" onClick={() => setPrepared([])}>
+                إلغاء
+              </Button>
             </Box>
           </Paper>
         )}
 
+        {/* Import Progress */}
+        {isImporting && (
+          <Paper elevation={2} sx={{ p: 3, mb: 4, textAlign: 'center' }}>
+            <CircularProgress size={40} />
+            <Typography variant="h6" sx={{ mt: 2 }}>
+              جاري الاستيراد: {results.length} من {prepared.length}
+            </Typography>
+          </Paper>
+        )}
+
+        {/* Per-row results; they stay visible after the run */}
+        {results.length > 0 && !isImporting && (
+          <Paper elevation={2} sx={{ p: 3, mb: 4 }}>
+            <Typography variant="h6" gutterBottom>
+              نتيجة الاستيراد: نجح {results.filter((r) => r.ok).length}، فشل {results.filter((r) => !r.ok).length}، المجموع {results.length}
+            </Typography>
+            <TableContainer sx={{ maxHeight: 400 }}>
+              <Table size="small" stickyHeader>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>#</TableCell>
+                    <TableCell>العقار</TableCell>
+                    <TableCell>النتيجة</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {results.map((r) => (
+                    <TableRow key={r.rowNumber}>
+                      <TableCell>{r.rowNumber}</TableCell>
+                      <TableCell>{r.label}</TableCell>
+                      <TableCell sx={{ color: r.ok ? 'success.main' : 'error.main' }}>
+                        {r.ok ? 'تم النشر' : `فشل — ${r.reason}`}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Paper>
+        )}
+
         {/* Import Component */}
-        {!isImporting && (
+        {!isImporting && prepared.length === 0 && (
           <ImportProperties onImportComplete={handleImportedProperties} />
         )}
 
@@ -372,11 +438,12 @@ export default function AdminImportPropertiesPage() {
           <Typography variant="body2" component="div">
             <ol>
               <li>قم بإنشاء ملف Word (.docx) يحتوي على جدول بالعقارات</li>
-              <li>يجب أن يحتوي الجدول على الأعمدة التالية بالترتيب: الموقع، الوصف، الدور، السعر، المساحة</li>
+              <li>الصف الأول عناوين الأعمدة، وتُطابق بالاسم: الموقع، الوصف، السعر، المساحة، غرف النوم، الحمامات، النوع (شقة/فيلا/محل/استوديو/دوبلكس)، الغرض (بيع/إيجار/سكن طلبة)، اسم التواصل، الهاتف، والدور (اختياري)</li>
+              <li>كل الأعمدة عدا الدور مطلوبة؛ الصف الذي ينقصه أي منها لا يُستورد ويظهر سببه في النتيجة</li>
               <li>الصف الأول يجب أن يحتوي على عناوين الأعمدة</li>
               <li>ارفع الملف باستخدام منطقة السحب والإفلات</li>
               <li>راجع العقارات المستخرجة قبل الاستيراد</li>
-              <li>انقر على "استيراد العقارات" لبدء العملية التلقائية</li>
+              <li>انقر على "متابعة للمراجعة" ثم "استيراد" لنشر الصفوف الجاهزة</li>
             </ol>
           </Typography>
         </Paper>

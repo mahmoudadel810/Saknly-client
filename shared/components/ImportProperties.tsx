@@ -17,76 +17,118 @@ import {
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import DescriptionIcon from '@mui/icons-material/Description';
 
-interface Property {
-  location: string;
-  description: string;
-  floor: string;
-  price: string;
-  area: string;
+/** Fields an import table can carry. Columns are matched by their header text. */
+export type ImportField =
+  | 'location'
+  | 'description'
+  | 'floor'
+  | 'price'
+  | 'area'
+  | 'bedrooms'
+  | 'bathrooms'
+  | 'type'
+  | 'category'
+  | 'contactName'
+  | 'contactPhone';
+
+/** One data row of the Word table, as text, exactly as found (nothing filled in). */
+export interface ImportRow {
+  /** 1-based position among the data rows of the document, for reporting. */
+  rowNumber: number;
+  cells: Partial<Record<ImportField, string>>;
 }
 
+const HEADER_ALIASES: Record<ImportField, string[]> = {
+  location: ['الموقع', 'العنوان', 'المدينة'],
+  description: ['الوصف'],
+  floor: ['الدور', 'الطابق'],
+  price: ['السعر'],
+  area: ['المساحة'],
+  bedrooms: ['غرف النوم', 'عدد الغرف', 'الغرف'],
+  bathrooms: ['الحمامات', 'عدد الحمامات', 'دورات المياه'],
+  type: ['النوع', 'نوع العقار'],
+  category: ['الغرض', 'التصنيف', 'نوع العرض'],
+  contactName: ['اسم التواصل', 'الاسم', 'اسم المالك'],
+  contactPhone: ['الهاتف', 'رقم الهاتف', 'التليفون', 'الموبايل', 'رقم التواصل'],
+};
+
+// The original documented layout, used when the header row names no known column.
+const LEGACY_ORDER: ImportField[] = ['location', 'description', 'floor', 'price', 'area'];
+
+const normalizeHeader = (text: string) => text.replace(/\s+/g, ' ').trim();
+
+const mapHeaders = (headerCells: string[]): (ImportField | null)[] => {
+  const mapped = headerCells.map((text) => {
+    const header = normalizeHeader(text);
+    const field = (Object.keys(HEADER_ALIASES) as ImportField[]).find((key) =>
+      HEADER_ALIASES[key].includes(header)
+    );
+    return field ?? null;
+  });
+  return mapped.some(Boolean) ? mapped : LEGACY_ORDER;
+};
+
 interface ImportPropertiesProps {
-  onImportComplete: (properties: Property[]) => void;
+  onImportComplete: (rows: ImportRow[]) => void;
 }
 
 const ImportProperties: React.FC<ImportPropertiesProps> = ({ onImportComplete }) => {
-  const [properties, setProperties] = useState<Property[]>([]);
+  const [rows, setRows] = useState<ImportRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     if (!acceptedFiles.length) return;
-    
+
     setLoading(true);
     setError('');
-    
+
     try {
       const file = acceptedFiles[0];
       const arrayBuffer = await file.arrayBuffer();
       const result = await mammoth.convertToHtml({ arrayBuffer });
       const htmlContent = result.value;
-      
+
       // تحليل الجدول من محتوى HTML
       const parser = new DOMParser();
       const doc = parser.parseFromString(htmlContent, 'text/html');
       const tables = doc.querySelectorAll('table');
-      
+
       if (!tables.length) {
         throw new Error('لم يتم العثور على جداول في المستند');
       }
-      
-      const extractedProperties: Property[] = [];
-      
+
+      const extracted: ImportRow[] = [];
+
       tables.forEach(table => {
-        const rows = table.querySelectorAll('tr');
-        
-        // تخطي الصف الأول إذا كان يحتوي على عناوين
-        const dataRows = Array.from(rows).slice(1);
-        
-        dataRows.forEach(row => {
-          const cells = row.querySelectorAll('td, th');
-          if (cells.length >= 5) {
-            const property: Property = {
-              location: cells[0].textContent?.trim() || '',
-              description: cells[1].textContent?.trim() || '',
-              floor: cells[2].textContent?.trim() || '',
-              price: cells[3].textContent?.trim() || '',
-              area: cells[4].textContent?.trim() || '',
-            };
-            
-            // تأكد من أن العقار يحتوي على بيانات أساسية
-            if (property.location && property.price && property.area) {
-              extractedProperties.push(property);
-            }
-          }
+        const tableRows = Array.from(table.querySelectorAll('tr'));
+        if (tableRows.length < 2) return;
+
+        const cellTexts = (row: Element) =>
+          Array.from(row.querySelectorAll('td, th')).map((cell) => cell.textContent?.trim() || '');
+
+        // The first row holds the column headers.
+        const columns = mapHeaders(cellTexts(tableRows[0]));
+
+        tableRows.slice(1).forEach(row => {
+          const texts = cellTexts(row);
+          // A fully empty row is layout, not data.
+          if (texts.every((text) => !text)) return;
+
+          const cells: ImportRow['cells'] = {};
+          columns.forEach((field, index) => {
+            if (field && texts[index]) cells[field] = texts[index];
+          });
+          // Every data row is kept, even incomplete ones: they are reported, not dropped.
+          extracted.push({ rowNumber: extracted.length + 1, cells });
         });
       });
-      
-      if (extractedProperties.length === 0) {
-        throw new Error('لم يتم العثور على بيانات عقارات صالحة في الجداول');
+
+      if (extracted.length === 0) {
+        throw new Error('لم يتم العثور على صفوف بيانات في الجداول');
       }
-      
-      setProperties(extractedProperties);
+
+      setRows(extracted);
     } catch (err) {
       setError(`خطأ في المعالجة: ${err instanceof Error ? err.message : 'خطأ غير معروف'}`);
     } finally {
@@ -103,12 +145,12 @@ const ImportProperties: React.FC<ImportPropertiesProps> = ({ onImportComplete })
   });
 
   const handleImport = () => {
-    onImportComplete(properties);
-    setProperties([]);
+    onImportComplete(rows);
+    setRows([]);
   };
 
   const handleClear = () => {
-    setProperties([]);
+    setRows([]);
     setError('');
   };
 
@@ -163,23 +205,23 @@ const ImportProperties: React.FC<ImportPropertiesProps> = ({ onImportComplete })
         </Alert>
       )}
 
-      {properties.length > 0 && (
+      {rows.length > 0 && (
         <Box sx={{ mt: 3 }}>
           <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>
-            العقارات المستخرجة ({properties.length})
+            الصفوف المستخرجة ({rows.length})
           </Typography>
           
           <Paper elevation={2} sx={{ maxHeight: 400, overflow: 'auto', mb: 2 }}>
             <List dense>
-              {properties.map((prop, index) => (
-                <React.Fragment key={index}>
+              {rows.map((row, index) => (
+                <React.Fragment key={row.rowNumber}>
                   <ListItem>
                     <ListItemText
-                      primary={`${prop.location} - ${prop.area} متر`}
-                      secondary={`السعر: ${prop.price} | الدور: ${prop.floor} | ${prop.description}`}
+                      primary={`${row.rowNumber}. ${row.cells.location || '—'} - ${row.cells.area || '—'} متر`}
+                      secondary={`السعر: ${row.cells.price || '—'} | الدور: ${row.cells.floor || '—'} | ${row.cells.description || ''}`}
                     />
                   </ListItem>
-                  {index < properties.length - 1 && <Divider />}
+                  {index < rows.length - 1 && <Divider />}
                 </React.Fragment>
               ))}
             </List>
@@ -192,7 +234,7 @@ const ImportProperties: React.FC<ImportPropertiesProps> = ({ onImportComplete })
               onClick={handleImport}
               sx={{ flex: 1 }}
             >
-              استيراد العقارات ({properties.length})
+              متابعة للمراجعة ({rows.length})
             </Button>
             <Button
               variant="outlined"
