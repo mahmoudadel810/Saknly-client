@@ -335,7 +335,7 @@ function UserProfilePage() {
   };
 
   return (
-    <Box component="main" sx={{ maxWidth: 1240, mx: "auto", px: { xs: 2, md: 3 }, py: { xs: 3, md: 5 } }}>
+    <Box component="main" id="main" sx={{ maxWidth: 1240, mx: "auto", px: { xs: 2, md: 3 }, py: { xs: 3, md: 5 } }}>
       <PageHeader
         title="حسابي"
         description={user ? `أهلًا ${user.userName}. تابع إعلاناتك وبيانات حسابك من هنا.` : undefined}

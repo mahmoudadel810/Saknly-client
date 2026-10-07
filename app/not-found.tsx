@@ -6,7 +6,7 @@ import EmptyState from "@/shared/ui/EmptyState";
 
 export default function NotFound() {
   return (
-    <Box component="main" sx={{ maxWidth: 640, mx: "auto", px: 2, py: { xs: 6, md: 10 } }}>
+    <Box component="main" id="main" sx={{ maxWidth: 640, mx: "auto", px: 2, py: { xs: 6, md: 10 } }}>
       <Box component="h1" sx={{ typography: "h3", textAlign: "center" }}>
         الصفحة غير موجودة
       </Box>

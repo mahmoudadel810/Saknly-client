@@ -36,7 +36,7 @@ export default function RouteError({
   }, [error]);
 
   return (
-    <Box component={landmark ? "main" : "div"} sx={{ maxWidth: 640, mx: "auto", px: 2, py: { xs: 6, md: 10 } }}>
+    <Box component={landmark ? "main" : "div"} id={landmark ? "main" : undefined} sx={{ maxWidth: 640, mx: "auto", px: 2, py: { xs: 6, md: 10 } }}>
       <ErrorState title={title} description={description} onRetry={reset} />
       <Box sx={{ display: "flex", justifyContent: "center" }}>
         <Button component={Link} href={homeHref} variant="text">

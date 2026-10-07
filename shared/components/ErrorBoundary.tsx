@@ -35,7 +35,7 @@ class ErrorBoundary extends Component<Props, State> {
     if (this.props.fallback) return this.props.fallback;
 
     return (
-      <Box component="main" sx={{ maxWidth: 640, mx: "auto", px: 2, py: { xs: 6, md: 10 } }}>
+      <Box component="main" id="main" sx={{ maxWidth: 640, mx: "auto", px: 2, py: { xs: 6, md: 10 } }}>
         <ErrorState
           title="حدث خطأ غير متوقع"
           description="أعد تحميل الصفحة. إن تكرر الخطأ، ارجع إلى الصفحة الرئيسية."

@@ -21,6 +21,7 @@ export default function AuthLayout({ title, description, children, footer }: Aut
   return (
     <Box
       component="main"
+      id="main"
       sx={{
         minHeight: "calc(100dvh - 64px)",
         display: "flex",

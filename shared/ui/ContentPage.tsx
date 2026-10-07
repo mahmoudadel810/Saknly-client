@@ -18,6 +18,7 @@ export default function ContentPage({ title, description, width = "reading", chi
   return (
     <Box
       component="main"
+      id="main"
       sx={{
         maxWidth: width === "reading" ? "calc(72ch + 48px)" : 1240,
         mx: "auto",
