@@ -26,7 +26,7 @@ import { api } from "@/shared/services/api";
 import DataTable, { type DataTableColumn, useDataTableState } from "@/shared/ui/DataTable";
 import LoadingState from "@/shared/ui/LoadingState";
 import ListingTypeTag from "@/shared/ui/ListingTypeTag";
-import PageHeader from "@/shared/ui/PageHeader";
+import PageBanner from "@/shared/ui/PageBanner";
 import Price from "@/shared/ui/Price";
 import StatusBadge, { propertyApprovalStatus } from "@/shared/ui/StatusBadge";
 import { arabicErrorMessage } from "@/shared/ui/form/errorMessage";
@@ -231,9 +231,10 @@ function AccountDetails() {
         sx={{
           border: 1,
           borderColor: "divider",
-          borderRadius: "10px",
+          borderRadius: "var(--r-card)",
           bgcolor: "background.paper",
-          p: { xs: 2, md: 3 },
+          boxShadow: "var(--c-card-shadow)",
+          p: { xs: 2.5, md: 3 },
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2.5 }}>
@@ -284,8 +285,9 @@ function AccountDetails() {
         sx={{
           border: 1,
           borderColor: "divider",
-          borderRadius: "10px",
-          bgcolor: "var(--c-surface-2)",
+          borderRadius: "var(--r-card)",
+          bgcolor: "background.paper",
+          boxShadow: "var(--c-card-shadow)",
           p: 2,
           display: "flex",
           flexDirection: "column",
@@ -335,8 +337,8 @@ function UserProfilePage() {
   };
 
   return (
-    <Box component="main" id="main" sx={{ maxWidth: 1240, mx: "auto", px: { xs: 2, md: 3 }, py: { xs: 3, md: 5 } }}>
-      <PageHeader
+    <Box component="main" id="main">
+      <PageBanner
         title="حسابي"
         description={user ? `أهلًا ${user.userName}. تابع إعلاناتك وبيانات حسابك من هنا.` : undefined}
         actions={
@@ -344,36 +346,40 @@ function UserProfilePage() {
             أضف عقارًا
           </Button>
         }
-      />
-
-      {isLoading ? (
-        <LoadingState variant="rows" rows={5} />
-      ) : !user ? (
-        // The middleware already sends signed-out visitors to /login; this covers an expired session.
-        <Box sx={{ textAlign: "center", py: 6 }}>
-          <Typography variant="body1" sx={{ mb: 2 }}>
-            انتهت جلستك. سجّل الدخول لعرض حسابك.
-          </Typography>
-          <Button component={Link} href="/login?redirect=/userProfile" variant="contained">
-            تسجيل الدخول
-          </Button>
-        </Box>
-      ) : (
-        <>
+      >
+        {/* The section tabs sit on the band's bottom edge. */}
+        {!isLoading && user && (
           <Tabs
             value={tab}
             onChange={(_, value: TabKey) => setTab(value)}
             aria-label="أقسام الحساب"
-            sx={{ mb: 3, borderBottom: 1, borderColor: "divider" }}
+            sx={{ boxShadow: "none", mb: "-1px" }}
           >
             <Tab value="listings" label="إعلاناتي" id="tab-listings" aria-controls="panel-listings" />
             <Tab value="account" label="بيانات الحساب" id="tab-account" aria-controls="panel-account" />
           </Tabs>
+        )}
+      </PageBanner>
+
+      <Box sx={{ maxWidth: 1240, mx: "auto", px: { xs: 2, md: 3 }, py: { xs: 3, md: 4 } }}>
+        {isLoading ? (
+          <LoadingState variant="rows" rows={5} />
+        ) : !user ? (
+          // The middleware already sends signed-out visitors to /login; this covers an expired session.
+          <Box sx={{ textAlign: "center", py: 6 }}>
+            <Typography variant="body1" sx={{ mb: 2 }}>
+              انتهت جلستك. سجّل الدخول لعرض حسابك.
+            </Typography>
+            <Button component={Link} href="/login?redirect=/userProfile" variant="contained">
+              تسجيل الدخول
+            </Button>
+          </Box>
+        ) : (
           <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
             {tab === "listings" ? <MyListings userId={user._id} /> : <AccountDetails />}
           </div>
-        </>
-      )}
+        )}
+      </Box>
     </Box>
   );
 }
