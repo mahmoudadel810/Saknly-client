@@ -53,7 +53,7 @@ export default function PhotosSection({ previews, error, processing, onAdd, onRe
             sx={{
               position: "relative",
               aspectRatio: "4 / 3",
-              borderRadius: "6px",
+              borderRadius: "var(--r-inner)",
               overflow: "hidden",
               border: 1,
               borderColor: "divider",
@@ -68,12 +68,11 @@ export default function PhotosSection({ previews, error, processing, onAdd, onRe
                   position: "absolute",
                   insetInlineStart: 6,
                   bottom: 6,
-                  px: 0.75,
+                  px: 1,
                   py: 0.25,
-                  borderRadius: "6px",
-                  bgcolor: "var(--c-surface)",
-                  border: 1,
-                  borderColor: "divider",
+                  borderRadius: "8px",
+                  bgcolor: "primary.main",
+                  color: "primary.contrastText",
                   fontSize: "0.75rem",
                   fontWeight: 600,
                 }}
@@ -89,10 +88,12 @@ export default function PhotosSection({ previews, error, processing, onAdd, onRe
                 position: "absolute",
                 top: 6,
                 insetInlineEnd: 6,
-                bgcolor: "var(--c-surface)",
-                border: 1,
-                borderColor: "divider",
-                "&:hover": { bgcolor: "var(--c-surface-raised)" },
+                width: 32,
+                height: 32,
+                color: "var(--c-text)",
+                bgcolor: "var(--c-over-photo)",
+                boxShadow: "0 1px 3px rgba(16, 24, 22, 0.2)",
+                "&:hover": { bgcolor: "var(--c-over-photo)", color: "error.main" },
               }}
             >
               <CloseOutlined fontSize="small" />
@@ -112,9 +113,18 @@ export default function PhotosSection({ previews, error, processing, onAdd, onRe
               aspectRatio: "4 / 3",
               height: "auto",
               flexDirection: "column",
-              gap: 0.5,
-              borderStyle: "dashed",
-              borderRadius: "6px",
+              gap: 0.75,
+              // The dropzone: a dashed tile on the field colour, tinted on hover.
+              border: "1.5px dashed",
+              borderColor: error ? "error.main" : "color-mix(in srgb, var(--c-primary) 45%, transparent)",
+              borderRadius: "var(--r-inner)",
+              bgcolor: "var(--c-field)",
+              color: error ? "error.main" : "primary.main",
+              "& svg": { fontSize: 28 },
+              "&:hover": {
+                bgcolor: "var(--c-primary-soft)",
+                borderColor: error ? "error.main" : "primary.main",
+              },
             }}
           >
             {processing ? <CircularProgress size={24} aria-hidden /> : <AddPhotoAlternateOutlined />}

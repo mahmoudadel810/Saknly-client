@@ -130,7 +130,7 @@ export default function DetailsSection(p: SectionProps) {
             p: 2,
             border: 1,
             borderColor: "divider",
-            borderRadius: "10px",
+            borderRadius: "var(--r-inner)",
             display: "flex",
             flexDirection: "column",
             gap: 2.5,

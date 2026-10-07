@@ -21,26 +21,28 @@ export default function FormSection({ id, step, title, description, children }: 
       sx={{
         border: 1,
         borderColor: "divider",
-        borderRadius: "10px",
+        borderRadius: "var(--r-card)",
         bgcolor: "background.paper",
-        p: { xs: 2, md: 3 },
+        boxShadow: "var(--c-card-shadow)",
+        p: { xs: 2.5, md: 4 },
         scrollMarginTop: 80,
       }}
     >
-      <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.5, mb: 2.5 }}>
+      <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.5, mb: 3, pb: 2.5, borderBottom: 1, borderColor: "divider" }}>
         {step !== undefined && (
           <Box
             aria-hidden
             className="num"
             sx={{
               flexShrink: 0,
-              width: 28,
-              height: 28,
-              borderRadius: "6px",
+              width: 32,
+              height: 32,
+              mt: 0.25,
+              borderRadius: "50%",
               display: "grid",
               placeItems: "center",
-              bgcolor: "var(--c-primary-soft)",
-              color: "primary.main",
+              bgcolor: "primary.main",
+              color: "primary.contrastText",
               fontWeight: 700,
               fontSize: "0.875rem",
             }}
