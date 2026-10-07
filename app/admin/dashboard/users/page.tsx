@@ -26,7 +26,7 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import { useDarkMode } from "@/app/context/DarkModeContext";
-import { authHeader } from "@/shared/utils/auth";
+import { API_URL, authHeader } from "@/shared/utils/auth";
 
 interface User {
   _id: string;
@@ -59,7 +59,8 @@ const fetchUsers = async (page = 1, limit = 20, search = "", token: string): Pro
     ...authHeader(token || null),
   };
 
-  const res = await fetch(`/api/users?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}`, {
+  const query = new URLSearchParams({ page: String(page), limit: String(limit), search });
+  const res = await fetch(`${API_URL}/users/get-all-users?${query.toString()}`, {
     headers
   });
   
@@ -339,7 +340,11 @@ const UsersPage = () => {
           fullWidth
           type="text"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            // A new search starts at page 1; page 3 of the old results may not exist.
+            setPage(1);
+          }}
           placeholder="ابحث عن المستخدمين..."
           InputProps={{
             startAdornment: (

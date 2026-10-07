@@ -79,7 +79,7 @@ const StatusBadge = ({ status }: { status: string }) => {
   );
 };
 
-const USERS_API = "/api/users"; // or your real endpoint
+const USERS_API = `${API_URL}/users/get-all-users`;
 
 const AdminDashboard = () => {
   const { isDarkMode } = useDarkMode();
@@ -87,7 +87,8 @@ const AdminDashboard = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const usersPerPage = 10;
+  // The dashboard shows only the 5 most recent users.
+  const usersPerPage = 5;
   const [totalPages, setTotalPages] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
   const [users, setUsers] = useState<User[]>([]);

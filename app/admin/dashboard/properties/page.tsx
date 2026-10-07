@@ -515,21 +515,21 @@ const PropertiesAdminPage = () => {
   const { data: pendingProperties, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['pending-properties'],
     queryFn: async () => {
-      const responses = await Promise.all(
-        propertyTypes.map(async type => {
-          const res = await fetch(`${API_URL}/properties/pending?category=${type.key}`, {
-            headers: authHeader(),
-          });
-          // A 401/500 must not be shown as "no pending properties".
-          if (!res.ok) throw new Error(`Failed to load pending properties (${res.status})`);
-          return res.json();
-        })
-      );
-      
-      return propertyTypes.reduce((acc, type, index) => {
-        acc[type.key] = Array.isArray(responses[index]?.data) ? responses[index].data : [];
-        return acc;
-      }, {} as Record<'sale' | 'rent' | 'student', Property[]>);
+      // One request for every pending listing, grouped here by category
+      // (the endpoint has no pagination, so splitting by category only tripled the calls).
+      const res = await fetch(`${API_URL}/properties/pending`, {
+        headers: authHeader(),
+      });
+      // A 401/500 must not be shown as "no pending properties".
+      if (!res.ok) throw new Error(`Failed to load pending properties (${res.status})`);
+      const body = await res.json();
+      const all: Property[] = Array.isArray(body?.data) ? body.data : [];
+
+      const grouped: Record<'sale' | 'rent' | 'student', Property[]> = { sale: [], rent: [], student: [] };
+      for (const property of all) {
+        grouped[property.category]?.push(property);
+      }
+      return grouped;
     },
     staleTime: 1000 * 60 * 5 // 5 minutes
   });
