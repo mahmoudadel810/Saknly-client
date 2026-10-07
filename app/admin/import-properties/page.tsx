@@ -33,9 +33,10 @@ const CATEGORY_WORDS: Record<string, 'sale' | 'rent' | 'student'> = {
   'للايجار': 'rent',
   'سكن طلبة': 'student',
   'سكن طلاب': 'student',
+  'سكن طلابي': 'student',
   'طلبة': 'student',
 };
-const CATEGORY_LABEL = { sale: 'للبيع', rent: 'للإيجار', student: 'سكن طلبة' } as const;
+const CATEGORY_LABEL = { sale: 'للبيع', rent: 'للإيجار', student: 'سكن طلابي' } as const;
 const UPLOADS_PER_WINDOW = 20; // server fileUpload rate limit: 20 requests per 15 minutes
 
 const toDigits = (text: string) =>
@@ -117,7 +118,7 @@ const prepareRow = (row: ImportRow): PreparedRow => {
   else if (!(PROPERTY_TYPE_VALUES as readonly string[]).includes(type)) errors.push(`نوع عقار غير مدعوم: "${type}"`);
 
   const category = CATEGORY_WORDS[(c.category || '').trim()];
-  if (!c.category) errors.push('الغرض (بيع/إيجار/سكن طلبة) مفقود');
+  if (!c.category) errors.push('الغرض (بيع أو إيجار أو سكن طلابي) مفقود');
   else if (!category) errors.push(`غرض غير مفهوم: "${c.category}"`);
 
   const contactName = (c.contactName || '').trim();
@@ -138,6 +139,8 @@ const prepareRow = (row: ImportRow): PreparedRow => {
   // so server-side defaults apply instead of client guesses.
   const form = new FormData();
   form.append('category', category);
+  // Student listings are browsed through isStudentFriendly (home, header and footer links)
+  if (category === 'student') form.append('isStudentFriendly', 'true');
   form.append('type', type);
   form.append('title', title);
   form.append('description', description);
@@ -341,7 +344,7 @@ function ImportWorkflow() {
               <li>ملف Word بصيغة .docx فيه جدول واحد أو أكثر، وصفه الأول عناوين الأعمدة.</li>
               <li>
                 تُطابق الأعمدة بعناوينها: الموقع، الوصف، السعر، المساحة، غرف النوم، الحمامات، النوع (شقة أو فيلا أو محل أو
-                استوديو أو دوبلكس)، الغرض (بيع أو إيجار أو سكن طلبة)، اسم التواصل، الهاتف، والدور (اختياري).
+                استوديو أو دوبلكس)، الغرض (بيع أو إيجار أو سكن طلابي)، اسم التواصل، الهاتف، والدور (اختياري).
               </li>
               <li>كل الأعمدة مطلوبة عدا الدور. الصف الناقص لا يُستورد، ويظهر سببه في المراجعة وفي النتيجة.</li>
               <li>لا تُكمَل أي قيمة ناقصة تلقائيًا: ما يُنشر هو ما في الملف فقط.</li>
