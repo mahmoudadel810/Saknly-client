@@ -69,7 +69,6 @@ import ElevatorIcon from '@mui/icons-material/Elevator';
 import BalconyIcon from '@mui/icons-material/Balcony';
 import AcUnitIcon from '@mui/icons-material/AcUnit';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
-import PropertyCard from '@/shared/components/PropertyCard';
 import { Property as SharedProperty } from '@/shared/types';
 import Rating from '@mui/material/Rating';
 import StarIcon from '@mui/icons-material/Star';

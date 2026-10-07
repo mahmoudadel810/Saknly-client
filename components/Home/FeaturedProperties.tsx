@@ -17,7 +17,7 @@ import { Navigation, Pagination, Autoplay } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';
-import PropertyCard from '../../shared/components/homeCard';
+import PropertyCard, { toPropertyCardData } from '@/shared/ui/PropertyCard';
 
 import { api } from '@/shared/services/api';
 // Define tab types to match backend categories
@@ -318,9 +318,7 @@ const FeaturedProperties = () => {
           >
             {properties.map((property: any) => (
               <SwiperSlide key={property._id || property.id}>
-                <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-                  <PropertyCard property={property} />
-                </Box>
+                <PropertyCard property={toPropertyCardData(property)} />
               </SwiperSlide>
             ))}
           </Swiper>
