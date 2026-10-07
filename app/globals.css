@@ -19,8 +19,8 @@
   --c-on-primary: #FFFFFF;
   --c-secondary: #3F4A48;
   /* Surface hierarchy, lowest to highest: page background, section band, card, raised (menus, dialogs). */
-  --c-bg: #F1F4F3;
-  --c-surface-2: #F8FAF9;
+  --c-bg: #F7F6F3; /* v2: warm off-white; sections alternate with --c-surface */
+  --c-surface-2: #FBFAF8;
   --c-surface: #FFFFFF;
   --c-surface-raised: #FFFFFF;
   --c-border: #DDE2E1;
@@ -33,6 +33,15 @@
   --c-error: #B42318;
   --c-info: #1F5F99;
   --c-student: #6B4FA0;
+  --c-field: #F2F5F4; /* filled inputs and selects */
+  --c-accent: #C08A3E; /* sand: icons, stars, badges (with --c-on-accent), never body text */
+  --c-on-accent: #1F1608;
+  --c-over-photo: #FFFFFF; /* controls laid on a photo, both modes */
+  --c-card-shadow: 0 1px 2px rgba(16, 24, 22, 0.06), 0 4px 16px rgba(16, 24, 22, 0.06);
+  --c-card-shadow-hover: 0 2px 4px rgba(16, 24, 22, 0.08), 0 12px 28px rgba(16, 24, 22, 0.12);
+  /* Radii (v2): cards and panels, then inner elements, inputs and buttons. */
+  --r-card: 16px;
+  --r-inner: 12px;
 }
 
 .dark {
@@ -55,6 +64,11 @@
   --c-error: #F07A6E;
   --c-info: #7FB2E5;
   --c-student: #B59BE0;
+  --c-field: #1B2422;
+  --c-accent: #E0B36A;
+  --c-on-accent: #1F1608;
+  --c-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.25);
+  --c-card-shadow-hover: 0 2px 4px rgba(0, 0, 0, 0.35), 0 12px 28px rgba(0, 0, 0, 0.4);
 }
 
 /*

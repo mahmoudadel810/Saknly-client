@@ -3,6 +3,10 @@
  * The MUI color schemes need real hex values, so they read this file.
  * app/globals.css mirrors the same values as `--c-*` CSS variables for Tailwind and plain CSS:
  * change both together.
+ *
+ * v2: `field` is the filled-input background, `accent` the sand accent (icons, stars, badges with `onAccent`
+ * text; never body text on white: it measures 3.2:1), and `overPhoto` the white of controls laid on a photo
+ * in both modes.
  */
 export const colorTokens = {
   light: {
@@ -11,8 +15,8 @@ export const colorTokens = {
     primarySoft: '#E3F0EE',
     onPrimary: '#FFFFFF',
     secondary: '#3F4A48',
-    bg: '#F1F4F3',
-    surface2: '#F8FAF9',
+    bg: '#F7F6F3',
+    surface2: '#FBFAF8',
     surface: '#FFFFFF',
     surfaceRaised: '#FFFFFF',
     border: '#DDE2E1',
@@ -25,6 +29,10 @@ export const colorTokens = {
     error: '#B42318',
     info: '#1F5F99',
     student: '#6B4FA0',
+    field: '#F2F5F4',
+    accent: '#C08A3E',
+    onAccent: '#1F1608',
+    overPhoto: '#FFFFFF',
   },
   dark: {
     primary: '#4FB3A6',
@@ -46,7 +54,20 @@ export const colorTokens = {
     error: '#F07A6E',
     info: '#7FB2E5',
     student: '#B59BE0',
+    field: '#1B2422',
+    accent: '#E0B36A',
+    onAccent: '#1F1608',
+    overPhoto: '#FFFFFF',
   },
 } as const;
 
 export type ColorScheme = keyof typeof colorTokens;
+
+/** Radii (DESIGN-SYSTEM.md v2): cards and panels 16, inner elements, inputs and buttons 12, small tags 8. */
+export const radius = { card: 16, inner: 12, control: 12, tag: 8 } as const;
+
+/** The one soft card shadow and its hover state (v2, "Cards and elevation"). */
+export const cardShadow = {
+  rest: '0 1px 2px rgba(16, 24, 22, 0.06), 0 4px 16px rgba(16, 24, 22, 0.06)',
+  hover: '0 2px 4px rgba(16, 24, 22, 0.08), 0 12px 28px rgba(16, 24, 22, 0.12)',
+} as const;

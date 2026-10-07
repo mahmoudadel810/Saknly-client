@@ -59,6 +59,8 @@ module.exports = {
         error: token("error"),
         info: token("info"),
         student: token("student"),
+        field: token("field"),
+        accent: { DEFAULT: token("accent"), on: token("on-accent") },
         danger: legacy.danger,
         dark: legacy.dark,
       },
@@ -71,6 +73,8 @@ module.exports = {
         128: "32rem",
       },
       borderRadius: {
+        card: "var(--r-card)",
+        inner: "var(--r-inner)",
         "4xl": "2rem",
       },
       animation: {
