@@ -59,7 +59,7 @@ const FAQS: Faq[] = [
 
 export default function FaqPage() {
   return (
-    <ContentPage title="الأسئلة الشائعة" description="إجابات مختصرة عن البحث والنشر وحسابك على سكنلي.">
+    <ContentPage title="الأسئلة الشائعة" description="إجابات مختصرة عن البحث والنشر وحسابك على سكنلي." panel={false}>
       <FaqAccordion items={FAQS} />
       <Box
         sx={{
@@ -67,8 +67,9 @@ export default function FaqPage() {
           p: { xs: 2, md: 3 },
           border: 1,
           borderColor: "divider",
-          borderRadius: "10px",
-          bgcolor: "var(--c-surface-2)",
+          borderRadius: "var(--r-card)",
+          bgcolor: "background.paper",
+          boxShadow: "var(--c-card-shadow)",
           display: "flex",
           flexWrap: "wrap",
           alignItems: "center",

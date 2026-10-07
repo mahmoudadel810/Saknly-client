@@ -19,7 +19,14 @@ export default function FaqAccordion({ items }: { items: Faq[] }) {
 
   return (
     <Box
-      sx={{ border: 1, borderColor: "divider", borderRadius: "10px", overflow: "hidden", bgcolor: "background.paper" }}
+      sx={{
+        border: 1,
+        borderColor: "divider",
+        borderRadius: "var(--r-card)",
+        overflow: "hidden",
+        bgcolor: "background.paper",
+        boxShadow: "var(--c-card-shadow)",
+      }}
     >
       {items.map((item, index) => (
         <Accordion
@@ -41,7 +48,15 @@ export default function FaqAccordion({ items }: { items: Faq[] }) {
             expandIcon={<ExpandMoreOutlined />}
             id={`faq-${index}-question`}
             aria-controls={`faq-${index}-answer`}
-            sx={{ px: { xs: 2, md: 3 }, minHeight: 56, "& .MuiAccordionSummary-content": { my: 1.5 } }}
+            sx={{
+              px: { xs: 2, md: 3 },
+              minHeight: 60,
+              transition: "background-color 150ms ease-out",
+              "&:hover": { bgcolor: "var(--c-surface-2)" },
+              "& .MuiAccordionSummary-content": { my: 1.75 },
+              "& .MuiAccordionSummary-expandIconWrapper": { color: "text.secondary" },
+              "& .MuiAccordionSummary-expandIconWrapper.Mui-expanded": { color: "primary.main" },
+            }}
           >
             <Typography component="span" sx={{ fontWeight: 600, fontSize: "1rem" }}>
               {item.question}

@@ -11,7 +11,7 @@ import { useAuth } from "../context/AuthContext";
 import { useWishlist } from "../context/WishlistContext";
 import { useToast } from "@/shared/provider/ToastProvider";
 import ConfirmDialog from "@/shared/components/ConfirmDialog";
-import PageHeader from "@/shared/ui/PageHeader";
+import PageBanner from "@/shared/ui/PageBanner";
 import PropertyCard, { toPropertyCardData, type ListingLike } from "@/shared/ui/PropertyCard";
 import CardGrid from "@/shared/ui/CardGrid";
 import EmptyState from "@/shared/ui/EmptyState";
@@ -102,25 +102,26 @@ export default function WishlistPage() {
 
   return (
     <main id="main">
-      <Box sx={{ maxWidth: 1240, mx: "auto", px: { xs: 2, md: 3 }, py: { xs: 3, md: 4 } }}>
-        <PageHeader
-          title="المفضلة"
-          description={busy ? undefined : count > 0 ? `${listingCount(count)} في المفضلة` : "الإعلانات التي حفظتها تظهر هنا."}
-          actions={
-            !busy && count > 0 ? (
-              <Button
-                variant="outlined"
-                color="error"
-                startIcon={<DeleteSweepOutlined aria-hidden />}
-                onClick={() => setConfirmOpen(true)}
-              >
-                إزالة الكل
-              </Button>
-            ) : undefined
-          }
-        />
-        {content}
-      </Box>
+      <PageBanner
+        title="المفضلة"
+        description={
+          busy ? undefined : count > 0 ? `${listingCount(count)} في المفضلة` : "الإعلانات التي حفظتها تظهر هنا."
+        }
+        actions={
+          !busy && count > 0 ? (
+            <Button
+              variant="outlined"
+              color="error"
+              startIcon={<DeleteSweepOutlined aria-hidden />}
+              onClick={() => setConfirmOpen(true)}
+              sx={{ bgcolor: "background.paper" }}
+            >
+              إزالة الكل
+            </Button>
+          ) : undefined
+        }
+      />
+      <Box sx={{ maxWidth: 1240, mx: "auto", px: { xs: 2, md: 3 }, py: { xs: 3, md: 4 } }}>{content}</Box>
       <ConfirmDialog
         open={confirmOpen}
         title="إزالة كل الإعلانات من المفضلة"

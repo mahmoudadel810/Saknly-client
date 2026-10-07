@@ -12,7 +12,7 @@ import HomeWorkOutlined from "@mui/icons-material/HomeWorkOutlined";
 import RateReviewOutlined from "@mui/icons-material/RateReviewOutlined";
 import SearchOffOutlined from "@mui/icons-material/SearchOffOutlined";
 import { api } from "@/shared/services/api";
-import PageHeader from "@/shared/ui/PageHeader";
+import PageBanner from "@/shared/ui/PageBanner";
 import PropertyCard, { toPropertyCardData, type ListingLike } from "@/shared/ui/PropertyCard";
 import CardGrid from "@/shared/ui/CardGrid";
 import EmptyState from "@/shared/ui/EmptyState";
@@ -89,61 +89,53 @@ function AgencyTestimonials({ agency }: { agency: Agency }) {
 function AgencyView({ agency }: { agency: Agency }) {
   const listings = Array.isArray(agency.properties) ? agency.properties.filter((p) => p && p._id) : [];
   return (
-    <Box sx={{ maxWidth: 1240, mx: "auto", px: { xs: 2, md: 3 }, py: { xs: 3, md: 4 } }}>
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "flex-start",
-          gap: { xs: 2, md: 3 },
-          p: { xs: 2, md: 3 },
-          mb: 4,
-          border: 1,
-          borderColor: "divider",
-          borderRadius: "10px",
-          bgcolor: "background.paper",
-          "& header": { mb: 0 },
-        }}
-      >
-        <AgencyLogo src={agency.logo?.url} size={80} />
-        <Box sx={{ minWidth: 0, flex: 1 }}>
-          <PageHeader
-            breadcrumbs={[{ label: "الرئيسية", href: "/" }, { label: "الشركات العقارية" }, { label: agency.name }]}
-            title={agency.name}
-            description={agency.description || undefined}
-          />
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            {listings.length > 0 ? `${listingCount(listings.length)} على سكنلي` : "لا توجد إعلانات منشورة الآن"}
+    <>
+      <PageBanner
+        media={<AgencyLogo src={agency.logo?.url} size={80} />}
+        breadcrumbs={[{ label: "الرئيسية", href: "/" }, { label: "الشركات العقارية" }, { label: agency.name }]}
+        title={agency.name}
+        description={
+          <>
+            {agency.description && (
+              <Box component="span" sx={{ display: "block" }}>
+                {agency.description}
+              </Box>
+            )}
+            <Box component="span" sx={{ display: "block", mt: agency.description ? 0.5 : 0, fontWeight: 600 }}>
+              {listings.length > 0 ? `${listingCount(listings.length)} على سكنلي` : "لا توجد إعلانات منشورة الآن"}
+            </Box>
+          </>
+        }
+      />
+      <Box sx={{ maxWidth: 1240, mx: "auto", px: { xs: 2, md: 3 }, py: { xs: 3, md: 5 } }}>
+        <Box component="section" aria-labelledby="agency-listings-title">
+          <Typography id="agency-listings-title" component="h2" variant="h5" sx={{ mb: 2 }}>
+            إعلانات الشركة
           </Typography>
+          {listings.length === 0 ? (
+            <EmptyState
+              icon={<HomeWorkOutlined />}
+              title="لا توجد إعلانات لهذه الشركة الآن"
+              description="تصفح باقي العقارات على سكنلي."
+              action={
+                <Button component={Link} href="/properties" variant="outlined">
+                  تصفح العقارات
+                </Button>
+              }
+            />
+          ) : (
+            <CardGrid>
+              {listings.map((listing, index) => {
+                const card = toPropertyCardData(listing);
+                return <PropertyCard key={card.id} property={card} priority={index < 2} />;
+              })}
+            </CardGrid>
+          )}
         </Box>
-      </Box>
 
-      <Box component="section" aria-labelledby="agency-listings-title">
-        <Typography id="agency-listings-title" component="h2" variant="h5" sx={{ mb: 2 }}>
-          إعلانات الشركة
-        </Typography>
-        {listings.length === 0 ? (
-          <EmptyState
-            icon={<HomeWorkOutlined />}
-            title="لا توجد إعلانات لهذه الشركة الآن"
-            description="تصفح باقي العقارات على سكنلي."
-            action={
-              <Button component={Link} href="/properties" variant="outlined">
-                تصفح العقارات
-              </Button>
-            }
-          />
-        ) : (
-          <CardGrid>
-            {listings.map((listing, index) => {
-              const card = toPropertyCardData(listing);
-              return <PropertyCard key={card.id} property={card} priority={index < 2} />;
-            })}
-          </CardGrid>
-        )}
+        <AgencyTestimonials agency={agency} />
       </Box>
-
-      <AgencyTestimonials agency={agency} />
-    </Box>
+    </>
   );
 }
 

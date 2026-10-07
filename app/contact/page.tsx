@@ -16,8 +16,8 @@ export const metadata: Metadata = {
 const panelSx = {
   border: 1,
   borderColor: "divider",
-  borderRadius: "10px",
-  p: { xs: 2, md: 3 },
+  borderRadius: "var(--r-card)",
+  p: { xs: 2.5, md: 4 },
 } as const;
 
 export default function ContactPage() {
@@ -28,7 +28,11 @@ export default function ContactPage() {
       description="عندك سؤال عن إعلان أو مشكلة في حسابك؟ اكتب لنا وسنرد على بريدك الإلكتروني."
     >
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <Box component="section" aria-labelledby="contact-form-title" sx={{ ...panelSx, bgcolor: "background.paper" }}>
+        <Box
+          component="section"
+          aria-labelledby="contact-form-title"
+          sx={{ ...panelSx, bgcolor: "background.paper", boxShadow: "var(--c-card-shadow)" }}
+        >
           <Typography id="contact-form-title" component="h2" variant="h5" sx={{ mb: 2.5 }}>
             أرسل رسالة
           </Typography>
@@ -38,7 +42,7 @@ export default function ContactPage() {
         <Box
           component="aside"
           aria-labelledby="contact-direct-title"
-          sx={{ ...panelSx, bgcolor: "var(--c-surface-2)", alignSelf: "start" }}
+          sx={{ ...panelSx, bgcolor: "var(--c-primary-soft)", borderColor: "transparent", alignSelf: "start" }}
         >
           <Typography id="contact-direct-title" component="h2" variant="h5" sx={{ mb: 0.5 }}>
             تواصل مباشرة
@@ -69,7 +73,20 @@ export default function ContactPage() {
 function ContactLine({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) {
   return (
     <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.5 }}>
-      <Box aria-hidden sx={{ color: "primary.main", display: "flex", mt: 0.25, "& svg": { fontSize: 20 } }}>
+      <Box
+        aria-hidden
+        sx={{
+          width: 40,
+          height: 40,
+          flexShrink: 0,
+          borderRadius: "50%",
+          display: "grid",
+          placeItems: "center",
+          color: "primary.main",
+          bgcolor: "background.paper",
+          "& svg": { fontSize: 20 },
+        }}
+      >
         {icon}
       </Box>
       <div>
