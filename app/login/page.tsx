@@ -176,7 +176,7 @@ const LoginPage = () => {
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
         console.error("Login error:", errorMsg);
-        showToast(errorMsg || "لم يتم العثور على المستخدم، أو لم تقوم بتأكيد ايميلك بعد");
+        showToast(errorMsg || "لم يتم العثور على المستخدم، أو لم تقوم بتأكيد ايميلك بعد", "error");
       } finally {
         setLoading(false); // Stop loading
       }
