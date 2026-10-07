@@ -1,407 +1,295 @@
-// app/reset/page.tsx
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import dynamic from 'next/dynamic';
-import { useFormik } from 'formik';
-import * as yup from 'yup';
-import { useToast } from '@/shared/provider/ToastProvider';
-import { useRouter } from 'next/navigation';
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useFormik } from "formik";
+import * as yup from "yup";
+import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
+import MuiLink from "@mui/material/Link";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import { useToast } from "@/shared/provider/ToastProvider";
+import { API_URL } from "@/shared/utils/auth";
+import { emailSchema, passwordSchema, RESET_EMAIL_KEY } from "@/shared/utils/authValidation";
+import AuthLayout, { AuthForm } from "@/shared/ui/auth/AuthLayout";
+import PasswordField from "@/shared/ui/auth/PasswordField";
+import PasswordRules from "@/shared/ui/auth/PasswordRules";
+import { resetErrorMessage } from "@/shared/ui/auth/authApi";
 
-// Import non-MUI components directly
-import { Visibility, VisibilityOff } from '@mui/icons-material';
-import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
-import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
-import VpnKeyOutlinedIcon from '@mui/icons-material/VpnKeyOutlined';
-import { textFieldStyles } from '@/shared/styles/textFieldStyle';
-import { API_URL } from '@/shared/utils/auth';
-import { passwordSchema, RESET_EMAIL_KEY } from '@/shared/utils/authValidation';
+const emailStepSchema = yup.object({ email: emailSchema });
 
-// Dynamically import MUI components with SSR disabled
-const Box = dynamic(() => import('@mui/material/Box'), { ssr: false });
-const TextField = dynamic(() => import('@mui/material/TextField'), { ssr: false });
-const Button = dynamic(() => import('@mui/material/Button'), { ssr: false });
-const Typography = dynamic(() => import('@mui/material/Typography'), { ssr: false });
-const InputAdornment = dynamic(() => import('@mui/material/InputAdornment'), { ssr: false });
-const IconButton = dynamic(() => import('@mui/material/IconButton'), { ssr: false });
-const Paper = dynamic(() => import('@mui/material/Paper'), { ssr: false });
-const Container = dynamic(() => import('@mui/material/Container'), { ssr: false });
-const CircularProgress = dynamic(() => import('@mui/material/CircularProgress'), { ssr: false });
-
-// Step 1: Email validation schema
-const emailValidationSchema = yup.object({
-  email: yup
-    .string()
-    .email('البريد الإلكتروني غير صحيح')
-    .required('البريد الإلكتروني مطلوب'),
-});
-
-// Step 2: Reset password validation schema
-const resetPasswordValidationSchema = yup.object({
-  code: yup
-    .string()
-    .required('كود التحقق مطلوب'),
+const resetStepSchema = yup.object({
+  code: yup.string().trim().required("اكتب الرمز الذي وصلك على البريد."),
   newPassword: passwordSchema,
   confirmNewPassword: yup
     .string()
-    .oneOf([yup.ref('newPassword')], 'كلمة المرور غير متطابقة')
-    .required('تأكيد كلمة المرور مطلوب'),
+    .required("أعد كتابة كلمة المرور الجديدة.")
+    .oneOf([yup.ref("newPassword")], "كلمتا المرور غير متطابقتين."),
 });
 
-// Create a client-side only component
-const ResetPasswordPage = () => {
-  const [currentStep, setCurrentStep] = useState(1); // 1: Email step, 2: Reset password step
-  const [userEmail, setUserEmail] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { showToast } = useToast();
+/** POST /auth/forgot-password. The server answers 200 whether or not the account exists; 503 if mail failed. */
+async function requestCode(email: string): Promise<"sent" | "mail-failed" | "failed"> {
+  try {
+    const res = await fetch(`${API_URL}/auth/forgot-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    if (res.ok) return "sent";
+    return res.status === 503 ? "mail-failed" : "failed";
+  } catch {
+    return "failed";
+  }
+}
+
+const REQUEST_ERRORS = {
+  "mail-failed": "لم نتمكن من إرسال الرمز الآن. حاول مرة أخرى بعد قليل.",
+  failed: "تعذّر إرسال الرمز. تحقق من البريد ومن اتصالك ثم حاول مرة أخرى.",
+} as const;
+
+/** Step 1 asks for the email, step 2 for the emailed code and the new password. */
+export default function ResetPasswordPage() {
   const router = useRouter();
+  const { showToast } = useToast();
+  const [email, setEmail] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [resent, setResent] = useState<"idle" | "sending" | "sent">("idle");
 
-  // Step 1: Email form
-  const emailFormik = useFormik({
-    initialValues: {
-      email: '',
-    },
-    validationSchema: emailValidationSchema,
-    validateOnBlur: false,
-    validateOnChange: true,
+  const emailForm = useFormik({
+    initialValues: { email: "" },
+    validationSchema: emailStepSchema,
+    validateOnChange: false,
     onSubmit: async (values) => {
-      try {
-        setIsSubmitting(true);
-
-        const res = await fetch(`${API_URL}/auth/forgot-password`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: values.email }),
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-          throw new Error(data.message || 'البريد الإلكتروني غير موجود');
-        }
-
-        setUserEmail(values.email);
-        try {
-          sessionStorage.setItem(RESET_EMAIL_KEY, values.email);
-        } catch {
-          // sessionStorage unavailable; the email stays in component state
-        }
-        showToast('تم إرسال كود التحقق إلى بريدك الإلكتروني', 'success');
-        setCurrentStep(2); // Move to reset password step
-      } catch (err: any) {
-        showToast(err.message || 'البريد الإلكتروني غير موجود', 'error');
-      } finally {
-        setIsSubmitting(false);
+      setError(null);
+      const result = await requestCode(values.email);
+      if (result !== "sent") {
+        setError(REQUEST_ERRORS[result]);
+        return;
       }
+      try {
+        sessionStorage.setItem(RESET_EMAIL_KEY, values.email);
+      } catch {
+        // sessionStorage unavailable; the email stays in component state.
+      }
+      setEmail(values.email);
     },
   });
 
-  // Step 2: Reset password form
-  const resetPasswordFormik = useFormik({
-    initialValues: {
-      code: '',
-      newPassword: '',
-      confirmNewPassword: '',
-    },
-    validationSchema: resetPasswordValidationSchema,
-    validateOnBlur: false,
-    validateOnChange: true,
+  const resetForm = useFormik({
+    initialValues: { code: "", newPassword: "", confirmNewPassword: "" },
+    validationSchema: resetStepSchema,
+    validateOnChange: false,
     onSubmit: async (values) => {
+      setError(null);
       try {
-        setIsSubmitting(true);
-
         const res = await fetch(`${API_URL}/auth/reset-password`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: userEmail,
-            code: values.code,
-            newPassword: values.newPassword,
-            confirmNewPassword: values.confirmNewPassword,
-          }),
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, ...values, code: values.code.trim() }),
         });
-
         const data = await res.json().catch(() => ({}));
-
         if (!res.ok) {
-          throw new Error(data.message || 'هناك خطأ في الكود أو كلمة المرور');
+          setError(resetErrorMessage(res.status, typeof data?.message === "string" ? data.message : ""));
+          return;
         }
-
         try {
           sessionStorage.removeItem(RESET_EMAIL_KEY);
         } catch {
           // ignore
         }
-        showToast(data.message || 'تم إعادة تعيين كلمة المرور بنجاح', 'success');
-        router.push('/login');
-      } catch (err: any) {
-        showToast(err.message || 'هناك خطأ في الكود أو كلمة المرور', 'error');
-      } finally {
-        setIsSubmitting(false);
+        showToast("تم تغيير كلمة المرور. سجّل الدخول بكلمة المرور الجديدة.", "success");
+        router.push(email ? `/login?email=${encodeURIComponent(email)}` : "/login");
+      } catch {
+        setError("تعذّر الاتصال بالخادم. تحقق من اتصالك ثم حاول مرة أخرى.");
       }
     },
   });
 
-  const PRIMARY = "var(--primary-600)";
-  const ERROR = "var(--error-500)";
-  const WHITE = "var(--text-white)";
+  const resend = async () => {
+    if (!email) return;
+    setResent("sending");
+    setError(null);
+    const result = await requestCode(email);
+    if (result === "sent") setResent("sent");
+    else {
+      setResent("idle");
+      setError(REQUEST_ERRORS[result]);
+    }
+  };
+
+  const footer = (
+    <MuiLink component={Link} href="/login" sx={{ fontWeight: 600 }}>
+      العودة إلى تسجيل الدخول
+    </MuiLink>
+  );
+
+  if (!email) {
+    const emailError = emailForm.touched.email ? emailForm.errors.email : undefined;
+    return (
+      <AuthLayout
+        title="استعادة كلمة المرور"
+        description="اكتب بريدك الإلكتروني وسنرسل إليك رمزًا لتعيين كلمة مرور جديدة."
+        footer={footer}
+      >
+        <Typography variant="caption" color="text.secondary" component="p" sx={{ mb: 2 }}>
+          الخطوة 1 من 2
+        </Typography>
+        <div aria-live="polite">
+          {error && (
+            <Alert severity="error" variant="outlined" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
+        </div>
+        <AuthForm onSubmit={emailForm.handleSubmit}>
+          <TextField
+            id="email"
+            name="email"
+            label="البريد الإلكتروني"
+            type="email"
+            autoComplete="email"
+            required
+            fullWidth
+            value={emailForm.values.email}
+            onChange={emailForm.handleChange}
+            onBlur={emailForm.handleBlur}
+            error={Boolean(emailError)}
+            helperText={emailError}
+            slotProps={{ htmlInput: { dir: "ltr" } }}
+          />
+          <Button
+            type="submit"
+            variant="contained"
+            fullWidth
+            disabled={emailForm.isSubmitting}
+            aria-busy={emailForm.isSubmitting || undefined}
+            startIcon={emailForm.isSubmitting ? <CircularProgress size={16} color="inherit" aria-hidden /> : undefined}
+            sx={{ height: 44 }}
+          >
+            {emailForm.isSubmitting ? "جارٍ الإرسال…" : "إرسال الرمز"}
+          </Button>
+          <MuiLink component={Link} href="/newPassword" variant="body2" sx={{ alignSelf: "center" }}>
+            لديك رمز بالفعل؟
+          </MuiLink>
+        </AuthForm>
+      </AuthLayout>
+    );
+  }
+
+  const fieldError = (name: "code" | "newPassword" | "confirmNewPassword") =>
+    resetForm.touched[name] && resetForm.errors[name] ? resetForm.errors[name] : undefined;
 
   return (
-    <Container maxWidth="sm" sx={{ mt: 8, mb: 8 }}>
-      <Paper elevation={3} sx={{ p: 4, borderRadius: 5 }}>
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            mb: 3
-          }}>
-          <Box
-            sx={{
-              bgcolor: "primary.main",
-              borderRadius: "50%",
-              p: 1,
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              mb: 2
-            }}>
-            {currentStep === 1 ? (
-              <EmailOutlinedIcon sx={{ color: "white" }} />
-            ) : (
-              <LockOutlinedIcon sx={{ color: "white" }} />
-            )}
+    <AuthLayout
+      title="تعيين كلمة مرور جديدة"
+      description={
+        <>
+          إن كان لهذا البريد حساب، فقد أرسلنا رمزًا إلى{" "}
+          <Box component="strong" dir="ltr" sx={{ display: "inline-block" }}>
+            {email}
           </Box>
-          <Typography variant="h5" fontWeight="bold">
-            {" "}
-            {currentStep === 1
-              ? "نسيت كلمة المرور"
-              : "إعادة تعيين كلمة المرور"}
-          </Typography>
-
-          {currentStep === 2 && (
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{ mt: 1, textAlign: "center" }}>
-              تم إرسال كود التحقق إلى {userEmail}
-            </Typography>
-          )}
-        </Box>
-
-        {/* Step 1: Email Form */}
-        {currentStep === 1 && (
-          <form onSubmit={emailFormik.handleSubmit}>
-            <TextField
-              fullWidth
-              id="email"
-              name="email"
-              label="البريد الإلكتروني"
-              value={emailFormik.values.email}
-              onChange={emailFormik.handleChange}
-              onBlur={emailFormik.handleBlur}
-              error={Boolean(emailFormik.errors.email && emailFormik.touched.email)}
-              helperText={emailFormik.touched.email && emailFormik.errors.email}
-
-              margin="normal"
-              variant="outlined"
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <EmailOutlinedIcon sx={{ color: PRIMARY, fontSize: 26 }} />
-                  </InputAdornment>
-                )
-              }}
-              FormHelperTextProps={{
-                sx: {
-                  textAlign: "start",
-                  color: ERROR,
-                  fontWeight: 600,
-                  fontSize: "1em",
-                },
-              }}
-              sx={textFieldStyles}
-            />
-
-            <Button
-              fullWidth
-              variant="contained"
-              type="submit"
-              disabled={isSubmitting}
-              sx={{ mt: 3, mb: 2, py: 1.5 ,backgroundColor: PRIMARY,
-                color: WHITE}}>
-              {isSubmitting ? (
-                <CircularProgress size={24} color="inherit" />
-              ) : (
-                "إرسال كود التحقق"
+          .
+        </>
+      }
+      footer={footer}
+    >
+      <Typography variant="caption" color="text.secondary" component="p" sx={{ mb: 2 }}>
+        الخطوة 2 من 2
+      </Typography>
+      <div aria-live="polite">
+        {error && (
+          <Alert severity="error" variant="outlined" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+        {resent === "sent" && !error && (
+          <Alert severity="success" variant="outlined" sx={{ mb: 2 }}>
+            أرسلنا رمزًا جديدًا. استخدم آخر رمز وصلك.
+          </Alert>
+        )}
+      </div>
+      <AuthForm onSubmit={resetForm.handleSubmit}>
+        <TextField
+          id="code"
+          name="code"
+          label="رمز التحقق"
+          autoComplete="one-time-code"
+          required
+          fullWidth
+          value={resetForm.values.code}
+          onChange={resetForm.handleChange}
+          onBlur={resetForm.handleBlur}
+          error={Boolean(fieldError("code"))}
+          helperText={fieldError("code") ?? "تجده في الرسالة التي أرسلناها. افحص مجلد الرسائل غير المرغوب فيها."}
+          slotProps={{ htmlInput: { dir: "ltr" } }}
+        />
+        <PasswordField
+          id="newPassword"
+          name="newPassword"
+          label="كلمة المرور الجديدة"
+          autoComplete="new-password"
+          required
+          value={resetForm.values.newPassword}
+          onChange={resetForm.handleChange}
+          onBlur={resetForm.handleBlur}
+          error={Boolean(fieldError("newPassword"))}
+          helperText={
+            <>
+              <PasswordRules id="new-password-rules" value={resetForm.values.newPassword} />
+              {fieldError("newPassword") && (
+                <Box component="span" sx={{ display: "block", mt: 0.75 }}>
+                  {fieldError("newPassword")}
+                </Box>
               )}
-            </Button>
-          </form>
-        )}
-
-        {/* Step 2: Reset Password Form */}
-        {currentStep === 2 && (
-          <form onSubmit={resetPasswordFormik.handleSubmit}>
-            <TextField
-              fullWidth
-              id="code"
-              name="code"
-              label="كود التحقق"
-              value={resetPasswordFormik.values.code}
-              onChange={resetPasswordFormik.handleChange}
-              error={Boolean(resetPasswordFormik.errors.code && resetPasswordFormik.touched.code)}
-              helperText={resetPasswordFormik.touched.code && resetPasswordFormik.errors.code}
-              margin="normal"
-              variant="outlined"
-              // placeholder="أدخل كود التحقق المرسل إلى بريدك الإلكتروني"
-              InputProps={{
-                sx: {
-                  paddingRight: 0,
-                },
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <VpnKeyOutlinedIcon sx={{ color: PRIMARY, fontSize: 26 }} />
-                  </InputAdornment>
-                )
-              }}
-              FormHelperTextProps={{
-                sx: {
-                  textAlign: "start",
-                  color: ERROR,
-                  fontWeight: 600,
-                  fontSize: "1em",
-                },
-              }}
-              sx={textFieldStyles}
-            />
-
-            <TextField
-              fullWidth
-              id="newPassword"
-              name="newPassword"
-              label="كلمة المرور الجديدة"
-              type={showPassword ? "text" : "password"}
-              value={resetPasswordFormik.values.newPassword}
-              onChange={resetPasswordFormik.handleChange}
-              error={
-                Boolean(resetPasswordFormik.errors.newPassword && resetPasswordFormik.touched.newPassword)
-              }
-              helperText={
-                resetPasswordFormik.touched.newPassword && resetPasswordFormik.errors.newPassword
-              }
-              margin="normal"
-              variant="outlined"
-              InputProps={{
-                sx: {
-                  padding: 0,
-                },
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <LockOutlinedIcon sx={{ color: PRIMARY, fontSize: 26 }} />
-                  </InputAdornment>
-                ),
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      aria-label="toggle password visibility"
-                      onClick={() => setShowPassword(!showPassword)}
-                      edge="end">
-                      {showPassword ? <VisibilityOff /> : <Visibility />}
-                    </IconButton>
-                  </InputAdornment>
-                )
-              }}
-              FormHelperTextProps={{
-                sx: {
-                  textAlign: "start",
-                  color: ERROR,
-                  fontWeight: 600,
-                  fontSize: "1em",
-                },
-              }}
-              sx={textFieldStyles}
-            />
-
-            <TextField
-              fullWidth
-              id="confirmNewPassword"
-              name="confirmNewPassword"
-              label="تأكيد كلمة المرور الجديدة"
-              type={showConfirmPassword ? "text" : "password"}
-              value={resetPasswordFormik.values.confirmNewPassword}
-              onChange={resetPasswordFormik.handleChange}
-              error={
-                Boolean(resetPasswordFormik.errors.confirmNewPassword && resetPasswordFormik.touched.confirmNewPassword)
-              }
-              helperText={resetPasswordFormik.touched.confirmNewPassword && resetPasswordFormik.errors.confirmNewPassword
-              }
-              margin="normal"
-              variant="outlined"
-              InputProps={{
-                sx: {
-                  padding: 0,
-                },
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <LockOutlinedIcon sx={{ color: PRIMARY, fontSize: 26 }} />
-                  </InputAdornment>
-                ),
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      aria-label="toggle password visibility"
-                      onClick={() =>
-                        setShowConfirmPassword(!showConfirmPassword)
-                      }
-                      edge="end">
-                      {showConfirmPassword ? (
-                        <VisibilityOff />
-                      ) : (
-                        <Visibility />
-                      )}
-                    </IconButton>
-                  </InputAdornment>
-                )
-              }}
-              FormHelperTextProps={{
-                sx: {
-                  textAlign: "start",
-                  color: ERROR,
-                  fontWeight: 600,
-                  fontSize: "1em",
-                },
-              }}
-              sx={textFieldStyles}
-            />
-
-            <Box sx={{ display: "flex", gap: 2, mt: 3 }}>
-              <Button
-                variant="outlined"
-                color="primary"
-                onClick={() => setCurrentStep(1)}
-                sx={{ flex: 1, py: 1.5 }}>
-                رجوع
-              </Button>
-              <Button
-                variant="contained"
-                type="submit"
-                disabled={isSubmitting}
-                sx={{ flex: 1, py: 1.5 , backgroundColor: PRIMARY,
-                color: WHITE,}}>
-                {isSubmitting ? (
-                  <CircularProgress size={24} color="inherit" />
-                ) : (
-                  "إعادة تعيين كلمة المرور"
-                )}
-              </Button>
-            </Box>
-          </form>
-        )}
-      </Paper>
-    </Container>
+            </>
+          }
+          slotProps={{ formHelperText: { component: "div" } }}
+        />
+        <PasswordField
+          id="confirmNewPassword"
+          name="confirmNewPassword"
+          label="تأكيد كلمة المرور الجديدة"
+          autoComplete="new-password"
+          required
+          value={resetForm.values.confirmNewPassword}
+          onChange={resetForm.handleChange}
+          onBlur={resetForm.handleBlur}
+          error={Boolean(fieldError("confirmNewPassword"))}
+          helperText={fieldError("confirmNewPassword")}
+        />
+        <Button
+          type="submit"
+          variant="contained"
+          fullWidth
+          disabled={resetForm.isSubmitting}
+          aria-busy={resetForm.isSubmitting || undefined}
+          startIcon={resetForm.isSubmitting ? <CircularProgress size={16} color="inherit" aria-hidden /> : undefined}
+          sx={{ height: 44 }}
+        >
+          {resetForm.isSubmitting ? "جارٍ الحفظ…" : "حفظ كلمة المرور"}
+        </Button>
+        <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 1 }}>
+          <Button size="small" onClick={resend} disabled={resent === "sending"} sx={{ px: 0 }}>
+            {resent === "sending" ? "جارٍ الإرسال…" : "أعد إرسال الرمز"}
+          </Button>
+          <Button
+            size="small"
+            color="inherit"
+            onClick={() => {
+              setEmail(null);
+              setError(null);
+              setResent("idle");
+            }}
+            sx={{ px: 0 }}
+          >
+            تغيير البريد الإلكتروني
+          </Button>
+        </Box>
+      </AuthForm>
+    </AuthLayout>
   );
-};
-
-export default ResetPasswordPage;
+}

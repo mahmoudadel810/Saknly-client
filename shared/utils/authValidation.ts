@@ -7,22 +7,22 @@ export const PHONE_PATTERN = /^01\d{9}$/;
 
 export const passwordSchema = yup
   .string()
-  .min(5, "كلمة المرور يجب أن تتكون من 5 أحرف على الأقل")
-  .max(30, "كلمة المرور يجب ألا تزيد عن 30 حرفًا")
+  .min(5, "كلمة المرور من 5 إلى 30 حرفًا.")
+  .max(30, "كلمة المرور من 5 إلى 30 حرفًا.")
   .matches(
     PASSWORD_PATTERN,
-    "يجب أن تحتوي كلمة المرور على حرف كبير ورقم ورمز واحد على الأقل (مثل !@#$%)"
+    "أضف حرفًا إنجليزيًا كبيرًا ورقمًا ورمزًا (مثل ! أو @) على الأقل."
   )
-  .required("كلمة المرور مطلوبة");
+  .required("اكتب كلمة المرور.");
 
 export const phoneSchema = yup
   .string()
-  .matches(PHONE_PATTERN, "الرجاء إدخال رقم هاتف صحيح مكون من 11 رقم يبدأ بـ 01")
-  .required("رقم الهاتف مطلوب");
+  .matches(PHONE_PATTERN, "اكتب رقم هاتف من 11 رقمًا يبدأ بـ 01.")
+  .required("اكتب رقم الهاتف.");
 
 export const emailSchema = yup
   .string()
-  .email("صيغة البريد الإلكتروني غير صحيحة")
-  .required("البريد الإلكتروني مطلوب");
+  .email("البريد الإلكتروني غير صحيح. مثال: name@example.com")
+  .required("اكتب بريدك الإلكتروني.");
 
 export const RESET_EMAIL_KEY = "resetPasswordEmail";

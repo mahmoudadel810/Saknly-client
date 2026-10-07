@@ -1,219 +1,168 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import {
-    Box,
-    TextField,
-    Button,
-    Typography,
-    InputAdornment,
-    IconButton,
-    Paper,
-    Container,
-} from '@mui/material';
-import { useFormik } from 'formik';
-import * as yup from 'yup';
-import { useToast } from '@/shared/provider/ToastProvider';
-import { useRouter } from 'next/navigation';
-import { API_URL } from '@/shared/utils/auth';
-import { emailSchema, passwordSchema, RESET_EMAIL_KEY } from '@/shared/utils/authValidation';
-import LockOutlined from '@mui/icons-material/LockOutlined';
-import VisibilityOffOutlined from '@mui/icons-material/VisibilityOffOutlined';
-import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined';
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useFormik } from "formik";
+import * as yup from "yup";
+import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
+import MuiLink from "@mui/material/Link";
+import TextField from "@mui/material/TextField";
+import { useToast } from "@/shared/provider/ToastProvider";
+import { API_URL } from "@/shared/utils/auth";
+import { emailSchema, passwordSchema, RESET_EMAIL_KEY } from "@/shared/utils/authValidation";
+import AuthLayout, { AuthForm } from "@/shared/ui/auth/AuthLayout";
+import PasswordField from "@/shared/ui/auth/PasswordField";
+import PasswordRules from "@/shared/ui/auth/PasswordRules";
+import { resetErrorMessage } from "@/shared/ui/auth/authApi";
 
 const validationSchema = yup.object({
-    email: emailSchema,
-    code: yup
-        .string()
-        .required('كود التحقق مطلوب'),
-    newPassword: passwordSchema,
-    confirmNewPassword: yup
-        .string()
-        .oneOf([yup.ref('newPassword')], 'كلمة المرور غير متطابقة')
-        .required('تأكيد كلمة المرور مطلوب'),
+  email: emailSchema,
+  code: yup.string().trim().required("اكتب الرمز الذي وصلك على البريد."),
+  newPassword: passwordSchema,
+  confirmNewPassword: yup
+    .string()
+    .required("أعد كتابة كلمة المرور الجديدة.")
+    .oneOf([yup.ref("newPassword")], "كلمتا المرور غير متطابقتين."),
 });
 
-export default function ResetPasswordFormPage() {
-    const [showPassword, setShowPassword] = useState(false);
-    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const { showToast } = useToast();
-    const router = useRouter();
+type Field = "email" | "code" | "newPassword" | "confirmNewPassword";
 
-    const formik = useFormik({
-        initialValues: {
-            email: '',
-            code: '',
-            newPassword: '',
-            confirmNewPassword: '',
-        },
-        validationSchema: validationSchema,
-        validateOnChange: true,
-        validateOnBlur: true,
-        onSubmit: async (values) => {
-            try {
-                setIsSubmitting(true);
-                
-                // Make API request with the code entered by the user directly in the form
-                const res = await fetch(`${API_URL}/auth/reset-password`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        email: values.email,
-                        code: values.code,
-                        newPassword: values.newPassword,
-                        confirmNewPassword: values.confirmNewPassword 
-                    }),
-                });
+/** For users who already have a reset code: email, code and the new password on one form. */
+export default function NewPasswordPage() {
+  const router = useRouter();
+  const { showToast } = useToast();
+  const [error, setError] = useState<string | null>(null);
 
-                const data = await res.json().catch(() => ({}));
-
-                if (!res.ok) throw new Error(data.message || "هناك خطأ فى الكود أو كلمة المرور الذى تم ادخالهم");
-
-                try {
-                    sessionStorage.removeItem(RESET_EMAIL_KEY);
-                } catch {
-                    // ignore
-                }
-                showToast('تم تغيير كلمة المرور بنجاح', 'success');
-                router.push('/login');
-            } catch (err: any) {
-                showToast(err.message || "هناك خطأ فى الكود أو كلمة المرور الذى تم ادخالهم", 'error');
-            } finally {
-                setIsSubmitting(false);
-            }
-        },
-    });
-
-    // Carry the email over from the forgot-password step (?email=... or sessionStorage).
-    useEffect(() => {
-        let email = new URLSearchParams(window.location.search).get('email') || '';
-        if (!email) {
-            try {
-                email = sessionStorage.getItem(RESET_EMAIL_KEY) || '';
-            } catch {
-                email = '';
-            }
+  const formik = useFormik({
+    initialValues: { email: "", code: "", newPassword: "", confirmNewPassword: "" },
+    validationSchema,
+    validateOnChange: false,
+    onSubmit: async (values) => {
+      setError(null);
+      try {
+        const res = await fetch(`${API_URL}/auth/reset-password`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...values, code: values.code.trim() }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setError(resetErrorMessage(res.status, typeof data?.message === "string" ? data.message : ""));
+          return;
         }
-        if (email) formik.setFieldValue('email', email, false);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+        try {
+          sessionStorage.removeItem(RESET_EMAIL_KEY);
+        } catch {
+          // ignore
+        }
+        showToast("تم تغيير كلمة المرور. سجّل الدخول بكلمة المرور الجديدة.", "success");
+        router.push(`/login?email=${encodeURIComponent(values.email)}`);
+      } catch {
+        setError("تعذّر الاتصال بالخادم. تحقق من اتصالك ثم حاول مرة أخرى.");
+      }
+    },
+  });
 
-    return (
-        <Container maxWidth="sm" sx={{ mt: 8 }}>
-            <Paper elevation={3} sx={{ p: 4, borderRadius: 2 }}>
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
-                    <Box sx={{ 
-                        bgcolor: 'primary.main', 
-                        borderRadius: '50%', 
-                        p: 1, 
-                        display: 'flex', 
-                        justifyContent: 'center', 
-                        alignItems: 'center',
-                        mb: 2
-                    }}>
-                        <LockOutlined sx={{ fontSize: 24 }} style={{ color: 'white' }} />
-                    </Box>
-                    <Typography component="h1" variant="h5" fontWeight="bold">
-                        إعادة تعيين كلمة المرور
-                    </Typography>
+  // Carry the email over from the forgot-password step (?email=… or sessionStorage).
+  useEffect(() => {
+    let email = new URLSearchParams(window.location.search).get("email") || "";
+    if (!email) {
+      try {
+        email = sessionStorage.getItem(RESET_EMAIL_KEY) || "";
+      } catch {
+        email = "";
+      }
+    }
+    if (email) formik.setFieldValue("email", email, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const fieldError = (name: Field) => (formik.touched[name] && formik.errors[name] ? formik.errors[name] : undefined);
+  const field = (name: Field) => ({
+    id: name,
+    name,
+    value: formik.values[name],
+    onChange: formik.handleChange,
+    onBlur: formik.handleBlur,
+    error: Boolean(fieldError(name)),
+    required: true,
+    fullWidth: true,
+  });
+
+  return (
+    <AuthLayout
+      title="تعيين كلمة مرور جديدة"
+      description="اكتب بريدك والرمز الذي وصلك، ثم اختر كلمة مرور جديدة."
+      footer={
+        <>
+          لم يصلك رمز؟{" "}
+          <MuiLink component={Link} href="/resetPassword" sx={{ fontWeight: 600 }}>
+            اطلب رمزًا
+          </MuiLink>
+        </>
+      }
+    >
+      <div aria-live="polite">
+        {error && (
+          <Alert severity="error" variant="outlined" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+      </div>
+      <AuthForm onSubmit={formik.handleSubmit}>
+        <TextField
+          {...field("email")}
+          label="البريد الإلكتروني"
+          type="email"
+          autoComplete="email"
+          helperText={fieldError("email")}
+          slotProps={{ htmlInput: { dir: "ltr" } }}
+        />
+        <TextField
+          {...field("code")}
+          label="رمز التحقق"
+          autoComplete="one-time-code"
+          helperText={fieldError("code")}
+          slotProps={{ htmlInput: { dir: "ltr" } }}
+        />
+        <PasswordField
+          {...field("newPassword")}
+          label="كلمة المرور الجديدة"
+          autoComplete="new-password"
+          helperText={
+            <>
+              <PasswordRules id="new-password-rules" value={formik.values.newPassword} />
+              {fieldError("newPassword") && (
+                <Box component="span" sx={{ display: "block", mt: 0.75 }}>
+                  {fieldError("newPassword")}
                 </Box>
-
-                <form onSubmit={formik.handleSubmit}>
-                    <TextField
-                        fullWidth
-                        id="email"
-                        name="email"
-                        label="البريد الإلكتروني"
-                        type="email"
-                        value={formik.values.email}
-                        onChange={formik.handleChange}
-                        error={formik.touched.email && Boolean(formik.errors.email)}
-                        helperText={formik.touched.email && formik.errors.email}
-                        margin="normal"
-                        variant="outlined"
-                    />
-
-                    <TextField
-                        fullWidth
-                        id="code"
-                        name="code"
-                        label="كود التحقق"
-                        value={formik.values.code}
-                        onChange={formik.handleChange}
-                        error={formik.touched.code && Boolean(formik.errors.code)}
-                        helperText={formik.touched.code && formik.errors.code}
-                        margin="normal"
-                        variant="outlined"
-                        placeholder="أدخل كود التحقق المرسل إلى بريدك الإلكتروني"
-                    />
-
-                    <TextField
-                        fullWidth
-                        id="newPassword"
-                        name="newPassword"
-                        label="كلمة المرور الجديدة"
-                        type={showPassword ? 'text' : 'password'}
-                        value={formik.values.newPassword}
-                        onChange={formik.handleChange}
-                        error={formik.touched.newPassword && Boolean(formik.errors.newPassword)}
-                        helperText={formik.touched.newPassword && formik.errors.newPassword}
-                        margin="normal"
-                        variant="outlined"
-                        InputProps={{
-                            endAdornment: (
-                                <InputAdornment position="end">
-                                    <IconButton
-                                        aria-label="toggle password visibility"
-                                        onClick={() => setShowPassword(!showPassword)}
-                                        edge="end"
-                                    >
-                                        {showPassword ? <VisibilityOffOutlined sx={{ fontSize: 20 }} /> : <VisibilityOutlined sx={{ fontSize: 20 }} />}
-                                    </IconButton>
-                                </InputAdornment>
-                            ),
-                        }}
-                    />
-
-                    <TextField
-                        fullWidth
-                        id="confirmNewPassword"
-                        name="confirmNewPassword"
-                        label="تأكيد كلمة المرور الجديدة"
-                        type={showConfirmPassword ? 'text' : 'password'}
-                        value={formik.values.confirmNewPassword}
-                        onChange={formik.handleChange}
-                        error={formik.touched.confirmNewPassword && Boolean(formik.errors.confirmNewPassword)}
-                        helperText={formik.touched.confirmNewPassword && formik.errors.confirmNewPassword}
-                        margin="normal"
-                        variant="outlined"
-                        InputProps={{
-                            endAdornment: (
-                                <InputAdornment position="end">
-                                    <IconButton
-                                        aria-label="toggle password visibility"
-                                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                        edge="end"
-                                    >
-                                        {showConfirmPassword ? <VisibilityOffOutlined sx={{ fontSize: 20 }} /> : <VisibilityOutlined sx={{ fontSize: 20 }} />}
-                                    </IconButton>
-                                </InputAdornment>
-                            ),
-                        }}
-                    />
-
-                    <Button
-                        fullWidth
-                        variant="contained"
-                        color="primary"
-                        type="submit"
-                        disabled={isSubmitting}
-                        sx={{ mt: 3, mb: 2, py: 1.5 }}
-                    >
-                        {isSubmitting ? 'جاري المعالجة...' : 'تغيير كلمة المرور'}
-                    </Button>
-                </form>
-            </Paper>
-        </Container>
-    );
+              )}
+            </>
+          }
+          slotProps={{ formHelperText: { component: "div" } }}
+        />
+        <PasswordField
+          {...field("confirmNewPassword")}
+          label="تأكيد كلمة المرور الجديدة"
+          autoComplete="new-password"
+          helperText={fieldError("confirmNewPassword")}
+        />
+        <Button
+          type="submit"
+          variant="contained"
+          fullWidth
+          disabled={formik.isSubmitting}
+          aria-busy={formik.isSubmitting || undefined}
+          startIcon={formik.isSubmitting ? <CircularProgress size={16} color="inherit" aria-hidden /> : undefined}
+          sx={{ height: 44 }}
+        >
+          {formik.isSubmitting ? "جارٍ الحفظ…" : "حفظ كلمة المرور"}
+        </Button>
+      </AuthForm>
+    </AuthLayout>
+  );
 }

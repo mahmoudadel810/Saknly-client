@@ -1,198 +1,153 @@
-'use client';
+"use client";
 
-import React, { useEffect, useRef, useState } from 'react';
-import { Box, Typography, Paper, CircularProgress } from '@mui/material';
-import Link from 'next/link';
-import CheckIcon from '@mui/icons-material/Check';
-import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
-import { useParams } from 'next/navigation';
-import { API_URL } from '@/shared/services/api';
+import React, { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import CheckCircleOutlined from "@mui/icons-material/CheckCircleOutlined";
+import ErrorOutlineOutlined from "@mui/icons-material/ErrorOutlineOutlined";
+import { API_URL } from "@/shared/utils/auth";
+import AuthLayout, { AuthForm } from "@/shared/ui/auth/AuthLayout";
+import LoadingState from "@/shared/ui/LoadingState";
+import { RESEND_FAILED_MESSAGE, RESEND_SENT_MESSAGE, resendConfirmation } from "@/shared/ui/auth/authApi";
 
-export default function EmailConfirmedPage() {
-    const params = useParams();
-    const token = params.token as string;
-    const [status, setStatus] = useState('loading');
-    const [message, setMessage] = useState('');
-    const hasVerified = useRef(false);
+type Status = "loading" | "confirmed" | "invalid" | "offline";
 
-    useEffect(() => {
-        if (!token || hasVerified.current) return;
-        const verifyEmail = async () => {
-            hasVerified.current = true;
-            try {
-                const response = await fetch(`${API_URL}/auth/confirm-email/${token}`, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
+/** Opens from the confirmation email: GET /auth/confirm-email/:token, then login or a new link. */
+export default function ConfirmEmailPage() {
+  const params = useParams();
+  const token = typeof params.token === "string" ? params.token : "";
+  const [status, setStatus] = useState<Status>("loading");
+  const started = useRef(false);
 
-                const data = await response.json();
-                // console.log('Email confirmation response:', data);
+  const verify = async () => {
+    setStatus("loading");
+    try {
+      const res = await fetch(`${API_URL}/auth/confirm-email/${encodeURIComponent(token)}`);
+      setStatus(res.ok ? "confirmed" : "invalid");
+    } catch {
+      setStatus("offline");
+    }
+  };
 
-                if (response.ok) {
-                    setStatus('success');
-                    setMessage('تم تأكيد بريدك الإلكتروني بنجاح! يمكنك الآن تسجيل الدخول إلى حسابك.');
-                } else {
-                    setStatus('error');
-                    setMessage('حدث خطأ أثناء تأكيد البريد الإلكتروني. الرجاء المحاولة مرة أخرى.');
-                }
-            } catch (error) {
-                setStatus('error');
-                setMessage('حدث خطأ أثناء الاتصال بالخادم. الرجاء المحاولة مرة أخرى.');
-            }
-           
-        };
+  useEffect(() => {
+    if (!token || started.current) return;
+    started.current = true;
+    verify();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
-        if (token) {
-            verifyEmail();
-        }
-    }, [token]);
-
+  if (status === "loading") {
     return (
-        <Box
-            sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                bgcolor: '#ededed',
-                px: 2,
-            }}
-        >
-            <Paper
-                elevation={3}
-                sx={{
-                    my:"3rem",
-                    width: '100%',
-                    maxWidth: 400,
-                    px: 3,
-                    py: 5,
-                    height: "fit-content",
-                    textAlign: 'center',
-                    borderRadius: 4,
-                    boxShadow: 3,
-                    bgcolor: 'white',
-                    shadow: '0 4px 12px rgba(0,0,0,0.1)',
-                }}
-            >
-                <Typography variant="h5" sx={{ fontWeight: 600, mb: 2, mt: 1 }}>
-                    سكنلى
-                </Typography>
-
-                {status === 'loading' && (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', flexDirection: 'column', alignItems: 'center', my: 4 }}>
-                        <CircularProgress color="primary" />
-                        <Typography sx={{ mt: 2 }}>جاري التحقق من البريد الإلكتروني...</Typography>
-                    </Box>
-                )}
-
-                {status === 'success' && (
-                    <>
-                        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
-                            <Box
-                                sx={{
-                                    bgcolor: 'green.100',
-                                    borderRadius: '50%',
-                                    p: 1.5,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                }}
-                            >
-                                <Box sx={{ backgroundColor: '#0284c7', color: 'white', borderRadius: '50%', p: 2 }} >
-                                    <CheckIcon sx={{ fontSize: 30 }} />
-                                </Box>
-                            </Box>
-                        </Box>
-
-                        <Typography variant="h6" sx={{ my: 4, fontWeight: 500 }}>
-                            تم تأكيد البريد الإلكتروني!
-                        </Typography>
-
-                        <Box
-                            sx={{
-                                bgcolor: '#0284c7',
-                                color: 'white',
-                                borderRadius: 2,
-                                p: 2,
-                                mb: 2,
-                            }}
-                        >
-                            <Typography sx={{ fontSize: 14 }}>
-                                {message}
-                            </Typography>
-                        </Box>
-
-                        <Typography sx={{ fontSize: 14, mt: 4, mb: 2 }}>
-                            يمكنك الآن
-                            <Link href="/login" style={{
-                                color: '#0284c7', display: 'inline-block',
-                                padding: '0rem 0.4rem',
-                            }}>
-                                تسجيل الدخول
-                            </Link>
-                            وبدء استخدام سكنلى.
-                        </Typography>
-                    </>
-                )}
-
-                {status === 'error' && (
-                    <>
-                        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
-                            <Box
-                                sx={{
-                                    bgcolor: 'error.light',
-                                    borderRadius: '50%',
-                                    p: 1.5,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                }}
-                            >
-                                <Box sx={{ backgroundColor: '#ef4444', color: 'white', borderRadius: '50%', p: 2 }} >
-                                    <ErrorOutlineIcon sx={{ fontSize: 30 }} />
-                                </Box>
-                            </Box>
-                        </Box>
-
-                        <Typography variant="h6" sx={{ my: 4, fontWeight: 500 }}>
-                            خطأ في تأكيد البريد الإلكتروني
-                        </Typography>
-
-                        <Box
-                            sx={{
-                                bgcolor: '#ef4444',
-                                color: 'white',
-                                borderRadius: 2,
-                                p: 2,
-                                mb: 2,
-                            }}
-                        >
-                            <Typography sx={{ fontSize: 14 }}>
-                                {message}
-                            </Typography>
-                        </Box>
-
-                        <Typography sx={{ fontSize: 14, mt: 4, mb: 2 }}>
-                            يمكنك
-                            <Link href="/register" style={{
-                                color: '#0284c7', display: 'inline-block',
-                                padding: '0rem 0.4rem',
-                            }}>
-                                التسجيل مرة أخرى
-                            </Link>
-                            أو
-                            <Link href="/login" style={{
-                                color: '#0284c7', display: 'inline-block',
-                                padding: '0rem 0.4rem',
-                            }}>
-                                تسجيل الدخول
-                            </Link>
-                            إذا كنت تعتقد أن هذا خطأ.
-                        </Typography>
-                    </>
-                )}
-            </Paper>
-        </Box>
+      <AuthLayout title="تأكيد البريد الإلكتروني">
+        <LoadingState label="جارٍ تأكيد بريدك…" compact />
+      </AuthLayout>
     );
-} 
+  }
+
+  if (status === "confirmed") {
+    return (
+      <AuthLayout title="تم تأكيد بريدك">
+        <Box sx={{ textAlign: "center" }}>
+          <CheckCircleOutlined aria-hidden sx={{ fontSize: 40, color: "success.main" }} />
+          <Typography variant="body1" sx={{ mt: 1, mb: 3 }}>
+            حسابك جاهز. سجّل الدخول لتبدأ.
+          </Typography>
+          <Button component={Link} href="/login" variant="contained" fullWidth sx={{ height: 44 }}>
+            تسجيل الدخول
+          </Button>
+        </Box>
+      </AuthLayout>
+    );
+  }
+
+  if (status === "offline") {
+    return (
+      <AuthLayout title="تأكيد البريد الإلكتروني">
+        <Box sx={{ textAlign: "center" }}>
+          <ErrorOutlineOutlined aria-hidden sx={{ fontSize: 40, color: "error.main" }} />
+          <Typography variant="body1" sx={{ mt: 1, mb: 3 }}>
+            تعذّر الاتصال بالخادم. تحقق من اتصالك ثم حاول مرة أخرى.
+          </Typography>
+          <Button onClick={verify} variant="contained" fullWidth sx={{ height: 44 }}>
+            إعادة المحاولة
+          </Button>
+        </Box>
+      </AuthLayout>
+    );
+  }
+
+  return (
+    <AuthLayout
+      title="الرابط غير صالح"
+      description="ربما انتهت صلاحية رابط التأكيد أو استُخدم من قبل. إن كان بريدك مؤكدًا فسجّل الدخول، أو اطلب رابطًا جديدًا."
+    >
+      <ResendForm />
+      <Button component={Link} href="/login" variant="text" fullWidth sx={{ mt: 1.5 }}>
+        تسجيل الدخول
+      </Button>
+    </AuthLayout>
+  );
+}
+
+function ResendForm() {
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [state, setState] = useState<"idle" | "sending" | "sent" | "failed">("idle");
+
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
+      setError("اكتب بريدًا إلكترونيًا صحيحًا.");
+      return;
+    }
+    setError(null);
+    setState("sending");
+    setState((await resendConfirmation(email.trim())) ? "sent" : "failed");
+  };
+
+  return (
+    <AuthForm onSubmit={onSubmit} label="طلب رابط تأكيد جديد">
+      <div aria-live="polite">
+        {state === "sent" && (
+          <Alert severity="success" variant="outlined">
+            {RESEND_SENT_MESSAGE}
+          </Alert>
+        )}
+        {state === "failed" && (
+          <Alert severity="error" variant="outlined">
+            {RESEND_FAILED_MESSAGE}
+          </Alert>
+        )}
+      </div>
+      <TextField
+        id="resend-email"
+        label="البريد الإلكتروني"
+        type="email"
+        autoComplete="email"
+        required
+        fullWidth
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        error={Boolean(error)}
+        helperText={error}
+        slotProps={{ htmlInput: { dir: "ltr" } }}
+      />
+      <Button
+        type="submit"
+        variant="contained"
+        fullWidth
+        disabled={state === "sending"}
+        startIcon={state === "sending" ? <CircularProgress size={16} color="inherit" aria-hidden /> : undefined}
+        sx={{ height: 44 }}
+      >
+        {state === "sending" ? "جارٍ الإرسال…" : "إرسال رابط جديد"}
+      </Button>
+    </AuthForm>
+  );
+}

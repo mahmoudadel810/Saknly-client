@@ -1,537 +1,285 @@
-/** @format */
-
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import Image from "next/image";
-import {
-  Box,
-  Typography,
-  TextField,
-  Button,
-  InputAdornment,
-  Snackbar,
-  Alert,
-  AlertColor,
-} from "@mui/material";
-import GoogleIcon from "@mui/icons-material/Google";
-import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
-import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
-import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined";
-import PhoneOutlinedIcon from "@mui/icons-material/PhoneOutlined";
-import HomeOutlinedIcon from "@mui/icons-material/HomeOutlined";
+import React, { useState } from "react";
+import Link from "next/link";
 import { useFormik } from "formik";
 import * as yup from "yup";
-import IconButton from "@mui/material/IconButton";
-import { Visibility, VisibilityOff } from "@mui/icons-material";
-import { useToast } from "@/shared/provider/ToastProvider";
+import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
+import MuiLink from "@mui/material/Link";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import MarkEmailReadOutlined from "@mui/icons-material/MarkEmailReadOutlined";
 import GoogleButton from "@/components/googleButton";
-import { textFieldStyles } from "@/shared/styles/textFieldStyle";
-import { useDarkMode } from "@/app/context/DarkModeContext";
 import { API_URL } from "@/shared/utils/auth";
 import { emailSchema, passwordSchema, phoneSchema } from "@/shared/utils/authValidation";
+import AuthLayout, { AuthDivider, AuthForm } from "@/shared/ui/auth/AuthLayout";
+import PasswordField from "@/shared/ui/auth/PasswordField";
+import PasswordRules from "@/shared/ui/auth/PasswordRules";
+import { RESEND_FAILED_MESSAGE, RESEND_SENT_MESSAGE, resendConfirmation } from "@/shared/ui/auth/authApi";
 
-export default function Register() {
-  const router = useRouter();
-  const [openSnackbar, setOpenSnackbar] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState("");
-  const [snackbarSeverity, setSnackbarSeverity] = useState<AlertColor>("success");
+// Mirrors server/modules/Auth/authValidation.js (registerValidator).
+const validationSchema = yup.object({
+  userName: yup
+    .string()
+    .trim()
+    .required("اكتب اسم المستخدم.")
+    .min(3, "اسم المستخدم من 3 إلى 30 حرفًا.")
+    .max(30, "اسم المستخدم من 3 إلى 30 حرفًا.")
+    .matches(/^[a-zA-Z؀-ۿ][a-zA-Z؀-ۿ0-9 ]*$/, "ابدأ بحرف عربي أو إنجليزي، واستخدم حروفًا وأرقامًا ومسافات فقط."),
+  email: emailSchema,
+  password: passwordSchema,
+  confirmPassword: yup
+    .string()
+    .required("أعد كتابة كلمة المرور.")
+    .oneOf([yup.ref("password")], "كلمتا المرور غير متطابقتين."),
+  phone: phoneSchema,
+  address: yup.string().trim().required("اكتب عنوانك.").max(200, "العنوان حتى 200 حرف."),
+});
 
-  const handleCloseSnackbar = () => {
-    setOpenSnackbar(false);
-  };
+type Values = yup.InferType<typeof validationSchema>;
+type Field = keyof Values;
 
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (openSnackbar) {
-      timer = setTimeout(() => {
-        router.push('/login');
-      }, 5000);
-    }
-    return () => clearTimeout(timer);
-  }, [openSnackbar, router]);
-  // Define validation schema using Yup
-  const validationSchema = yup.object({
-    userName: yup
-      .string()
-      .required("اسم المستخدم مطلوب")
-      .min(
-        3,
-        "اسم المستخدم يجب أن يبدأ بحرف (عربي أو إنجليزي) فقط وأن يتكون من 3 أحرف على الأقل"
-      )
-      .max(
-        30,
-        "اسم المستخدم يجب أن يبدأ بحرف (عربي أو إنجليزي) فقط وأن لا يزيد عن 30 حرف"
-      )
-      .matches(
-        /^[a-zA-Z\u0600-\u06FF][a-zA-Z\u0600-\u06FF0-9 ]*$/,
-        "غير مسموح بأي رموز غريبة"
-      ),
-    email: emailSchema,
-    password: passwordSchema,
-    confirmPassword: yup
-      .string()
-      .required("تأكيد كلمة المرور مطلوب")
-      .oneOf([yup.ref("password")], "كلمات المرور غير متطابقة"),
-    phone: phoneSchema,
-    address: yup.string().required("العنوان مطلوب"),
-  });
+const FIELDS_IN_ORDER: Field[] = ["userName", "email", "password", "confirmPassword", "phone", "address"];
 
-  // Show success message and prepare redirect
-  const showSuccessAndRedirect = () => {
-    setSnackbarMessage("تم التسجيل بنجاح! يرجى التحقق من بريدك الإلكتروني لتأكيد الحساب.");
-    setSnackbarSeverity("success");
-    setOpenSnackbar(true);
-  };
+export default function RegisterPage() {
+  const [registeredEmail, setRegisteredEmail] = useState<string | null>(null);
+  const [existingEmail, setExistingEmail] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [resend, setResend] = useState<"idle" | "sending" | "sent" | "failed">("idle");
 
-  // Initialize Formik
-  const formik = useFormik({
-    initialValues: {
-      userName: "",
-      email: "",
-      password: "",
-      confirmPassword: "",
-      phone: "",
-      address: "",
-    },
-    validationSchema: validationSchema,
-    validateOnChange: true,
-    validateOnBlur: false,
+  const formik = useFormik<Values>({
+    initialValues: { userName: "", email: "", password: "", confirmPassword: "", phone: "", address: "" },
+    validationSchema,
+    validateOnBlur: true,
+    validateOnChange: false,
     onSubmit: async (values) => {
+      setFormError(null);
+      setExistingEmail(null);
+      setResend("idle");
       try {
-        // مثال: استدعاء API للتسجيل
-        const res = await fetch(
-          `${API_URL}/auth/register`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(values),
-          }
-        );
-
-        const data = await res.json().catch(() => ({}));
+        const res = await fetch(`${API_URL}/auth/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...values, userName: values.userName.trim(), address: values.address.trim() }),
+        });
 
         if (res.status === 409) {
-          // Any existing account, confirmed or not (the server does not reveal which).
-          const message =
-            "هذا البريد مسجّل بالفعل. سجّل الدخول، وإن لم تكن أكدت بريدك فيمكنك إعادة إرسال رسالة التأكيد من صفحة تسجيل الدخول.";
-          formik.setFieldError("email", "هذا البريد مسجّل بالفعل");
-          showToast(message, "error");
+          // Any existing account, confirmed or not: the server does not say which.
+          formik.setFieldError("email", "هذا البريد مسجّل بالفعل.");
+          setExistingEmail(values.email);
           return;
         }
-
         if (!res.ok) {
-          throw new Error(data?.message || data?.error || "تعذر إنشاء الحساب، حاول مرة أخرى");
+          setFormError(
+            res.status === 400
+              ? "راجع البيانات المكتوبة ثم حاول مرة أخرى."
+              : "تعذّر إنشاء الحساب الآن. حاول مرة أخرى بعد قليل.",
+          );
+          return;
         }
-
-        formik.resetForm();
-        
-        // Show success message and prepare redirect
-        showSuccessAndRedirect();
-      } catch (error) {
-        console.error("Registration error:", error);
-
-        // ❌ عرض رسالة الخطأ القادمة من السيرفر
-        showToast(
-          error instanceof Error && error.message ? error.message : "تعذر إنشاء الحساب، حاول مرة أخرى",
-          "error"
-        );
+        setRegisteredEmail(values.email);
+      } catch {
+        setFormError("تعذّر الاتصال بالخادم. تحقق من اتصالك ثم حاول مرة أخرى.");
       }
     },
   });
 
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const { showToast } = useToast();
-  const { isDarkMode } = useDarkMode();
+  const onResend = async (email: string) => {
+    setResend("sending");
+    setResend((await resendConfirmation(email)) ? "sent" : "failed");
+  };
 
-  // style of text feild
-  const PRIMARY = "var(--primary-600)";
-  const PRIMARY_HOVER = "var(--primary-700)";
+  // Focus the first invalid field after a submit attempt.
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const errors = await formik.validateForm();
+    formik.setTouched(Object.fromEntries(FIELDS_IN_ORDER.map((f) => [f, true])), false);
+    const first = FIELDS_IN_ORDER.find((f) => errors[f]);
+    if (first) {
+      document.getElementById(first)?.focus();
+      return;
+    }
+    formik.submitForm();
+  };
 
-  return (
-    // Outer Container: Centers the registration card and provides background
-    <Box
-      sx={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        minHeight: "100vh",
-        backgroundColor: "#f0f2f5",
-        padding: { xs: "1rem", lg: "2rem" },
-        boxSizing: "border-box",
-        ...(isDarkMode && {
-          backgroundColor: "var(--dark-800)",
-          color: "var(--c-text)",
-        }),
-      }}>
-      {/* Registration Card: The main container for the form and image sections */}
-      <Box
-        sx={{
-          my:"1rem",
-          display: "flex",
-          flexDirection: { xs: "column", lg: "row" },
-
-          width: { xs: "100%", sm: "90%", md: "700px", lg: "900px" },
-          maxWidth: "900px",
-          borderRadius: "20px",
-          overflow: "hidden",
-          boxShadow: "0px 10px 30px rgba(0, 0, 0, 0.1)",
-          minHeight: { xs: "unset", md: "500px" },
-        }}>
-
-        {/* RIGHT SIDE */}
-
-        <Box
-          sx={{
-            flex: { xs: "none", lg: "1.5" },
-            backgroundColor: "var(--primary-600)",
-            color: "#fff",
-            display: "flex",
-            flexDirection: "column-reverse",
-            justifyContent: "center",
-            alignItems: "center",
-            padding: { xs: "2rem", md: "2rem" },
-            width: { xs: "100%", lg: "unset" },
-            ...(isDarkMode && {
-              backgroundColor: "var(--primary-700)",
-              color: "#fff",
-            }),
-          }}>
-          <Typography
-            variant="h2"
-            sx={{
-              fontSize: { xs: "20px", md: "24px" },
-              textAlign: "center",
-              marginBottom: "1rem",
-            }}>
-            ! سجل الآن
+  if (registeredEmail) {
+    return (
+      <AuthLayout title="تحقق من بريدك الإلكتروني">
+        <Box sx={{ textAlign: "center" }}>
+          <MarkEmailReadOutlined aria-hidden sx={{ fontSize: 40, color: "primary.main" }} />
+          <Typography variant="body1" sx={{ mt: 1 }}>
+            أنشأنا حسابك وأرسلنا رابط التأكيد إلى{" "}
+            <Box component="strong" dir="ltr" sx={{ display: "inline-block" }}>
+              {registeredEmail}
+            </Box>
+            . افتح الرابط لتفعيل حسابك ثم سجّل الدخول.
           </Typography>
-          <Typography
-            sx={{
-              fontSize: { xs: "16px", md: "18px" },
-              textAlign: "center",
-              marginBottom: "2rem",
-            }}>
-            وفّر الوقت، وابحث عن بيتك المثالي بسهولة
-          </Typography>
-        </Box>
-
-        <Box
-          sx={{
-            flex: { xs: "none", lg: "2" },
-            backgroundColor: "#fff",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            padding: { xs: "2rem", md: "4rem" },
-            textAlign: "start",
-            width: { xs: "100%", lg: "unset" },
-            ...(isDarkMode && {
-              backgroundColor: "var(--dark-700)",
-              color: "var(--c-text)",
-            }),
-          }}>
-          <Typography
-            variant="h1"
-            sx={{
-              fontWeight: "bold",
-              fontSize: { xs: "24px", md: "30px" },
-              marginBottom: "2rem",
-              textAlign: "center",
-            }}>
-            إنشاء حساب
-          </Typography>
-
-          <Box
-            component="form"
-            onSubmit={formik.handleSubmit}
-            sx={{
-              display: "grid",
-              gap: "1rem",
-            }}>
-            {/* userName Field */}
-            <TextField
-              label="اسم المستخدم"
-              variant="outlined"
-              fullWidth
-              id="userName"
-              name="userName"
-              value={formik.values.userName}
-              onChange={formik.handleChange}
-              onBlur={formik.handleBlur}
-              error={Boolean(formik.errors.userName && formik.touched.userName)}
-              helperText={formik.touched.userName && formik.errors.userName}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <PersonOutlineOutlinedIcon sx={{ color: PRIMARY }} />
-                  </InputAdornment>
-                ),
-              }}
-              FormHelperTextProps={{
-                sx: {
-                  textAlign: "start",
-                },
-              }}
-              sx={textFieldStyles}
-            />
-
-            {/* Email Field */}
-            <TextField
-              label="البريد الإلكتروني"
-              type="email"
-              variant="outlined"
-              fullWidth
-              id="email"
-              name="email"
-              value={formik.values.email}
-              onChange={formik.handleChange}
-              onBlur={formik.handleBlur}
-              error={Boolean(formik.errors.email && formik.touched.email)} // Add formik.touched for error display
-              helperText={formik.touched.email && formik.errors.email} // Add formik.touched
-              InputProps={{
-                sx: {
-                  paddingRight: 0, // ✅ ده يلغى padding اليمين للكتابة نفسها
-                },
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <EmailOutlinedIcon sx={{ color: PRIMARY }} />
-                  </InputAdornment>
-                ),
-              }}
-              FormHelperTextProps={{
-                sx: {
-                  textAlign: "start",
-                },
-              }}
-              sx={textFieldStyles}
-            />
-
-            {/* Password Field */}
-            <TextField
-              label="كلمة المرور"
-              type={showPassword ? "text" : "password"}
-              variant="outlined"
-              fullWidth
-              id="password"
-              name="password"
-              value={formik.values.password}
-              onChange={formik.handleChange}
-              onBlur={formik.handleBlur}
-              error={Boolean(formik.errors.password && formik.touched.password)} // Add formik.touched for error display
-              helperText={formik.touched.password && formik.errors.password} // Add formik.touched
-              InputProps={{
-                sx: {
-                  padding: 0,
-                },
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <LockOutlinedIcon sx={{ color: PRIMARY }} />
-                  </InputAdornment>
-                ),
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      aria-label="toggle password visibility"
-                      onClick={() => setShowPassword(!showPassword)}
-                      edge="end">
-                      {showPassword ? <VisibilityOff /> : <Visibility />}
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-              FormHelperTextProps={{
-                sx: {
-                  textAlign: "start",
-                },
-              }}
-              sx={textFieldStyles}
-            />
-
-            {/* Confirm Password Field */}
-            <TextField
-              label="تأكيد كلمة المرور"
-              type={showConfirmPassword ? "text" : "password"}
-              variant="outlined"
-              fullWidth
-              id="confirmPassword"
-              name="confirmPassword"
-              value={formik.values.confirmPassword}
-              onChange={formik.handleChange}
-              onBlur={formik.handleBlur}
-              error={Boolean(formik.errors.confirmPassword && formik.touched.confirmPassword)}
-              helperText={formik.touched.confirmPassword && formik.errors.confirmPassword}
-              InputProps={{
-                sx: {
-                  padding: 0,
-                },
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <LockOutlinedIcon sx={{ color: PRIMARY }} />
-                  </InputAdornment>
-                ),
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      aria-label="toggle password visibility"
-                      onClick={() =>
-                        setShowConfirmPassword(!showConfirmPassword)
-                      }
-                      edge="end">
-                      {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-              FormHelperTextProps={{
-                sx: {
-                  textAlign: "start",
-                },
-              }}
-              sx={textFieldStyles}
-            />
-
-            {/* phone */}
-            <TextField
-              label="رقم الهاتف"
-              variant="outlined"
-              fullWidth
-              id="phone"
-              name="phone"
-              value={formik.values.phone}
-              onChange={formik.handleChange}
-              onBlur={formik.handleBlur}
-              error={Boolean(formik.errors.phone && formik.touched.phone)}
-              helperText={formik.touched.phone && formik.errors.phone}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <PhoneOutlinedIcon sx={{ color: PRIMARY }} />
-                  </InputAdornment>
-                ),
-              }}
-              FormHelperTextProps={{
-                sx: {
-                  textAlign: "start",
-                },
-              }}
-              sx={textFieldStyles}
-            />
-
-            {/* address */}
-            <TextField
-              label="العنوان"
-              variant="outlined"
-              fullWidth
-              id="address"
-              name="address"
-              value={formik.values.address}
-              onChange={formik.handleChange}
-              onBlur={formik.handleBlur}
-              error={Boolean(formik.errors.address && formik.touched.address)}
-              helperText={formik.touched.address && formik.errors.address}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <HomeOutlinedIcon sx={{ color: PRIMARY }} />
-                  </InputAdornment>
-                ),
-              }}
-              FormHelperTextProps={{
-                sx: {
-                  textAlign: "start",
-                },
-              }}
-              sx={textFieldStyles}
-            />
-
+          <div aria-live="polite">
+            {resend === "sent" && (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                {RESEND_SENT_MESSAGE}
+              </Typography>
+            )}
+            {resend === "failed" && (
+              <Typography variant="body2" sx={{ mt: 2, color: "error.main" }}>
+                {RESEND_FAILED_MESSAGE}
+              </Typography>
+            )}
+          </div>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, mt: 3 }}>
+            <Button component={Link} href={`/login?email=${encodeURIComponent(registeredEmail)}`} variant="contained">
+              الذهاب إلى تسجيل الدخول
+            </Button>
             <Button
-              type="submit"
-              variant="contained"
-              // Formik keeps isSubmitting true while onSubmit awaits, so a double click sends one request.
-              disabled={formik.isSubmitting}
-              aria-busy={formik.isSubmitting}
-              sx={{
-                padding: "12px",
-                backgroundColor: PRIMARY,
-                color: "#fff",
-                border: "none",
-                borderRadius: "8px",
-                cursor: "pointer",
-                fontSize: "16px",
-                textTransform: "none",
-                fontWeight: 700,
-                boxShadow: "0 2px 8px 0 var(--primary-100)",
-                transition: "background 0.2s, box-shadow 0.2s, transform 0.15s",
-                "&:hover, &:focus": {
-                  backgroundColor: PRIMARY_HOVER,
-                  boxShadow: "0 4px 16px 0 var(--primary-200)",
-                  transform: "translateY(-2px) scale(1.03)",
-                },
-                "&:disabled": {
-                  opacity: 0.7,
-                  cursor: "not-allowed",
-                },
-              }}>
-              {formik.isSubmitting ? "جاري إنشاء الحساب..." : "إنشاء حساب"}
+              onClick={() => onResend(registeredEmail)}
+              disabled={resend === "sending" || resend === "sent"}
+              variant="outlined"
+              color="inherit"
+            >
+              {resend === "sending" ? "جارٍ الإرسال…" : "لم يصلني الرابط، أعد الإرسال"}
             </Button>
           </Box>
-
-          <Typography
-            sx={{
-              marginTop: "1rem",
-              textAlign: "center",
-            }}>
-            هل لديك حساب بالفعل ؟{" "}
-            <a
-              href="/login"
-              style={{
-                color: PRIMARY,
-                textDecoration: "none",
-                fontWeight: "700",
-              }}>
-              تسجيل الدخول
-            </a>
-          </Typography>
-
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              textAlign: "center",
-              margin: "1.5rem 0",
-              ...(isDarkMode && {
-                color: "var(--c-muted)",
-              }),
-            }}>
-            <Box sx={{ flex: 1, height: "1px", backgroundColor: "#ccc" }} />
-            <Typography
-              sx={{
-                padding: "0 1rem",
-                whiteSpace: "nowrap",
-                color: "#555",
-                ...(isDarkMode && {
-                  color: "var(--c-muted)",
-                }),
-              }}>
-              أو
-            </Typography>
-            <Box sx={{ flex: 1, height: "1px", backgroundColor: "#ccc" }} />
-          </Box>
-
-          <Box
-            sx={{
-              display: "flex",
-              gap: "1rem",
-              justifyContent: "center",
-            }}>
-            <GoogleButton></GoogleButton>
-          </Box>
         </Box>
+      </AuthLayout>
+    );
+  }
 
-      </Box>
-    </Box>
+  const fieldError = (name: Field) => (formik.touched[name] && formik.errors[name] ? formik.errors[name] : undefined);
+  const textField = (name: Field) => ({
+    id: name,
+    name,
+    value: formik.values[name],
+    onChange: formik.handleChange,
+    onBlur: formik.handleBlur,
+    error: Boolean(fieldError(name)),
+    required: true,
+    fullWidth: true,
+  });
+
+  return (
+    <AuthLayout
+      title="إنشاء حساب"
+      description="أنشئ حسابًا لتنشر عقارك وتحفظ العقارات التي تعجبك."
+      footer={
+        <>
+          لديك حساب بالفعل؟{" "}
+          <MuiLink component={Link} href="/login" sx={{ fontWeight: 600 }}>
+            تسجيل الدخول
+          </MuiLink>
+        </>
+      }
+    >
+      <GoogleButton />
+      <AuthDivider />
+
+      <div aria-live="polite">
+        {formError && (
+          <Alert severity="error" variant="outlined" sx={{ mb: 2 }}>
+            {formError}
+          </Alert>
+        )}
+        {existingEmail && (
+          <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+              لديك حساب بهذا البريد.
+            </Typography>
+            <Typography variant="body2" sx={{ mt: 0.5 }}>
+              <MuiLink component={Link} href={`/login?email=${encodeURIComponent(existingEmail)}`}>
+                سجّل الدخول
+              </MuiLink>
+              . وإن لم تؤكد بريدك بعد، أعد إرسال رابط التأكيد.
+            </Typography>
+            {resend === "sent" ? (
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                {RESEND_SENT_MESSAGE}
+              </Typography>
+            ) : (
+              <Button
+                size="small"
+                onClick={() => onResend(existingEmail)}
+                disabled={resend === "sending"}
+                sx={{ mt: 1, px: 0 }}
+              >
+                {resend === "sending" ? "جارٍ الإرسال…" : "إعادة إرسال رابط التأكيد"}
+              </Button>
+            )}
+            {resend === "failed" && (
+              <Typography variant="body2" sx={{ mt: 0.5, color: "error.main" }}>
+                {RESEND_FAILED_MESSAGE}
+              </Typography>
+            )}
+          </Alert>
+        )}
+      </div>
+
+      <AuthForm onSubmit={onSubmit}>
+        <TextField
+          {...textField("userName")}
+          label="اسم المستخدم"
+          autoComplete="username"
+          helperText={fieldError("userName") ?? "يظهر مع تعليقاتك. من 3 إلى 30 حرفًا."}
+        />
+        <TextField
+          {...textField("email")}
+          label="البريد الإلكتروني"
+          type="email"
+          autoComplete="email"
+          helperText={fieldError("email") ?? "سنرسل إليه رابط تأكيد الحساب."}
+          slotProps={{ htmlInput: { dir: "ltr" } }}
+        />
+        <PasswordField
+          {...textField("password")}
+          label="كلمة المرور"
+          autoComplete="new-password"
+          // The rules sit in the helper text, so the field's aria-describedby already points at them.
+          helperText={
+            <>
+              <PasswordRules id="password-rules" value={formik.values.password} />
+              {fieldError("password") && (
+                <Box component="span" sx={{ display: "block", mt: 0.75 }}>
+                  {fieldError("password")}
+                </Box>
+              )}
+            </>
+          }
+          slotProps={{ formHelperText: { component: "div" } }}
+        />
+        <PasswordField
+          {...textField("confirmPassword")}
+          label="تأكيد كلمة المرور"
+          autoComplete="new-password"
+          helperText={fieldError("confirmPassword")}
+        />
+        <TextField
+          {...textField("phone")}
+          label="رقم الهاتف"
+          type="tel"
+          autoComplete="tel-national"
+          helperText={fieldError("phone") ?? "11 رقمًا يبدأ بـ 01، مثل 01012345678."}
+          slotProps={{ htmlInput: { dir: "ltr", inputMode: "numeric", maxLength: 11 } }}
+        />
+        <TextField
+          {...textField("address")}
+          label="العنوان"
+          autoComplete="street-address"
+          helperText={fieldError("address") ?? "المدينة والحي، مثل: شبين الكوم، حي الجامعة."}
+          slotProps={{ htmlInput: { maxLength: 200 } }}
+        />
+        <Button
+          type="submit"
+          variant="contained"
+          fullWidth
+          disabled={formik.isSubmitting}
+          aria-busy={formik.isSubmitting || undefined}
+          startIcon={formik.isSubmitting ? <CircularProgress size={16} color="inherit" aria-hidden /> : undefined}
+          sx={{ height: 44, mt: 0.5 }}
+        >
+          {formik.isSubmitting ? "جارٍ إنشاء الحساب…" : "إنشاء حساب"}
+        </Button>
+      </AuthForm>
+    </AuthLayout>
   );
 }
