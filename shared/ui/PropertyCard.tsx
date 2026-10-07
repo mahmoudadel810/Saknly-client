@@ -78,7 +78,7 @@ export function toPropertyCardData(listing: ListingLike): PropertyCardData {
 // next.config.mjs images.remotePatterns. Any other host is shown unoptimized instead of throwing.
 const OPTIMIZED_HOSTS = ["res.cloudinary.com", "images.unsplash.com"];
 
-const canOptimize = (src: string) => {
+export const canOptimize = (src: string) => {
   if (src.startsWith("/") && !src.startsWith("//")) return true;
   try {
     const url = new URL(src);
@@ -99,7 +99,7 @@ interface WishlistApi {
   removeFromWishlist: (id: string) => Promise<boolean>;
 }
 
-function FavoriteToggle({ property }: { property: PropertyCardData }) {
+export function FavoriteToggle({ property }: { property: PropertyCardData }) {
   const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist() as WishlistApi;
   const [pending, setPending] = useState(false);
   const saved = isInWishlist(property.id);
