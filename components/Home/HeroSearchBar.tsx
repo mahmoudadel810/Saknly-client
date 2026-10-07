@@ -1,42 +1,91 @@
 "use client";
 
-import React, { useId, useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import FormLabel from "@mui/material/FormLabel";
-import InputAdornment from "@mui/material/InputAdornment";
 import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import SearchOutlined from "@mui/icons-material/SearchOutlined";
-import { CITY_OPTIONS } from "@/shared/constants/property";
+import { GOVERNORATES, citiesFor } from "@/shared/constants/property";
 import { LISTING_KINDS, listingKindParams, type ListingKind } from "@/shared/ui/listing/listingKind";
 
-const FIELD_HEIGHT = 48;
+/*
+ * One segment of the combined bar (DESIGN-SYSTEM.md v2, "Inputs"): a small label above a borderless value, on
+ * the bar's field colour. The segment, not the input, shows hover and focus, so the bar reads as one control.
+ * From md up the segments sit in a row split by 1px dividers; below md they stack with dividers between them.
+ */
+const segmentSx = {
+  position: "relative",
+  minWidth: 0,
+  px: 2,
+  py: 1,
+  borderRadius: "12px",
+  transition: "background-color 150ms ease-out, box-shadow 150ms ease-out",
+  "&:hover": { bgcolor: "color-mix(in srgb, var(--c-text) 4%, transparent)" },
+  "&:focus-within": { bgcolor: "background.paper", boxShadow: "0 0 0 2px var(--c-primary)" },
+  "& .MuiInputLabel-root": {
+    mb: 0,
+    fontSize: "0.75rem",
+    fontWeight: 600,
+    lineHeight: 1.5,
+    color: "text.secondary",
+    "&.Mui-disabled": { color: "text.secondary" },
+  },
+  "& .MuiOutlinedInput-root": {
+    minHeight: 0,
+    bgcolor: "transparent",
+    boxShadow: "none",
+    "&.Mui-focused": { bgcolor: "transparent", boxShadow: "none" },
+    "& .MuiOutlinedInput-notchedOutline": { border: "none" },
+    "&.Mui-disabled": { opacity: 1 },
+  },
+  "& .MuiOutlinedInput-input": {
+    paddingBlock: "2px",
+    paddingInline: 0,
+    fontSize: "0.9375rem",
+    fontWeight: 500,
+    "&.Mui-disabled": { WebkitTextFillColor: "var(--c-muted)" },
+  },
+  "& .MuiSelect-select": { paddingInlineEnd: "28px !important" },
+  "& .MuiSelect-icon": { insetInlineEnd: 0 },
+} as const;
 
-// One 48px row: the theme gives fields 44px, the hero asks for a little more presence.
-const fieldSx = {
-  "& .MuiOutlinedInput-root": { minHeight: FIELD_HEIGHT },
-  "& .MuiOutlinedInput-input": { paddingBlock: "13px" },
+const dividerSx = {
+  // Between segments: a short vertical rule from md up, a full-width line when stacked.
+  "&:not(:first-of-type)::before": {
+    content: '""',
+    position: "absolute",
+    bgcolor: "divider",
+    insetInlineStart: { xs: 16, md: -1 },
+    insetInlineEnd: { xs: 16, md: "auto" },
+    top: { xs: -1, md: 14 },
+    bottom: { xs: "auto", md: 14 },
+    width: { xs: "auto", md: "1px" },
+    height: { xs: "1px", md: "auto" },
+  },
+  "&:focus-within::before, &:hover::before, &:focus-within + &::before, &:hover + &::before": { opacity: 0 },
 } as const;
 
 /**
- * The home search: listing kind, city and a free-text query, then "بحث". It opens /properties with the same
- * URL keys the browse filters read (category / isStudentFriendly, location.city, search), so the result page
- * shows the chosen filters as chips.
+ * The home search: a white floating panel with the listing kind as tabs on top, then one combined bar —
+ * governorate | city | free-text query | "بحث". It opens /properties with the same URL keys the browse filters
+ * read (category / isStudentFriendly, location.governorate, location.city, search), so the result page shows
+ * the chosen filters as chips. The city list follows the chosen governorate.
  */
 export default function HeroSearchBar() {
   const router = useRouter();
-  const id = useId();
   const [kind, setKind] = useState<ListingKind>("all");
+  const [governorate, setGovernorate] = useState("");
   const [city, setCity] = useState("");
   const [query, setQuery] = useState("");
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     const params = new URLSearchParams(listingKindParams(kind));
+    if (governorate) params.set("location.governorate", governorate);
     if (city) params.set("location.city", city);
     const q = query.trim();
     if (q) params.set("search", q);
@@ -51,95 +100,123 @@ export default function HeroSearchBar() {
       aria-label="البحث عن عقار"
       onSubmit={handleSubmit}
       sx={{
-        border: 1,
-        borderColor: "divider",
-        borderRadius: "10px",
         bgcolor: "background.paper",
-        p: { xs: 2, md: 2.5 },
+        borderRadius: "var(--r-card)",
+        boxShadow: "0 2px 6px rgba(10, 20, 20, 0.08), 0 24px 48px rgba(10, 20, 20, 0.18)",
+        p: { xs: 1.5, sm: 2 },
       }}
     >
-      <div className="grid gap-4 lg:grid-cols-[auto_minmax(0,200px)_minmax(0,1fr)_auto] lg:items-end">
-        <Box sx={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-          <FormLabel id={`${id}-kind`} sx={{ mb: "6px", lineHeight: 1.5 }}>
-            نوع الإعلان
-          </FormLabel>
-          <ToggleButtonGroup
-            exclusive
-            value={kind}
-            onChange={(_, next: ListingKind | null) => next && setKind(next)}
-            aria-labelledby={`${id}-kind`}
-            sx={{
-              display: "grid",
-              gridTemplateColumns: `repeat(${LISTING_KINDS.length}, minmax(0, 1fr))`,
-              "& .MuiToggleButton-root": {
-                height: FIELD_HEIGHT,
-                px: 2,
-                whiteSpace: "nowrap",
-                fontSize: "0.875rem",
-                fontWeight: 600,
-                color: "text.secondary",
-                borderColor: "var(--c-border-strong, var(--c-border))",
-                "&.Mui-selected": {
-                  color: "primary.main",
-                  bgcolor: "var(--c-primary-soft)",
-                  "&:hover": { bgcolor: "var(--c-primary-soft)" },
-                },
-              },
+      <ToggleButtonGroup
+        exclusive
+        value={kind}
+        onChange={(_, next: ListingKind | null) => next && setKind(next)}
+        aria-label="نوع الإعلان"
+        sx={{
+          display: "flex",
+          gap: 0.5,
+          mb: 1.5,
+          overflowX: "auto",
+          "& .MuiToggleButtonGroup-grouped": {
+            flex: { xs: 1, sm: "0 0 auto" },
+            minHeight: 40,
+            px: 2,
+            border: 0,
+            borderRadius: "10px !important",
+            whiteSpace: "nowrap",
+            fontSize: "0.9375rem",
+            color: "text.secondary",
+            "&:hover": { bgcolor: "color-mix(in srgb, var(--c-text) 5%, transparent)" },
+            "&.Mui-selected": {
+              color: "primary.main",
+              bgcolor: "var(--c-primary-soft)",
+              "&:hover": { bgcolor: "var(--c-primary-soft)" },
+            },
+          },
+        }}
+      >
+        {LISTING_KINDS.map((option) => (
+          <ToggleButton key={option.value} value={option.value}>
+            {option.label}
+          </ToggleButton>
+        ))}
+      </ToggleButtonGroup>
+
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: {
+            xs: "minmax(0, 1fr)",
+            md: "minmax(0, 0.9fr) minmax(0, 0.9fr) minmax(0, 1.6fr) auto",
+          },
+          alignItems: "center",
+          gap: { xs: 0, md: 0.5 },
+          p: 0.75,
+          borderRadius: "14px",
+          bgcolor: "var(--c-field)",
+        }}
+      >
+        <Box sx={{ ...segmentSx, ...dividerSx }}>
+          <TextField
+            select
+            fullWidth
+            label="المحافظة"
+            value={governorate}
+            onChange={(event) => {
+              setGovernorate(event.target.value);
+              setCity("");
             }}
+            slotProps={{ select: { displayEmpty: true } }}
           >
-            {LISTING_KINDS.map((option) => (
-              <ToggleButton key={option.value} value={option.value}>
-                {option.label}
-              </ToggleButton>
+            <MenuItem value="">كل المحافظات</MenuItem>
+            {GOVERNORATES.map((option) => (
+              <MenuItem key={option} value={option}>
+                {option}
+              </MenuItem>
             ))}
-          </ToggleButtonGroup>
+          </TextField>
         </Box>
 
-        <TextField
-          select
-          label="المدينة"
-          value={city}
-          onChange={(event) => setCity(event.target.value)}
-          sx={fieldSx}
-          slotProps={{ select: { displayEmpty: true } }}
-        >
-          <MenuItem value="">كل المدن</MenuItem>
-          {CITY_OPTIONS.map((option) => (
-            <MenuItem key={option} value={option}>
-              {option}
-            </MenuItem>
-          ))}
-        </TextField>
+        <Box sx={{ ...segmentSx, ...dividerSx }}>
+          <TextField
+            select
+            fullWidth
+            label="المدينة"
+            value={city}
+            onChange={(event) => setCity(event.target.value)}
+            disabled={!governorate}
+            slotProps={{ select: { displayEmpty: true } }}
+          >
+            <MenuItem value="">{governorate ? "كل المدن" : "اختر المحافظة أولًا"}</MenuItem>
+            {(governorate ? citiesFor([governorate]) : []).map((option) => (
+              <MenuItem key={option} value={option}>
+                {option}
+              </MenuItem>
+            ))}
+          </TextField>
+        </Box>
 
-        <TextField
-          label="كلمة البحث"
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="مثال: شقة قريبة من الجامعة"
-          sx={fieldSx}
-          slotProps={{
-            htmlInput: { maxLength: 100, enterKeyHint: "search" },
-            input: {
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchOutlined aria-hidden />
-                </InputAdornment>
-              ),
-            },
-          }}
-        />
+        <Box sx={{ ...segmentSx, ...dividerSx }}>
+          <TextField
+            fullWidth
+            label="كلمة البحث"
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="مثال: شقة قريبة من الجامعة"
+            slotProps={{ htmlInput: { maxLength: 100, enterKeyHint: "search" } }}
+          />
+        </Box>
 
         <Button
           type="submit"
           variant="contained"
           size="large"
           startIcon={<SearchOutlined aria-hidden />}
-          sx={{ height: FIELD_HEIGHT, px: 4, fontSize: "0.9375rem" }}
+          sx={{ minHeight: 48, px: 3.5, mt: { xs: 1, md: 0 }, marginInlineStart: { md: 0.5 } }}
         >
           بحث
         </Button>
-      </div>
+      </Box>
     </Box>
   );
 }
