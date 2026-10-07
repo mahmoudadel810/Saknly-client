@@ -1,98 +1,85 @@
-"use client";
-
+import type { Metadata } from "next";
+import Box from "@mui/material/Box";
+import MuiLink from "@mui/material/Link";
+import Typography from "@mui/material/Typography";
+import EmailOutlined from "@mui/icons-material/EmailOutlined";
+import PhoneOutlined from "@mui/icons-material/PhoneOutlined";
 import ContactForm from "@/shared/components/ContactForm";
-import EmailOutlined from '@mui/icons-material/EmailOutlined';
-import PhoneOutlined from '@mui/icons-material/PhoneOutlined';
-import PlaceOutlined from '@mui/icons-material/PlaceOutlined';
-import ScheduleOutlined from '@mui/icons-material/ScheduleOutlined';
+import ContentPage from "@/shared/ui/ContentPage";
+import { CONTACT_INFO } from "@/shared/constants";
+
+export const metadata: Metadata = {
+  title: "تواصل معنا",
+  description: "راسل فريق سكنلي أو اتصل بنا مباشرة.",
+};
+
+const panelSx = {
+  border: 1,
+  borderColor: "divider",
+  borderRadius: "10px",
+  p: { xs: 2, md: 3 },
+} as const;
 
 export default function ContactPage() {
   return (
-    <div className="min-h-screen bg-secondary-50 dark:bg-secondary-900">
-      {/* Hero Section */}
-      <div className="bg-primary-600 text-white py-16">
-        <div className="container mx-auto px-4 text-center">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">اتصل بنا</h1>
-          <p className="text-xl md:text-2xl opacity-90">نحن هنا لمساعدتك. تواصل معنا اليوم!</p>
-        </div>
+    <ContentPage
+      width="wide"
+      title="تواصل معنا"
+      description="عندك سؤال عن إعلان أو مشكلة في حسابك؟ اكتب لنا وسنرد على بريدك الإلكتروني."
+    >
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <Box component="section" aria-labelledby="contact-form-title" sx={{ ...panelSx, bgcolor: "background.paper" }}>
+          <Typography id="contact-form-title" component="h2" variant="h5" sx={{ mb: 2.5 }}>
+            أرسل رسالة
+          </Typography>
+          <ContactForm />
+        </Box>
+
+        <Box
+          component="aside"
+          aria-labelledby="contact-direct-title"
+          sx={{ ...panelSx, bgcolor: "var(--c-surface-2)", alignSelf: "start" }}
+        >
+          <Typography id="contact-direct-title" component="h2" variant="h5" sx={{ mb: 0.5 }}>
+            تواصل مباشرة
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            للأسئلة العاجلة اتصل بنا أو راسلنا على البريد.
+          </Typography>
+          <Box component="address" sx={{ fontStyle: "normal", display: "flex", flexDirection: "column", gap: 2 }}>
+            <ContactLine icon={<PhoneOutlined />} label="الهاتف">
+              <MuiLink href={`tel:${CONTACT_INFO.PHONE_E164}`} underline="hover">
+                <span dir="ltr" className="num">
+                  {CONTACT_INFO.PHONE_DISPLAY}
+                </span>
+              </MuiLink>
+            </ContactLine>
+            <ContactLine icon={<EmailOutlined />} label="البريد الإلكتروني">
+              <MuiLink href={`mailto:${CONTACT_INFO.EMAIL}`} underline="hover" sx={{ wordBreak: "break-all" }}>
+                <span dir="ltr">{CONTACT_INFO.EMAIL}</span>
+              </MuiLink>
+            </ContactLine>
+          </Box>
+        </Box>
       </div>
+    </ContentPage>
+  );
+}
 
-      {/* Main Content */}
-      <div className="container mx-auto px-4 py-12 md:py-16">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Contact Form */}
-          <div className="bg-white dark:bg-secondary-800 rounded-lg shadow-lg p-6 md:p-8">
-            <h2 className="text-2xl font-bold mb-6 text-secondary-900 dark:text-white">أرسل لنا رسالة</h2>
-            <ContactForm />
-          </div>
-
-          {/* Contact Info */}
-          <div className="space-y-6">
-            <div className="bg-white dark:bg-secondary-800 rounded-lg shadow-lg p-6 md:p-8">
-              <h2 className="text-2xl font-bold mb-6 text-secondary-900 dark:text-white text-right">معلومات التواصل</h2>
-              
-              <div className="space-y-4">
-                <div className="flex items-center justify-end text-right w-full">
-                  <div className="bg-primary-100 dark:bg-primary-900/30 p-3 rounded-full text-primary-600 dark:text-primary-400 ml-4 flex-shrink-0">
-                    <PlaceOutlined sx={{ fontSize: 20 }} />
-                  </div>
-                  <div className="text-right flex-1">
-                    <h3 className="font-semibold text-secondary-900 dark:text-white">العنوان</h3>
-                    <p className="text-secondary-600 dark:text-secondary-300">شارع الكليات شبين الكوم</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-end text-right w-full">
-                  <div className="bg-primary-100 dark:bg-primary-900/30 p-3 rounded-full text-primary-600 dark:text-primary-400 ml-4 flex-shrink-0">
-                    <PhoneOutlined sx={{ fontSize: 20 }} />
-                  </div>
-                  <div className="text-right flex-1">
-                    <h3 className="font-semibold text-secondary-900 dark:text-white">الهاتف</h3>
-                    <p className="text-secondary-600 dark:text-secondary-300">+201024500274</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-end text-right w-full">
-                  <div className="bg-primary-100 dark:bg-primary-900/30 p-3 rounded-full text-primary-600 dark:text-primary-400 ml-4 flex-shrink-0">
-                    <EmailOutlined sx={{ fontSize: 20 }} />
-                  </div>
-                  <div className="text-right flex-1">
-                    <h3 className="font-semibold text-secondary-900 dark:text-white">البريد الإلكتروني</h3>
-                    <p className="text-secondary-600 dark:text-secondary-300">saknly@gmail.com</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-end text-right w-full">
-                  <div className="bg-primary-100 dark:bg-primary-900/30 p-3 rounded-full text-primary-600 dark:text-primary-400 ml-4 flex-shrink-0">
-                    <ScheduleOutlined sx={{ fontSize: 20 }} />
-                  </div>
-                  <div className="text-right flex-1">
-                    <h3 className="font-semibold text-secondary-900 dark:text-white">ساعات العمل</h3>
-                    <p className="text-secondary-600 dark:text-secondary-300">24 ساعة</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Map */}
-            <div className="bg-white dark:bg-secondary-800 rounded-lg shadow-lg overflow-hidden">
-              <div className="h-64 md:h-80 w-full">
-                <iframe
-                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3435.693112831758!2d31.016314775573537!3d30.557973474668998!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14f7d7223ff2d63f%3A0x9d531b61c0ebb81b!2sITI%20Menofia%20Branch%2C%20Creativa!5e0!3m2!1sen!2seg!4v1753620224817!5m2!1sen!2seg"
-                  width="100%"
-                  height="100%"
-                  style={{ border: 0 }}
-                  allowFullScreen
-                  loading="lazy"
-                  className="rounded-b-lg"
-                  title="موقعنا على الخريطة"
-                  referrerPolicy="no-referrer-when-downgrade"
-                ></iframe>
-              </div>
-            </div>
-          </div>
-        </div>
+function ContactLine({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) {
+  return (
+    <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.5 }}>
+      <Box aria-hidden sx={{ color: "primary.main", display: "flex", mt: 0.25, "& svg": { fontSize: 20 } }}>
+        {icon}
+      </Box>
+      <div>
+        <Typography variant="caption" color="text.secondary" component="p">
+          {label}
+        </Typography>
+        <Typography variant="body1" component="p" sx={{ fontWeight: 500 }}>
+          {children}
+        </Typography>
       </div>
-    </div>
+    </Box>
   );
 }

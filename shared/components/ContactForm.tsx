@@ -1,192 +1,154 @@
 "use client";
+
 import React, { useState } from "react";
-import { API_URL } from "@/shared/services/api";
+import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
+import TextField from "@mui/material/TextField";
+import { api } from "@/shared/services/api";
+import { useToast } from "@/shared/provider/ToastProvider";
 
-const initialForm = { name: "", email: "", subject: "", message: "" };
+type Field = "name" | "email" | "subject" | "message";
+type Values = Record<Field, string>;
 
-const validateEmail = (email: string) =>
-  /^\S+@\S+\.\S+$/.test(email);
+const EMPTY: Values = { name: "", email: "", subject: "", message: "" };
 
-const ContactForm = () => {
-  const [formData, setFormData] = useState(initialForm);
-  const [status, setStatus] = useState<{ type: "success" | "error" | "info" | ""; message: string }>({ type: "", message: "" });
-  const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<{ name?: string; email?: string; subject?: string; message?: string }>({});
+// Limits from server/modules/contact/contactValidation.js (subject 100, message 2000); the name cap is ours.
+const LIMITS = { name: 50, subject: 100, message: 2000 } as const;
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    setErrors((prev) => ({ ...prev, [name]: undefined }));
+// The server's email pattern (contactValidation.js), so a valid-looking address is not rejected after sending.
+const EMAIL_PATTERN = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
+
+function validate(values: Values): Partial<Record<Field, string>> {
+  const errors: Partial<Record<Field, string>> = {};
+  const name = values.name.trim();
+  const subject = values.subject.trim();
+  const message = values.message.trim();
+  if (!name) errors.name = "اكتب اسمك.";
+  else if (name.length < 2) errors.name = "الاسم قصير جدًا.";
+  if (!values.email.trim()) errors.email = "اكتب بريدك الإلكتروني لنرد عليك.";
+  else if (!EMAIL_PATTERN.test(values.email.trim())) errors.email = "البريد الإلكتروني غير صحيح. مثال: name@example.com";
+  if (!subject) errors.subject = "اكتب موضوع الرسالة.";
+  if (!message) errors.message = "اكتب رسالتك.";
+  else if (message.length < 10) errors.message = "الرسالة قصيرة جدًا. اكتب 10 أحرف على الأقل.";
+  return errors;
+}
+
+/** The contact form: POST /contact/contact-us. Errors are shown per field; the result is announced. */
+export default function ContactForm() {
+  const { showToast } = useToast();
+  const [values, setValues] = useState<Values>(EMPTY);
+  const [errors, setErrors] = useState<Partial<Record<Field, string>>>({});
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState<"sent" | "failed" | null>(null);
+
+  const onChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const name = e.target.name as Field;
+    setValues((prev) => ({ ...prev, [name]: e.target.value }));
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: undefined }));
+    if (result) setResult(null);
   };
 
-  const validate = () => {
-    const newErrors: typeof errors = {};
-    if (!formData.name.trim()) newErrors.name = "الاسم مطلوب";
-    else if (formData.name.trim().length < 3) newErrors.name = "الاسم يجب أن يكون على الأقل 3 أحرف";
-    else if (formData.name.trim().length > 25) newErrors.name = "الاسم يجب ألا يزيد عن 25 حرفًا";
-    if (!formData.email.trim()) newErrors.email = "البريد الإلكتروني مطلوب";
-    else if (!validateEmail(formData.email)) newErrors.email = "صيغة البريد غير صحيحة";
-    if (!formData.subject.trim()) newErrors.subject = "الموضوع مطلوب";
-    else if (formData.subject.trim().length < 5) newErrors.subject = "الموضوع يجب أن يكون على الأقل 5 أحرف";
-    else if (formData.subject.trim().length > 50) newErrors.subject = "الموضوع يجب ألا يزيد عن 50 حرفًا";
-    if (!formData.message.trim()) newErrors.message = "الرسالة مطلوبة";
-    else if (formData.message.trim().length < 10) newErrors.message = "الرسالة يجب أن تكون على الأقل 10 أحرف";
-    else if (formData.message.trim().length > 300) newErrors.message = "الرسالة يجب ألا تزيد عن 300 حرف";
-    return newErrors;
-  };
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setStatus({ type: "", message: "" });
-    const validationErrors = validate();
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      setStatus({ type: "error", message: "يرجى تصحيح الحقول المطلوبة" });
+    if (sending) return;
+    const found = validate(values);
+    setErrors(found);
+    const first = (Object.keys(found) as Field[])[0];
+    if (first) {
+      document.getElementById(`contact-${first}`)?.focus();
       return;
     }
-    setLoading(true);
-    setStatus({ type: "info", message: "جاري الإرسال..." });
+    setSending(true);
+    setResult(null);
     try {
-      const response = await fetch(
-        `${API_URL}/contact/contact-us`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
-        }
-      );
-      if (response.ok) {
-        setStatus({ type: "success", message: "تم إرسال الرسالة بنجاح!" });
-        setFormData(initialForm);
-      } else {
-        setStatus({ type: "error", message: "فشل في إرسال الرسالة. حاول لاحقًا." });
-      }
-    } catch (error) {
-      setStatus({ type: "error", message: "حدث خطأ أثناء الإرسال. حاول لاحقًا." });
+      await api.post("/contact/contact-us", {
+        name: values.name.trim(),
+        email: values.email.trim(),
+        subject: values.subject.trim(),
+        message: values.message.trim(),
+      });
+      setValues(EMPTY);
+      setResult("sent");
+      showToast("أُرسلت رسالتك", "success");
+    } catch {
+      // The server's validation messages are in English, so they are not shown; ours above match its rules.
+      setResult("failed");
     } finally {
-      setLoading(false);
+      setSending(false);
     }
   };
 
+  const field = (name: Field) => ({
+    id: `contact-${name}`,
+    name,
+    value: values[name],
+    onChange,
+    error: Boolean(errors[name]),
+    fullWidth: true,
+    required: true,
+  });
+
   return (
-    <form 
-      onSubmit={handleSubmit} 
-      className="w-full space-y-6" 
-      noValidate
-    >
-      <div className="space-y-2">
-        <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-          الاسم
-        </label>
-        <input
-          type="text"
-          name="name"
-          id="name"
-          value={formData.name}
-          onChange={handleChange}
-          className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-secondary-700 dark:border-secondary-600 dark:text-white ${
-            errors.name ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 dark:border-secondary-600'
-          }`}
+    <Box component="form" onSubmit={onSubmit} noValidate sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+      <div className="grid gap-5 sm:grid-cols-2">
+        <TextField
+          {...field("name")}
+          label="الاسم"
           autoComplete="name"
-          aria-invalid={!!errors.name}
-          aria-describedby={errors.name ? "name-error" : undefined}
-          required
+          helperText={errors.name}
+          slotProps={{ htmlInput: { maxLength: LIMITS.name } }}
         />
-        {errors.name && <span id="name-error" className="block mt-1 text-sm text-red-600 dark:text-red-400">{errors.name}</span>}
-      </div>
-      <div className="space-y-2">
-        <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-          البريد الإلكتروني
-        </label>
-        <input
+        <TextField
+          {...field("email")}
+          label="البريد الإلكتروني"
           type="email"
-          name="email"
-          id="email"
-          value={formData.email}
-          onChange={handleChange}
-          className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-secondary-700 dark:border-secondary-600 dark:text-white ${
-            errors.email ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 dark:border-secondary-600'
-          }`}
           autoComplete="email"
-          aria-invalid={!!errors.email}
-          aria-describedby={errors.email ? "email-error" : undefined}
-          required
+          helperText={errors.email ?? "نرد على هذا البريد."}
+          slotProps={{ htmlInput: { dir: "ltr" } }}
         />
-        {errors.email && <span id="email-error" className="block mt-1 text-sm text-red-600 dark:text-red-400">{errors.email}</span>}
       </div>
-      <div className="space-y-2">
-        <label htmlFor="subject" className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-          الموضوع
-        </label>
-        <input
-          type="text"
-          name="subject"
-          id="subject"
-          value={formData.subject}
-          onChange={handleChange}
-          className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-secondary-700 dark:border-secondary-600 dark:text-white ${
-            errors.subject ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 dark:border-secondary-600'
-          }`}
-          aria-invalid={!!errors.subject}
-          aria-describedby={errors.subject ? "subject-error" : undefined}
-          required
-        />
-        {errors.subject && <span id="subject-error" className="block mt-1 text-sm text-red-600 dark:text-red-400">{errors.subject}</span>}
-      </div>
-      <div className="space-y-2">
-        <label htmlFor="message" className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-          رسالتك
-        </label>
-        <textarea
-          name="message"
-          id="message"
-          rows={5}
-          value={formData.message}
-          onChange={handleChange}
-          className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-secondary-700 dark:border-secondary-600 dark:text-white ${
-            errors.message ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 dark:border-secondary-600'
-          }`}
-          aria-invalid={!!errors.message}
-          aria-describedby={errors.message ? "message-error" : undefined}
-          required
-        />
-        {errors.message && <span id="message-error" className="block mt-1 text-sm text-red-600 dark:text-red-400">{errors.message}</span>}
-      </div>
-      <div className="text-center">
-        <button
-          type="submit"
-          className="inline-flex items-center justify-center px-6 py-3 text-base font-medium text-white bg-primary-600 border border-transparent rounded-md shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled={loading}
-          aria-busy={loading}
-        >
-          {loading && <svg className="w-5 h-5 mr-2 -ml-1 text-white animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>}
-          إرسال الرسالة
-        </button>
-      </div>
-      <div aria-live="polite" className="min-h-10">
-        {status.message && (
-          <p
-            className={`p-3 rounded-md text-sm font-medium ${
-              status.type === "success"
-                ? 'bg-green-100 text-green-800 dark:bg-green-800/30 dark:text-green-400'
-                : status.type === "error"
-                ? 'bg-red-100 text-red-800 dark:bg-red-800/30 dark:text-red-400'
-                : status.type === "info"
-                ? 'bg-blue-100 text-blue-800 dark:bg-blue-800/30 dark:text-blue-400'
-                : 'bg-gray-100 text-gray-800 dark:bg-gray-800/30 dark:text-gray-400'
-            }`}
-          >
-            {status.message}
-          </p>
+      <TextField
+        {...field("subject")}
+        label="الموضوع"
+        helperText={errors.subject ?? `حتى ${LIMITS.subject} حرف.`}
+        slotProps={{ htmlInput: { maxLength: LIMITS.subject } }}
+      />
+      <TextField
+        {...field("message")}
+        label="الرسالة"
+        multiline
+        minRows={5}
+        helperText={errors.message ?? `${values.message.length} / ${LIMITS.message}`}
+        slotProps={{ htmlInput: { maxLength: LIMITS.message } }}
+      />
+
+      <div aria-live="polite">
+        {result === "sent" && (
+          <Alert severity="success" variant="outlined">
+            وصلتنا رسالتك، وسنرد عليك على بريدك الإلكتروني.
+          </Alert>
+        )}
+        {result === "failed" && (
+          <Alert severity="error" variant="outlined">
+            لم نتمكن من إرسال رسالتك. تحقق من اتصالك ثم حاول مرة أخرى.
+          </Alert>
         )}
       </div>
-    </form>
-  );
-};
 
-export default ContactForm;
+      <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+        <Button
+          type="submit"
+          variant="contained"
+          disabled={sending}
+          aria-busy={sending || undefined}
+          startIcon={sending ? <CircularProgress size={16} color="inherit" aria-hidden /> : undefined}
+          sx={{ minWidth: 160 }}
+        >
+          {sending ? "جارٍ الإرسال…" : "إرسال الرسالة"}
+        </Button>
+      </Box>
+    </Box>
+  );
+}
