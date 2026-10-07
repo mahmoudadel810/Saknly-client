@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, Navigation, X, Home, Search, Plus } from 'lucide-react';
 import { Property } from '@/shared/types';
 import axios from 'axios';
 import { escapeHtml } from '@/shared/utils/escapeHtml';
+import AddOutlined from '@mui/icons-material/AddOutlined';
+import CloseOutlined from '@mui/icons-material/CloseOutlined';
+import HomeOutlined from '@mui/icons-material/HomeOutlined';
+import NavigationOutlined from '@mui/icons-material/NavigationOutlined';
+import SearchOutlined from '@mui/icons-material/SearchOutlined';
 
 type MapProperty = {
   id: string;
@@ -334,7 +338,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
         <div className="p-4">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-              <Home className="w-6 h-6 text-blue-600" />
+              <HomeOutlined sx={{ fontSize: 24 }} className="text-blue-600" />
               Saknly Property Map
             </h1>
             <div className="flex items-center gap-2">
@@ -347,7 +351,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
                 }`}
                 disabled={!showDirections}
               >
-                <X className="w-4 h-4 mr-1 inline" />
+                <CloseOutlined sx={{ fontSize: 16 }} className="mr-1 inline" />
                 Clear Route
               </button>
             </div>
@@ -356,7 +360,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
           {/* Search Bar */}
           <div className="flex gap-2">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <SearchOutlined sx={{ fontSize: 16 }} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
                 placeholder="Search location in Egypt..."
@@ -383,7 +387,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
       {/* Instructions */}
       <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg p-4 shadow-lg max-w-xs">
         <h3 className="font-bold text-sm mb-2 flex items-center gap-2">
-          <Plus className="w-4 h-4 text-blue-600" />
+          <AddOutlined sx={{ fontSize: 16 }} className="text-blue-600" />
           Map Instructions
         </h3>
         <ul className="text-xs text-gray-600 space-y-1">
@@ -407,7 +411,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
               onClick={() => onPropertySelect?.(null as any)}
               className="absolute top-2 right-2 bg-white/80 hover:bg-white rounded-full p-2 transition-colors"
             >
-              <X className="w-4 h-4" />
+              <CloseOutlined sx={{ fontSize: 16 }} />
             </button>
           </div>
           <div className="p-4">
@@ -425,7 +429,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
                 onClick={() => window.showDirections(selectedProperty._id)}
                 className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
               >
-                <Navigation className="w-4 h-4" />
+                <NavigationOutlined sx={{ fontSize: 16 }} />
                 Directions
               </button>
               <button className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors">

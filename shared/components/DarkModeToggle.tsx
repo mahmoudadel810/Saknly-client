@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { useDarkMode } from '@/app/context/DarkModeContext';
-import { SunIcon, MoonIcon } from '@heroicons/react/24/outline';
+import DarkModeOutlined from '@mui/icons-material/DarkModeOutlined';
+import LightModeOutlined from '@mui/icons-material/LightModeOutlined';
 
 const DarkModeToggle: React.FC = () => {
   const { isDarkMode, toggleDarkMode } = useDarkMode();
@@ -17,13 +18,15 @@ const DarkModeToggle: React.FC = () => {
       aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
     >
       <div className="relative w-5 h-5">
-        <SunIcon 
-          className={`absolute inset-0 w-5 h-5 text-yellow-500 transition-all duration-300 ${
+        <LightModeOutlined
+          sx={{ fontSize: 20 }}
+          className={`absolute inset-0 text-yellow-500 transition-all duration-300 ${
             isDarkMode ? 'opacity-0 rotate-90 scale-0' : 'opacity-100 rotate-0 scale-100'
           }`}
         />
-        <MoonIcon 
-          className={`absolute inset-0 w-5 h-5 text-blue-400 transition-all duration-300 ${
+        <DarkModeOutlined
+          sx={{ fontSize: 20 }}
+          className={`absolute inset-0 text-blue-400 transition-all duration-300 ${
             isDarkMode ? 'opacity-100 rotate-0 scale-100' : 'opacity-0 -rotate-90 scale-0'
           }`}
         />

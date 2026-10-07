@@ -1,7 +1,10 @@
 "use client";
 
-import { FaMapMarkerAlt, FaPhone, FaEnvelope, FaClock } from "react-icons/fa";
 import ContactForm from "@/shared/components/ContactForm";
+import EmailOutlined from '@mui/icons-material/EmailOutlined';
+import PhoneOutlined from '@mui/icons-material/PhoneOutlined';
+import PlaceOutlined from '@mui/icons-material/PlaceOutlined';
+import ScheduleOutlined from '@mui/icons-material/ScheduleOutlined';
 
 export default function ContactPage() {
   return (
@@ -31,7 +34,7 @@ export default function ContactPage() {
               <div className="space-y-4">
                 <div className="flex items-center justify-end text-right w-full">
                   <div className="bg-primary-100 dark:bg-primary-900/30 p-3 rounded-full text-primary-600 dark:text-primary-400 ml-4 flex-shrink-0">
-                    <FaMapMarkerAlt className="text-xl" />
+                    <PlaceOutlined sx={{ fontSize: 20 }} />
                   </div>
                   <div className="text-right flex-1">
                     <h3 className="font-semibold text-secondary-900 dark:text-white">العنوان</h3>
@@ -41,7 +44,7 @@ export default function ContactPage() {
 
                 <div className="flex items-center justify-end text-right w-full">
                   <div className="bg-primary-100 dark:bg-primary-900/30 p-3 rounded-full text-primary-600 dark:text-primary-400 ml-4 flex-shrink-0">
-                    <FaPhone className="text-xl" />
+                    <PhoneOutlined sx={{ fontSize: 20 }} />
                   </div>
                   <div className="text-right flex-1">
                     <h3 className="font-semibold text-secondary-900 dark:text-white">الهاتف</h3>
@@ -51,7 +54,7 @@ export default function ContactPage() {
 
                 <div className="flex items-center justify-end text-right w-full">
                   <div className="bg-primary-100 dark:bg-primary-900/30 p-3 rounded-full text-primary-600 dark:text-primary-400 ml-4 flex-shrink-0">
-                    <FaEnvelope className="text-xl" />
+                    <EmailOutlined sx={{ fontSize: 20 }} />
                   </div>
                   <div className="text-right flex-1">
                     <h3 className="font-semibold text-secondary-900 dark:text-white">البريد الإلكتروني</h3>
@@ -61,7 +64,7 @@ export default function ContactPage() {
 
                 <div className="flex items-center justify-end text-right w-full">
                   <div className="bg-primary-100 dark:bg-primary-900/30 p-3 rounded-full text-primary-600 dark:text-primary-400 ml-4 flex-shrink-0">
-                    <FaClock className="text-xl" />
+                    <ScheduleOutlined sx={{ fontSize: 20 }} />
                   </div>
                   <div className="text-right flex-1">
                     <h3 className="font-semibold text-secondary-900 dark:text-white">ساعات العمل</h3>

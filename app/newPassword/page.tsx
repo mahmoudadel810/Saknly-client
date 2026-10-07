@@ -11,13 +11,15 @@ import {
     Paper,
     Container,
 } from '@mui/material';
-import { Eye, EyeOff, Lock } from 'lucide-react';
 import { useFormik } from 'formik';
 import * as yup from 'yup';
 import { useToast } from '@/shared/provider/ToastProvider';
 import { useRouter } from 'next/navigation';
 import { API_URL } from '@/shared/utils/auth';
 import { emailSchema, passwordSchema, RESET_EMAIL_KEY } from '@/shared/utils/authValidation';
+import LockOutlined from '@mui/icons-material/LockOutlined';
+import VisibilityOffOutlined from '@mui/icons-material/VisibilityOffOutlined';
+import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined';
 
 const validationSchema = yup.object({
     email: emailSchema,
@@ -110,7 +112,7 @@ export default function ResetPasswordFormPage() {
                         alignItems: 'center',
                         mb: 2
                     }}>
-                        <Lock size={24} style={{ color: 'white' }} />
+                        <LockOutlined sx={{ fontSize: 24 }} style={{ color: 'white' }} />
                     </Box>
                     <Typography component="h1" variant="h5" fontWeight="bold">
                         إعادة تعيين كلمة المرور
@@ -166,7 +168,7 @@ export default function ResetPasswordFormPage() {
                                         onClick={() => setShowPassword(!showPassword)}
                                         edge="end"
                                     >
-                                        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                        {showPassword ? <VisibilityOffOutlined sx={{ fontSize: 20 }} /> : <VisibilityOutlined sx={{ fontSize: 20 }} />}
                                     </IconButton>
                                 </InputAdornment>
                             ),
@@ -193,7 +195,7 @@ export default function ResetPasswordFormPage() {
                                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                                         edge="end"
                                     >
-                                        {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                        {showConfirmPassword ? <VisibilityOffOutlined sx={{ fontSize: 20 }} /> : <VisibilityOutlined sx={{ fontSize: 20 }} />}
                                     </IconButton>
                                 </InputAdornment>
                             ),

@@ -1,15 +1,18 @@
 "use client";
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-  TrendingUp, TrendingDown, Users, Home, Building, 
-  MessageCircle, Eye, DollarSign, Clock, CheckCircle,
-  AlertCircle, Filter, Calendar, Download, RotateCcw,
-  Search, Bell, Settings, Mail
-} from 'lucide-react';
 import axios from "axios";
 import { useMediaQuery } from "@mui/material";
 import { useDarkMode } from "@/app/context/DarkModeContext";
 import { API_URL, authHeader } from "@/shared/utils/auth";
+import ApartmentOutlined from '@mui/icons-material/ApartmentOutlined';
+import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutlined';
+import HomeOutlined from '@mui/icons-material/HomeOutlined';
+import MailOutlined from '@mui/icons-material/MailOutlined';
+import NotificationsOutlined from '@mui/icons-material/NotificationsOutlined';
+import PeopleOutlined from '@mui/icons-material/PeopleOutlined';
+import ScheduleOutlined from '@mui/icons-material/ScheduleOutlined';
+import TrendingDownOutlined from '@mui/icons-material/TrendingDownOutlined';
+import TrendingUpOutlined from '@mui/icons-material/TrendingUpOutlined';
 
 // Type definitions
 interface StatCardProps {
@@ -36,7 +39,7 @@ const StatCard = ({ title, value, change, icon: Icon, color, trend }: StatCardPr
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-4">
         <div className={`p-3 rounded-lg ${color}`}>
-          <Icon className="h-6 w-6 text-white" />
+          <Icon sx={{ fontSize: 24 }} className="text-white" />
         </div>
         <div>
           <p className="text-sm font-medium text-secondary-600 mb-1">{title}</p>
@@ -47,7 +50,7 @@ const StatCard = ({ title, value, change, icon: Icon, color, trend }: StatCardPr
       <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${
         trend > 0 ? 'bg-success-50 text-success-600' : 'bg-danger-50 text-danger-600'
       }`}>
-        {trend > 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+        {trend > 0 ? <TrendingUpOutlined sx={{ fontSize: 16 }} /> : <TrendingDownOutlined sx={{ fontSize: 16 }} />}
         <span>{Math.abs(change)}%</span>
       </div>
       )}
@@ -255,21 +258,21 @@ const AdminDashboard = () => {
           <StatCard
             title="إجمالي المستخدمين"
             value={stats.totalUsers}
-            icon={Users}
+            icon={PeopleOutlined}
             color="bg-primary-600"
             trend={1}
           />
           <StatCard
             title="إجمالي العقارات"
             value={stats.totalProperties}
-            icon={Home}
+            icon={HomeOutlined}
             color="bg-success-600"
             trend={1}
           />
           <StatCard
             title="الوكالات النشطة"
             value={stats.totalAgencies}
-            icon={Building}
+            icon={ApartmentOutlined}
             color="bg-warning-600"
             trend={1}
           />
@@ -287,28 +290,28 @@ const AdminDashboard = () => {
             <StatCard
               title="عقارات قيد المراجعة"
               value={activityCounts.pendingProperties}
-              icon={Clock}
+              icon={ScheduleOutlined}
               color="bg-warning-600"
               trend={1}
             />
             <StatCard
               title="آراء العملاء"
               value={activityCounts.testimonials}
-              icon={MessageCircle}
+              icon={ChatBubbleOutlineOutlined}
               color="bg-primary-600"
               trend={1}
             />
             <StatCard
               title="استفسارات العقارات"
               value={activityCounts.propertyInquiries}
-              icon={Bell}
+              icon={NotificationsOutlined}
               color="bg-success-600"
               trend={1}
             />
             <StatCard
               title="رسائل التواصل"
               value={activityCounts.contactMessages}
-              icon={Mail}
+              icon={MailOutlined}
               color="bg-secondary-600"
               trend={1}
             />

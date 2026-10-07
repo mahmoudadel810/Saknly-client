@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Box, Typography, Button, Tooltip } from '@mui/material';
-import { Navigation, ExternalLink } from 'lucide-react';
 import { escapeHtml } from '@/shared/utils/escapeHtml';
+import NavigationOutlined from '@mui/icons-material/NavigationOutlined';
+import OpenInNewOutlined from '@mui/icons-material/OpenInNewOutlined';
 
 interface PropertyLocationMapProps {
   latitude: number;
@@ -203,7 +204,7 @@ const PropertyLocationMap: React.FC<PropertyLocationMapProps> = ({
             variant="contained"
             size="small"
             onClick={openInExternalMap}
-            startIcon={<ExternalLink />}
+            startIcon={<OpenInNewOutlined />}
             sx={{ 
               bgcolor: 'white', 
               color: '#333',
@@ -222,7 +223,7 @@ const PropertyLocationMap: React.FC<PropertyLocationMapProps> = ({
                 variant="contained"
                 size="small"
                 onClick={showDirections}
-                startIcon={<Navigation />}
+                startIcon={<NavigationOutlined />}
                 sx={{ 
                   bgcolor: 'white', 
                   color: '#3b82f6',

@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Box, Button, Typography, Paper, TextField, Alert } from '@mui/material';
-import { MapPin, Search, X, Navigation } from 'lucide-react';
+import CloseOutlined from '@mui/icons-material/CloseOutlined';
+import NavigationOutlined from '@mui/icons-material/NavigationOutlined';
+import PlaceOutlined from '@mui/icons-material/PlaceOutlined';
+import SearchOutlined from '@mui/icons-material/SearchOutlined';
 
 interface MapPickerProps {
   latitude?: number;
@@ -503,12 +506,12 @@ const MapPicker: React.FC<MapPickerProps> = ({
       
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h6" sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
-          <MapPin className="w-5 h-5" />
+          <PlaceOutlined sx={{ fontSize: 20 }} />
           اختر موقع العقار
         </Typography>
         {onClose && (
           <Button onClick={onClose} size="small">
-            <X className="w-4 h-4" />
+            <CloseOutlined sx={{ fontSize: 16 }} />
           </Button>
         )}
       </Box>
@@ -523,7 +526,7 @@ const MapPicker: React.FC<MapPickerProps> = ({
           onChange={(e) => setSearchQuery(e.target.value)}
           onKeyPress={(e) => e.key === 'Enter' && searchLocation()}
           InputProps={{
-            startAdornment: <Search className="w-4 h-4 text-gray-400 ml-2" />
+            startAdornment: <SearchOutlined sx={{ fontSize: 16 }} className="text-gray-400 ml-2" />
           }}
         />
         <Button
@@ -547,7 +550,7 @@ const MapPicker: React.FC<MapPickerProps> = ({
               backgroundColor: 'rgba(59, 130, 246, 0.1)'
             }
           }}
-          startIcon={<Navigation className="w-4 h-4" />}
+          startIcon={<NavigationOutlined sx={{ fontSize: 16 }} />}
         >
           {isLoadingLocation ? 'جاري...' : 'موقعي'}
         </Button>
@@ -576,10 +579,10 @@ const MapPicker: React.FC<MapPickerProps> = ({
               color: '#dc2626'
             }}
           >
-            <X className="w-4 h-4" />
+            <CloseOutlined sx={{ fontSize: 16 }} />
           </Button>
           <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1, pr: 4 }}>
-            <Navigation className="w-4 h-4" />
+            <NavigationOutlined sx={{ fontSize: 16 }} />
             {locationError}
           </Typography>
           <Typography variant="caption" sx={{ mt: 1, display: 'block', color: '#7f1d1d' }}>
