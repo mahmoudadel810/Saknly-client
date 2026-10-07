@@ -90,8 +90,15 @@ export function WishlistProvider({ children }) {
       showToast('تمت الإضافة إلى قائمة الأمنيات بنجاح!', 'success');
       return true;
     } catch (error) {
-      console.error('Error adding to wishlist:', error);
-      showToast('فشل في إضافة العقار للمفضلة', 'error');
+      const status = error?.response?.status;
+      if (status === 404) {
+        // The server only accepts approved, active listings; this one is pending, hidden or deleted.
+        showToast('هذا العقار غير متاح حاليًا، ولا يمكن إضافته للمفضلة', 'warning');
+      } else if (status === 401) {
+        showToast('انتهت الجلسة، سجّل الدخول مرة أخرى لإضافة العقار للمفضلة', 'warning');
+      } else {
+        showToast('فشل في إضافة العقار للمفضلة', 'error');
+      }
       return false;
     }
   };
