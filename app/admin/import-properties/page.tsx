@@ -20,7 +20,7 @@ import PageHeader from '@/shared/ui/PageHeader';
 import StatusBadge from '@/shared/ui/StatusBadge';
 import AdminGuard from '@/shared/ui/admin/AdminGuard';
 import { errorStatus } from '@/shared/ui/admin/errors';
-import { formatCount } from '@/shared/ui/admin/format';
+import { formatCount, propertiesCount } from '@/shared/ui/admin/format';
 
 // Server create rules (server/modules/Property/propertyValidation.js), checked here so each
 // failed row gets a specific reason. Nothing is ever filled in: a missing value fails the row.
@@ -354,7 +354,7 @@ function ImportWorkflow() {
         <Panel title={`مراجعة الصفوف${fileName ? `: ${fileName}` : ''}`}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 2 }}>
             <Typography variant="body2">
-              {formatCount(validRows.length)} جاهز للاستيراد، و{formatCount(invalidRows.length)} ناقص أو غير صالح.
+              صفوف جاهزة للاستيراد: {formatCount(validRows.length)}. صفوف ناقصة أو غير صالحة: {formatCount(invalidRows.length)}.
             </Typography>
             {invalidRows.length > 0 && (
               <Alert severity="warning">الصفوف الناقصة لن تُستورد. أكمل بياناتها في الملف ثم ارفعه من جديد.</Alert>
@@ -385,7 +385,7 @@ function ImportWorkflow() {
               اختيار ملف آخر
             </Button>
             <Button variant="contained" onClick={runImport} disabled={validRows.length === 0}>
-              استيراد {formatCount(validRows.length)} {validRows.length === 1 ? 'عقار' : 'عقارات'}
+              {validRows.length === 0 ? 'لا توجد صفوف جاهزة' : `استيراد ${propertiesCount(validRows.length)}`}
             </Button>
           </Box>
         </Panel>
@@ -400,7 +400,7 @@ function ImportWorkflow() {
             sx={{ height: 8, borderRadius: '6px', mb: 1.5 }}
           />
           <Typography variant="body2" role="status" aria-live="polite">
-            عولج {formatCount(processed)} من {formatCount(prepared.length)} صفًا. لا تغلق الصفحة حتى ينتهي الاستيراد.
+            تمت معالجة {formatCount(processed)} من {formatCount(prepared.length)}. لا تغلق الصفحة حتى ينتهي الاستيراد.
           </Typography>
         </Panel>
       )}

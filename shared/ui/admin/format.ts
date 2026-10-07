@@ -57,3 +57,12 @@ export const listingsCount = (n: number) =>
     few: (x) => `${x} إعلانات`,
     many: (x) => `${x} إعلانًا`,
   });
+
+/** "عقار واحد", "عقارين", "3 عقارات", "12 عقارًا". */
+export const propertiesCount = (n: number) =>
+  countNoun(n, {
+    one: "عقار واحد",
+    two: "عقارين",
+    few: (x) => `${x} عقارات`,
+    many: (x) => `${x} عقارًا`,
+  });
