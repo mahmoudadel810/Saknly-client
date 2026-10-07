@@ -219,6 +219,11 @@ export const theme = createTheme({
           '&.MuiInputBase-adornedEnd': { paddingInlineEnd: 6 },
           '&.MuiInputBase-multiline': { paddingBlock: 12, paddingInline: 14 },
           '&.MuiInputBase-sizeSmall': { minHeight: 40 },
+          // Dark mode: --c-field sits just below the raised surface, so a field in a dialog, drawer or menu
+          // would vanish; there it is lifted a step above that surface instead.
+          // (Written out rather than through applyStyles, whose `.dark &` would nest the paper inside .dark.)
+          '.dark .MuiDialog-paper &:not(.Mui-focused), .dark .MuiDrawer-paper &:not(.Mui-focused), .dark .MuiPopover-paper &:not(.Mui-focused)':
+            { backgroundColor: 'color-mix(in srgb, var(--c-text) 8%, var(--c-surface-raised))' },
         }),
         input: ({ theme }) => ({
           paddingBlock: 12.5,
