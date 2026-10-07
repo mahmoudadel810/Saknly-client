@@ -1,6 +1,6 @@
 // The publish-listing form: its values, client-side rules and validation. Server rules live in
 // server/modules/Property/propertyValidation.js and server/Model/PropertyModel.js; the per-type area ranges
-// below are a client-only rule (the server only requires at least 60 m²).
+// below are a client-only rule (the server only requires at least 20 m²).
 
 export type OperationType = "" | "sale" | "rent" | "student";
 
@@ -14,6 +14,8 @@ export interface PropertyFormValues {
   amenities: string[];
   title: string;
   description: string;
+  /** The governorate (location[governorate]); the server derives it from the city when missing. */
+  governorate: string;
   /** The city (location[city]). */
   location: string;
   district: string;
@@ -62,10 +64,11 @@ export const INITIAL_PROPERTY_FORM: PropertyFormValues = {
   amenities: [],
   title: "",
   description: "",
+  governorate: "",
   location: "",
   district: "",
   address: "",
-  // Shebin El Kom, the first city in the list.
+  // Shebin El Kom, where Saknly started; the map re-centres on the chosen governorate.
   latitude: 30.5546,
   longitude: 31.0117,
   price: "",
@@ -106,21 +109,21 @@ export const LIMITS = {
   address: 300,
   district: 50,
   terms: 300,
-  maxPrice: 100_000_000,
+  maxPrice: 500_000_000,
   contactName: 25,
 } as const;
 
-// Area ranges per property type (client rule).
+// Area ranges per property type (client rule). Wide enough for Cairo studios and New Cairo villas.
 export const areaConstraints = {
-  شقة: { min: 60, max: 220 },
-  محل: { min: 60, max: 220 },
-  استوديو: { min: 60, max: 100 },
-  دوبلكس: { min: 180, max: 300 },
-  فيلا: { min: 250, max: 600 },
+  شقة: { min: 30, max: 600 },
+  محل: { min: 20, max: 1000 },
+  استوديو: { min: 20, max: 150 },
+  دوبلكس: { min: 100, max: 800 },
+  فيلا: { min: 150, max: 3000 },
 } as const;
 
 export function getCurrentAreaConstraints(type: string) {
-  return areaConstraints[type as keyof typeof areaConstraints] || { min: 60, max: 1000 };
+  return areaConstraints[type as keyof typeof areaConstraints] || { min: 20, max: 5000 };
 }
 
 /** A shop has no bedrooms; the server still requires the field, so the form sends 0. */
@@ -160,7 +163,7 @@ export function validatePropertyForm(formData: PropertyFormValues) {
 
   // Price and terms
   if (!formData.price) e.price = "اكتب السعر.";
-  else if (Number(formData.price) > LIMITS.maxPrice) e.price = "السعر لا يزيد على 100 مليون جنيه.";
+  else if (Number(formData.price) > LIMITS.maxPrice) e.price = "السعر لا يزيد على 500 مليون جنيه.";
   if (sale && formData.paymentMethod !== "cash") {
     if (!formData.downPayment) e.downPayment = "اكتب قيمة المقدم.";
     if (!formData.installmentPeriodInYears) e.installmentPeriodInYears = "اختر مدة التقسيط.";
@@ -169,11 +172,12 @@ export function validatePropertyForm(formData: PropertyFormValues) {
   if (rental) {
     if (!formData.leaseDuration) e.leaseDuration = "اختر مدة الإيجار.";
     if (formData.deposit && Number(formData.deposit) > LIMITS.maxPrice)
-      e.deposit = "التأمين لا يزيد على 100 مليون جنيه.";
+      e.deposit = "التأمين لا يزيد على 500 مليون جنيه.";
     if (formData.rulesOther.length > LIMITS.terms) e.rulesOther = `الشروط حتى ${LIMITS.terms} حرف.`;
   }
 
   // Location
+  if (!formData.governorate) e.governorate = "اختر المحافظة.";
   if (!formData.location) e.location = "اختر المدينة.";
   if (formData.district.length > LIMITS.district) e.district = `اسم الحي حتى ${LIMITS.district} حرفًا.`;
   if (formData.address.length > LIMITS.address) e.address = `العنوان حتى ${LIMITS.address} حرف.`;
@@ -231,6 +235,7 @@ export const FIELD_ORDER = [
   "deposit",
   "leaseDuration",
   "rulesOther",
+  "governorate",
   "location",
   "district",
   "address",

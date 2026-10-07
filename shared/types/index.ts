@@ -83,6 +83,7 @@ export interface Property {
   totalFloors?: number;
   location: {
     address: string;
+    governorate?: string;
     city: string;
     district?: string;
     state?: string;
@@ -226,6 +227,7 @@ export interface PropertyFormData {
   totalFloors?: number;
   location: {
     address: string;
+    governorate?: string;
     city: string;
     district?: string;
     state?: string;

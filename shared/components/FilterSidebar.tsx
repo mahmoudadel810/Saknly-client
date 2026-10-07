@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useId } from "react";
+import React, { useId, useState } from "react";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Checkbox from "@mui/material/Checkbox";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import InputAdornment from "@mui/material/InputAdornment";
@@ -10,7 +11,13 @@ import Slider from "@mui/material/Slider";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import SearchOutlined from "@mui/icons-material/SearchOutlined";
-import { AMENITIES, CITY_OPTIONS, PROPERTY_TYPE_OPTIONS } from "@/shared/constants/property";
+import {
+  AMENITIES,
+  GOVERNORATES,
+  MAIN_GOVERNORATES,
+  PROPERTY_TYPE_OPTIONS,
+  citiesFor,
+} from "@/shared/constants/property";
 import { formatNumber } from "@/shared/ui/Price";
 import { yearsLabel, type PropertyFilters } from "@/shared/ui/listing/usePropertyFilters";
 
@@ -74,6 +81,15 @@ export default function FilterSidebar({ filters }: { filters: PropertyFilters })
   const id = useId();
   const { draft, type, update, preview, toggleIn, bounds } = filters;
   const showPaymentPlan = draft.kind === "all" || draft.kind === "sale";
+  // Governorates with one listed city stay behind "more" unless one of them is chosen.
+  const [allGovernorates, setAllGovernorates] = useState(false);
+  const governorateOptions = allGovernorates
+    ? GOVERNORATES
+    : GOVERNORATES.filter((g) => MAIN_GOVERNORATES.includes(g) || draft.governorates.includes(g));
+  // Cities of the chosen governorates, plus any city already chosen (a link may carry a city alone).
+  const cityOptions = draft.governorates.length
+    ? [...new Set([...citiesFor(draft.governorates), ...draft.cities])]
+    : draft.cities;
 
   const sliderValue = [
     Math.min(Number(draft.priceMin) || bounds.min, bounds.max),
@@ -140,13 +156,33 @@ export default function FilterSidebar({ filters }: { filters: PropertyFilters })
         </Box>
       </Section>
 
-      <Section title="المدينة">
+      <Section title="المحافظة">
         <CheckList
-          options={CITY_OPTIONS.map((city) => ({ value: city, label: city }))}
-          selected={draft.cities}
-          onToggle={(value) => toggleIn("cities", value)}
+          options={governorateOptions.map((g) => ({ value: g, label: g }))}
+          selected={draft.governorates}
+          onToggle={(value) => toggleIn("governorates", value)}
           columns={2}
         />
+        {governorateOptions.length < GOVERNORATES.length || allGovernorates ? (
+          <Button size="small" onClick={() => setAllGovernorates((v) => !v)} sx={{ mt: 0.5 }} aria-expanded={allGovernorates}>
+            {allGovernorates ? "عرض أقل" : `كل المحافظات (${GOVERNORATES.length})`}
+          </Button>
+        ) : null}
+      </Section>
+
+      <Section title="المدينة أو الحي">
+        {cityOptions.length ? (
+          <CheckList
+            options={cityOptions.map((city) => ({ value: city, label: city }))}
+            selected={draft.cities}
+            onToggle={(value) => toggleIn("cities", value)}
+            columns={2}
+          />
+        ) : (
+          <Typography variant="body2" color="text.secondary">
+            اختر محافظة لعرض مدنها.
+          </Typography>
+        )}
       </Section>
 
       <Section title="نوع العقار">

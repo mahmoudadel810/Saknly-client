@@ -3,7 +3,7 @@ import Link from "next/link";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import ContentPage, { ContentSection } from "@/shared/ui/ContentPage";
-import { CITY_OPTIONS } from "@/shared/constants/property";
+import { MAIN_GOVERNORATES } from "@/shared/constants/property";
 import PropertyCount from "./PropertyCount";
 
 export const metadata: Metadata = {
@@ -22,7 +22,9 @@ export default function AboutPage() {
           سكنلي موقع لعرض العقارات والبحث فيها: شقق وفيلات ومحلات واستوديوهات ودوبلكس، للبيع أو للإيجار، وسكن طلابي قرب
           الجامعات.
         </p>
-        <p>المدن المتاحة على سكنلي: {CITY_OPTIONS.join("، ")}.</p>
+        <p>
+          يغطي سكنلي محافظات مصر كلها، وأكثر الإعلانات في: {MAIN_GOVERNORATES.join("، ")}.
+        </p>
         <PropertyCount />
       </ContentSection>
 

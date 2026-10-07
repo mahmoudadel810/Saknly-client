@@ -40,7 +40,7 @@ interface MyListing {
   isApproved?: boolean;
   createdAt?: string;
   approvedAt?: string;
-  location?: { city?: string; district?: string };
+  location?: { governorate?: string; city?: string; district?: string };
 }
 
 type TabKey = "listings" | "account";
@@ -99,7 +99,7 @@ function MyListings({ userId }: { userId: string }) {
           </MuiLink>
           {p.location?.city && (
             <Typography variant="caption" color="text.secondary" component="p">
-              {[p.location.district, p.location.city].filter(Boolean).join("، ")}
+              {[p.location.district, p.location.city, p.location.governorate].filter(Boolean).join("، ")}
             </Typography>
           )}
         </Box>

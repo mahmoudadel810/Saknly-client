@@ -28,7 +28,7 @@ export default function PriceSection(p: SectionProps) {
           {...bind(p, "price", { digits: true })}
           required
           label={rental ? "الإيجار الشهري" : "السعر"}
-          helperText={help(p, "price", pricePreview ?? `${MONEY_HINT} الحد الأقصى 100 مليون جنيه.`)}
+          helperText={help(p, "price", pricePreview ?? `${MONEY_HINT} الحد الأقصى 500 مليون جنيه.`)}
           slotProps={numericInput}
         />
         <FormControlLabel

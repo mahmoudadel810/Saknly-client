@@ -7,6 +7,7 @@ import { formatPrice } from "@/shared/ui/Price";
 import ErrorState from "@/shared/ui/ErrorState";
 import LoadingState from "@/shared/ui/LoadingState";
 import { hasCoordinates, loadLeaflet, markerHtml, readToken } from "@/shared/ui/listing/leaflet";
+import { EGYPT_CENTER } from "@/shared/constants/property";
 
 export interface MapListing {
   _id: string;
@@ -16,8 +17,8 @@ export interface MapListing {
   location?: { address?: string; city?: string; latitude?: number | null; longitude?: number | null } | null;
 }
 
-// The centre of Menoufia, where the listed cities are; used only when no listing on the page has a location.
-const DEFAULT_CENTER: [number, number] = [30.55, 31.0];
+// Cairo and the Delta, where most listings are; used only when no listing on the page has a location.
+const DEFAULT_CENTER: [number, number] = EGYPT_CENTER;
 
 /** Popup content built from DOM nodes with textContent, so listing fields can never be parsed as HTML. */
 function popupContent(listing: MapListing): HTMLElement {
@@ -65,7 +66,7 @@ export default function PropertyMap({ properties }: { properties: MapListing[] }
       .then((L) => {
         if (cancelled || !containerRef.current) return;
         if (!mapRef.current) {
-          mapRef.current = L.map(containerRef.current, { scrollWheelZoom: false }).setView(DEFAULT_CENTER, 10);
+          mapRef.current = L.map(containerRef.current, { scrollWheelZoom: false }).setView(DEFAULT_CENTER, 8);
           L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
             attribution: "© OpenStreetMap contributors",
             maxZoom: 19,

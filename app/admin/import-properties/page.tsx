@@ -13,7 +13,7 @@ import Typography from '@mui/material/Typography';
 import UploadFileOutlined from '@mui/icons-material/UploadFileOutlined';
 import ImportProperties, { ImportRow } from '@/shared/components/ImportProperties';
 import { useToast } from '@/shared/provider/ToastProvider';
-import { normalizeCity, PROPERTY_TYPE_VALUES } from '@/shared/constants/property';
+import { governorateOf, normalizeCity, PROPERTY_TYPE_VALUES } from '@/shared/constants/property';
 import { api, getErrorMessage } from '@/shared/services/api';
 import DataTable, { useDataTableState, type DataTableColumn } from '@/shared/ui/DataTable';
 import PageHeader from '@/shared/ui/PageHeader';
@@ -99,11 +99,11 @@ const prepareRow = (row: ImportRow): PreparedRow => {
 
   const price = parsePrice(c.price);
   if (price === null) errors.push(c.price ? `سعر غير مفهوم: "${c.price}"` : 'السعر مفقود');
-  else if (price > 100000000) errors.push('السعر أكبر من 100 مليون');
+  else if (price > 500000000) errors.push('السعر أكبر من 500 مليون');
 
   const area = parseWholeNumber(c.area);
   if (area === null) errors.push(c.area ? `مساحة غير مفهومة: "${c.area}"` : 'المساحة مفقودة');
-  else if (area < 60) errors.push('المساحة أقل من 60 متر');
+  else if (area < 20) errors.push('المساحة أقل من 20 متر');
 
   const bedrooms = parseWholeNumber(c.bedrooms);
   if (bedrooms === null) errors.push('عدد غرف النوم مفقود');
@@ -148,6 +148,7 @@ const prepareRow = (row: ImportRow): PreparedRow => {
   form.append('area', String(area));
   form.append('bedrooms', String(bedrooms));
   form.append('bathrooms', String(bathrooms));
+  form.append('location[governorate]', governorateOf(city) as string);
   form.append('location[city]', city as string);
   form.append('location[address]', locationText);
   form.append('contactInfo[name]', contactName);

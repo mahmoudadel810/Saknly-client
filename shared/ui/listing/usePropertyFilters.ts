@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useDebouncedCallback } from "use-debounce";
 import { formatNumber } from "@/shared/ui/Price";
+import { governorateOf } from "@/shared/constants/property";
 import {
   LISTING_KIND_KEYS,
   listingKindFromParams,
@@ -27,6 +28,7 @@ export const OWNED_KEYS = [
   "search",
   "price[gte]",
   "price[lte]",
+  "location.governorate",
   "location.city",
   "type",
   "bedrooms",
@@ -56,10 +58,10 @@ export const DEFAULT_SORT = "-createdAt";
 
 /** Slider bounds per listing kind. They are UI bounds, not data: at a bound the price is not filtered. */
 export const PRICE_BOUNDS: Record<ListingKind, { min: number; max: number; step: number }> = {
-  all: { min: 0, max: 20_000_000, step: 50_000 },
-  sale: { min: 0, max: 20_000_000, step: 50_000 },
-  rent: { min: 0, max: 50_000, step: 500 },
-  student: { min: 0, max: 10_000, step: 100 },
+  all: { min: 0, max: 100_000_000, step: 100_000 },
+  sale: { min: 0, max: 100_000_000, step: 100_000 },
+  rent: { min: 0, max: 200_000, step: 1_000 },
+  student: { min: 0, max: 15_000, step: 100 },
 };
 
 type Params = { get(key: string): string | null; has(key: string): boolean };
@@ -79,6 +81,7 @@ export interface FilterValues {
   search: string;
   priceMin: string;
   priceMax: string;
+  governorates: string[];
   cities: string[];
   types: string[];
   bedrooms: number | null;
@@ -98,6 +101,7 @@ function readValues(params: Params): FilterValues {
     search: text(params, "search"),
     priceMin: text(params, "price[gte]"),
     priceMax: text(params, "price[lte]"),
+    governorates: list(params, "location.governorate"),
     cities: list(params, "location.city"),
     types: list(params, "type"),
     bedrooms: numberOrNull(params, "bedrooms"),
@@ -125,6 +129,7 @@ function writeValues(values: FilterValues): URLSearchParams {
   set("search", values.search.trim().slice(0, 100));
   set("price[gte]", positive(values.priceMin));
   set("price[lte]", positive(values.priceMax));
+  if (values.governorates.length) set("location.governorate", values.governorates.join(","));
   if (values.cities.length) set("location.city", values.cities.join(","));
   if (values.types.length) set("type", values.types.join(","));
   if (values.bedrooms !== null) set("bedrooms", String(values.bedrooms));
@@ -136,6 +141,10 @@ function writeValues(values: FilterValues): URLSearchParams {
   if (values.installmentYears !== null) set("installmentPeriodInYears", String(values.installmentYears));
   return out;
 }
+
+/** Drops the cities that are outside the chosen governorates (no governorate chosen keeps them all). */
+const citiesWithin = (cities: string[], governorates: string[]) =>
+  governorates.length ? cities.filter((city) => governorates.includes(governorateOf(city) ?? "")) : cities;
 
 const ownedState = (params: URLSearchParams) => OWNED_KEYS.map((key) => `${key}=${params.get(key) ?? ""}`).join("&");
 
@@ -235,9 +244,11 @@ export function usePropertyFilters() {
   );
 
   const toggleIn = useCallback(
-    (key: "cities" | "types" | "amenities", value: string) => {
+    (key: "governorates" | "cities" | "types" | "amenities", value: string) => {
       const current = draft[key];
-      update({ [key]: current.includes(value) ? current.filter((v) => v !== value) : [...current, value] });
+      const next = current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
+      if (key === "governorates") update({ governorates: next, cities: citiesWithin(draft.cities, next) });
+      else update({ [key]: next });
     },
     [draft, update],
   );
@@ -247,6 +258,7 @@ export function usePropertyFilters() {
       search: "",
       priceMin: "",
       priceMax: "",
+      governorates: [],
       cities: [],
       types: [],
       bedrooms: null,
@@ -273,6 +285,16 @@ export function usePropertyFilters() {
           : `السعر حتى ${formatNumber(+pMax!)} ج.م`;
       out.push({ key: "price", label, onDelete: () => update({ priceMin: "", priceMax: "" }) });
     }
+    a.governorates.forEach((g) =>
+      out.push({
+        key: `governorate-${g}`,
+        label: `محافظة ${g}`,
+        onDelete: () => {
+          const governorates = a.governorates.filter((x) => x !== g);
+          update({ governorates, cities: citiesWithin(a.cities, governorates) });
+        },
+      }),
+    );
     a.cities.forEach((city) =>
       out.push({ key: `city-${city}`, label: city, onDelete: () => update({ cities: a.cities.filter((c) => c !== city) }) }),
     );

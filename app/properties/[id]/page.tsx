@@ -61,7 +61,7 @@ interface Listing extends ContactSource {
   bathrooms?: number;
   floor?: number;
   totalFloors?: number;
-  location?: { address?: string; city?: string; district?: string; latitude?: number; longitude?: number };
+  location?: { address?: string; governorate?: string; city?: string; district?: string; latitude?: number; longitude?: number };
   images?: { url: string; isMain?: boolean }[];
   amenities?: string[];
   status?: string;
@@ -249,7 +249,9 @@ function MobileContactBar({ listing }: { listing: Listing }) {
 function ListingView({ listing }: { listing: Listing }) {
   const { user } = useAuth();
   const card = toPropertyCardData(listing);
-  const where = [listing.location?.address, listing.location?.district, listing.location?.city].filter(Boolean).join("، ");
+  const where = [listing.location?.address, listing.location?.district, listing.location?.city, listing.location?.governorate]
+    .filter(Boolean)
+    .join("، ");
   const student = listing.studentHousingDetails;
   const showStudent = Boolean(listing.isStudentFriendly || student?.isEnabled);
   const amenities = Array.isArray(listing.amenities) ? listing.amenities.filter(Boolean) : [];
@@ -279,6 +281,14 @@ function ListingView({ listing }: { listing: Listing }) {
         breadcrumbs={[
           { label: "الرئيسية", href: "/" },
           { label: "العقارات", href: "/properties" },
+          ...(listing.location?.governorate
+            ? [
+                {
+                  label: listing.location.governorate,
+                  href: `/properties?location.governorate=${encodeURIComponent(listing.location.governorate)}`,
+                },
+              ]
+            : []),
           ...(listing.location?.city
             ? [{ label: listing.location.city, href: `/properties?location.city=${encodeURIComponent(listing.location.city)}` }]
             : []),

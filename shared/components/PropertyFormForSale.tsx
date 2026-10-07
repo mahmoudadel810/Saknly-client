@@ -50,12 +50,16 @@ function toFormData(v: PropertyFormValues): FormData {
   // The server requires bedrooms; a shop has none.
   add("bedrooms", isShop(v.type) ? "0" : v.bedrooms);
   add("bathrooms", v.bathrooms);
+  add("location[governorate]", v.governorate);
   add("location[city]", v.location);
   add("location[district]", v.district.trim());
   // The server requires an address: fall back to "district، city" when the owner left it empty.
   add("location[address]", v.address.trim() || [v.district.trim(), v.location].filter(Boolean).join("، "));
-  add("location[latitude]", String(v.latitude));
-  add("location[longitude]", String(v.longitude));
+  // Coordinates only when the owner placed the pin; the form's starting point is not the listing's location.
+  if (v.latitude !== INITIAL_PROPERTY_FORM.latitude || v.longitude !== INITIAL_PROPERTY_FORM.longitude) {
+    add("location[latitude]", String(v.latitude));
+    add("location[longitude]", String(v.longitude));
+  }
   add("floor", v.floor);
   add("totalFloors", v.totalFloors);
   add("contactInfo[name]", v.contactInfo.name.trim());
