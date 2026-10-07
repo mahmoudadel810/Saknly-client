@@ -24,7 +24,12 @@ export default function Testimonials() {
   );
 
   return (
-    <HomeSection id="home-testimonials" title="آراء المستخدمين" action={data && data.length > 0 ? writeButton : undefined}>
+    <HomeSection
+      id="home-testimonials"
+      title="آراء المستخدمين"
+      tone="surface"
+      action={data && data.length > 0 ? writeButton : undefined}
+    >
       {isPending ? (
         <LoadingState compact label="جاري تحميل الآراء" />
       ) : isError ? (

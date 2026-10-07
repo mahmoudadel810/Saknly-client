@@ -3,6 +3,7 @@
 import React, { useId, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Box from "@mui/material/Box";
+import FormatQuoteRounded from "@mui/icons-material/FormatQuoteRounded";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import Dialog from "@mui/material/Dialog";
@@ -47,7 +48,7 @@ const DATE = new Intl.DateTimeFormat("ar-EG", { year: "numeric", month: "long" }
 
 export function TestimonialList({ items }: { items: Testimonial[] }) {
   return (
-    <ul className="m-0 grid list-none grid-cols-1 gap-4 p-0 md:grid-cols-2 lg:grid-cols-3">
+    <ul className="m-0 grid list-none grid-cols-1 gap-4 p-0 md:grid-cols-2 lg:grid-cols-3 md:gap-6">
       {items.map((item) => (
         <Box
           component="li"
@@ -55,28 +56,46 @@ export function TestimonialList({ items }: { items: Testimonial[] }) {
           sx={{
             display: "flex",
             flexDirection: "column",
-            gap: 1.5,
-            p: 2.5,
+            gap: 2,
+            p: { xs: 2.5, md: 3 },
             border: 1,
             borderColor: "divider",
-            borderRadius: "10px",
+            borderRadius: "var(--r-card)",
             bgcolor: "background.paper",
+            boxShadow: "var(--c-card-shadow)",
           }}
         >
-          <Box component="blockquote" sx={{ m: 0 }}>
+          <FormatQuoteRounded aria-hidden sx={{ fontSize: 32, color: "var(--c-accent)", transform: "scaleX(-1)" }} />
+          <Box component="blockquote" sx={{ m: 0, mt: -1 }}>
             <Typography variant="body1" sx={{ whiteSpace: "pre-line", overflowWrap: "anywhere" }}>
               {item.text}
             </Typography>
           </Box>
-          <Box sx={{ mt: "auto" }}>
-            <Typography variant="subtitle2" component="p" sx={{ fontWeight: 600 }}>
-              {item.name}
-            </Typography>
-            {item.createdAt && (
-              <Typography variant="caption" color="text.secondary" component="p">
-                {DATE.format(new Date(item.createdAt))}
+          <Box sx={{ mt: "auto", display: "flex", alignItems: "center", gap: 1.5, pt: 2, borderTop: 1, borderColor: "divider" }}>
+            <Box
+              aria-hidden
+              sx={{
+                flexShrink: 0,
+                width: 40,
+                height: 40,
+                borderRadius: "50%",
+                display: "grid",
+                placeItems: "center",
+                bgcolor: "var(--c-primary-soft)",
+                color: "primary.main",
+                fontWeight: 700,
+              }}
+            >
+              {item.name.trim().charAt(0)}
+            </Box>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="subtitle2" component="p" sx={{ fontSize: "0.9375rem", fontWeight: 700 }}>
+                {item.name}
               </Typography>
-            )}
+              <Typography variant="caption" color="text.secondary" component="p">
+                {[item.role, item.createdAt ? DATE.format(new Date(item.createdAt)) : null].filter(Boolean).join("، ")}
+              </Typography>
+            </Box>
           </Box>
         </Box>
       ))}

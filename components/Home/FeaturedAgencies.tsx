@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
+import ArrowBackOutlined from "@mui/icons-material/ArrowBackOutlined";
 import { api } from "@/shared/services/api";
 import ErrorState from "@/shared/ui/ErrorState";
 import LoadingState from "@/shared/ui/LoadingState";
@@ -30,22 +31,28 @@ function AgencyTile({ agency }: { agency: FeaturedAgency }) {
       sx={{
         display: "flex",
         alignItems: "center",
-        gap: 1.5,
+        gap: 2,
         height: "100%",
-        p: 2,
+        p: 2.5,
         border: 1,
         borderColor: "divider",
-        borderRadius: "10px",
+        borderRadius: "var(--r-card)",
         bgcolor: "background.paper",
+        boxShadow: "var(--c-card-shadow)",
         color: "text.primary",
         textDecoration: "none",
-        transition: "border-color 150ms ease-out",
-        "&:hover": { borderColor: "color-mix(in srgb, var(--c-secondary) 40%, transparent)" },
+        transition: "transform 200ms ease-out, box-shadow 200ms ease-out",
+        "&:hover": { transform: "translateY(-2px)", boxShadow: "var(--c-card-shadow-hover)" },
+        "&:hover .agency-tile__arrow": { color: "primary.main", transform: "translateX(-2px)" },
+        "@media (prefers-reduced-motion: reduce)": {
+          "&:hover": { transform: "none" },
+          "&:hover .agency-tile__arrow": { transform: "none" },
+        },
       }}
     >
-      <AgencyLogo src={agency.logo?.url} size={56} />
-      <Box sx={{ minWidth: 0 }}>
-        <Typography component="h3" variant="h6" sx={{ lineHeight: 1.4 }}>
+      <AgencyLogo src={agency.logo?.url} size={64} />
+      <Box sx={{ minWidth: 0, flex: 1 }}>
+        <Typography component="h3" variant="h6" sx={{ lineHeight: 1.4, fontWeight: 700 }}>
           {agency.name}
         </Typography>
         {agency.description && (
@@ -58,6 +65,11 @@ function AgencyTile({ agency }: { agency: FeaturedAgency }) {
           </Typography>
         )}
       </Box>
+      <ArrowBackOutlined
+        aria-hidden
+        className="agency-tile__arrow"
+        sx={{ flexShrink: 0, fontSize: 20, color: "text.secondary", transition: "color 150ms ease-out, transform 150ms ease-out" }}
+      />
     </Box>
   );
 }
@@ -79,6 +91,7 @@ export default function FeaturedAgencies() {
       id="home-agencies"
       title="شركات عقارية على سكنلي"
       description="تصفح إعلانات كل شركة في صفحتها."
+      tone="page"
     >
       {isPending ? (
         <LoadingState compact label="جاري تحميل الشركات" />

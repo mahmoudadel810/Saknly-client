@@ -67,6 +67,7 @@ export default function FeaturedProperties() {
       title="الإعلانات الأكثر مشاهدة"
       description="مرتبة حسب عدد مرات المشاهدة."
       action={viewAll}
+      tone="page"
     >
       {content}
     </HomeSection>
