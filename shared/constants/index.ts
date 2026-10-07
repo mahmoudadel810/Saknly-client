@@ -2,10 +2,6 @@
 
 import { PropertyType, PropertyCategory, Currency, AreaUnit } from "../types";
 
-// API Configuration
-export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "https://saknly-server-9air.vercel.app/api/saknly/v1";
-
 // Property Constants
 export const PROPERTY_TYPES: Array<{
   value: PropertyType;

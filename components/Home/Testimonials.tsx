@@ -19,6 +19,7 @@ import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 
 
+import { API_URL } from '@/shared/services/api';
 const Testimonials = () => {
     const [open, setOpen] = useState(false);
     const [snackbar, setSnackbar] = useState(false);
@@ -32,7 +33,7 @@ const Testimonials = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const API_URL = `${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/testimonial`;
+    const TESTIMONIAL_URL = `${API_URL}/testimonial`;
 
     // جلب الآراء من الباكند
     useEffect(() => {
@@ -40,7 +41,7 @@ const Testimonials = () => {
             setLoading(true);
             setError(null);
             try {
-                const res = await fetch(`${API_URL}?status=approved&type=general`);
+                const res = await fetch(`${TESTIMONIAL_URL}?status=approved&type=general`);
                 const data = await res.json();
                 if (data.success) {
                     setTestimonials(data.data);
@@ -90,7 +91,7 @@ const Testimonials = () => {
         setSubmitting(true);
         setSubmitError(null);
         try {
-            const res = await fetch(API_URL, {
+            const res = await fetch(TESTIMONIAL_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

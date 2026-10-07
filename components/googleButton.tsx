@@ -1,10 +1,11 @@
 import { Button, SvgIcon } from '@mui/material';
+import { API_URL } from '@/shared/services/api';
 
 const GoogleButton = () => {
     return (
         <Button
             onClick={() => {
-                window.location.href = `${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/auth/google`
+                window.location.href = `${API_URL}/auth/google`
             }}
             variant="outlined"
             sx={{

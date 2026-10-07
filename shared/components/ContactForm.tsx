@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from "react";
+import { API_URL } from "@/shared/services/api";
 
 const initialForm = { name: "", email: "", subject: "", message: "" };
 
@@ -49,7 +50,7 @@ const ContactForm = () => {
     setStatus({ type: "info", message: "جاري الإرسال..." });
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/contact/contact-us`,
+        `${API_URL}/contact/contact-us`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
 import SendIcon from "@mui/icons-material/Send";
+import { API_URL } from "@/shared/services/api";
 
 export default function ChatbotButton() {
   const [open, setOpen] = useState(false);
@@ -30,7 +31,7 @@ export default function ChatbotButton() {
     setLoading(true);
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/chat`, {
+      const res = await fetch(`${API_URL}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: userMsg.text })

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import PropertyCard from "./PropertyCard";
 import { Property } from "../types";
+import { API_URL } from '@/shared/services/api';
 
 interface SimilarPropertiesProps {
   propertyId: string;
@@ -13,7 +14,7 @@ const SimilarProperties: React.FC<SimilarPropertiesProps> = ({ propertyId }) => 
   useEffect(() => {
     if (!propertyId) return;
     setLoading(true);
-            fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/properties/similar/${propertyId}`)
+            fetch(`${API_URL}/properties/similar/${propertyId}`)
       .then(res => res.json())
       .then(data => {
         setProperties(data.data || []);

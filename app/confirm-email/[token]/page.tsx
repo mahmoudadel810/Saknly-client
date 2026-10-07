@@ -6,6 +6,7 @@ import Link from 'next/link';
 import CheckIcon from '@mui/icons-material/Check';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import { useParams } from 'next/navigation';
+import { API_URL } from '@/shared/services/api';
 
 export default function EmailConfirmedPage() {
     const params = useParams();
@@ -19,7 +20,7 @@ export default function EmailConfirmedPage() {
         const verifyEmail = async () => {
             hasVerified.current = true;
             try {
-                const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/auth/confirm-email/${token}`, {
+                const response = await fetch(`${API_URL}/auth/confirm-email/${token}`, {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json'

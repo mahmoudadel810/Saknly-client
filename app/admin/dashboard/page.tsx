@@ -1,6 +1,5 @@
 "use client";
 import React, { useState, useEffect, useCallback } from 'react';
-import axios from "axios";
 import { useMediaQuery } from "@mui/material";
 import { useDarkMode } from "@/app/context/DarkModeContext";
 import { API_URL, authHeader } from "@/shared/utils/auth";
@@ -13,6 +12,7 @@ import PeopleOutlined from '@mui/icons-material/PeopleOutlined';
 import ScheduleOutlined from '@mui/icons-material/ScheduleOutlined';
 import TrendingDownOutlined from '@mui/icons-material/TrendingDownOutlined';
 import TrendingUpOutlined from '@mui/icons-material/TrendingUpOutlined';
+import { api } from "@/shared/services/api";
 
 // Type definitions
 interface StatCardProps {
@@ -137,7 +137,7 @@ const AdminDashboard = () => {
     const fetchStats = async () => {
       setStatsError(false);
       try {
-        const res = await axios.get(`${API_URL}/admin/analytics`, { headers: authHeader() });
+        const res = await api.get('/admin/analytics');
         const analytics = res.data?.data ?? res.data ?? {};
         const count = (v: unknown) => (typeof v === 'number' ? v : null);
         setAnalyticsUserCount(count(analytics.userCount));

@@ -13,6 +13,7 @@ import {
 import Grid from '@mui/material/Grid';
 import axios from 'axios';
 import TeamCard from '../../shared/components/TeamCard';
+import { API_URL } from '@/shared/services/api';
 
 
 // Add Counter component for animated numbers
@@ -107,13 +108,12 @@ export default function AboutPage() {
       setLoadingStats(true);
       setErrorStats('');
       try {
-        const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1';
         // Each stat is fetched independently so one failing endpoint does not hide the others.
         const [propertiesRes, usersRes, agenciesRes] = await Promise.allSettled([
-          axios.get(`${BASE_URL}/properties/allProperties`, { params: { limit: 1 } }),
+          axios.get(`${API_URL}/properties/allProperties`, { params: { limit: 1 } }),
           // Admin-only on the server: anonymous visitors get 401 and the stat is hidden.
-          axios.get(`${BASE_URL}/users/get-all-users`, { params: { limit: 1 } }),
-          axios.get(`${BASE_URL}/agencies/featured`),
+          axios.get(`${API_URL}/users/get-all-users`, { params: { limit: 1 } }),
+          axios.get(`${API_URL}/agencies/featured`),
         ]);
 
         if (propertiesRes.status === 'fulfilled') {

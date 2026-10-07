@@ -170,7 +170,7 @@ const PropertyDetailsPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/properties/propertyDetails/${id}`);
+      const response = await fetch(`${API_URL}/properties/propertyDetails/${id}`);
       if (response.status === 404) {
         setProperty(null);
         setError("العقار غير موجود أو غير متاح");
@@ -1182,7 +1182,7 @@ export default PropertyDetailsPage;
 
 // Property Inquiry Form Component
 import TextField from '@mui/material/TextField';
-import axios from 'axios';
+import { API_URL, api, getErrorMessage } from "@/shared/services/api";
 
 const PropertyInquiryForm: React.FC<{ propertyId: string }> = ({ propertyId }) => {
   const [form, setForm] = React.useState({ name: '', email: '', phone: '', message: '' });
@@ -1213,7 +1213,7 @@ const PropertyInquiryForm: React.FC<{ propertyId: string }> = ({ propertyId }) =
     }
     setLoading(true);
     try {
-      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/property-inquiry/add-property-inquiry`, {
+      const res = await api.post('/property-inquiry/add-property-inquiry', {
         property: propertyId,
         ...form
       });
@@ -1223,8 +1223,8 @@ const PropertyInquiryForm: React.FC<{ propertyId: string }> = ({ propertyId }) =
       } else {
         setError(res.data.message || 'حدث خطأ أثناء إرسال الاستفسار');
       }
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'حدث خطأ أثناء إرسال الاستفسار');
+    } catch (err) {
+      setError(getErrorMessage(err, 'حدث خطأ أثناء إرسال الاستفسار'));
     } finally {
       setLoading(false);
     }

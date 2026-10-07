@@ -3,6 +3,7 @@ import { Box, Typography, TextField, Button, CircularProgress, Avatar, Alert } f
 import SendIcon from '@mui/icons-material/Send';
 import Rating from '@mui/material/Rating';
 import { authHeader } from '@/shared/utils/auth';
+import { API_URL } from '@/shared/services/api';
 
 interface Comment {
   _id: string;
@@ -39,7 +40,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({
     setLoadError(null);
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/property-comments/${propertyId}`
+        `${API_URL}/property-comments/${propertyId}`
       );
       const data = await res.json();
       if (data.success) {
@@ -87,7 +88,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({
       Object.assign(headers, authHeader(token));
 
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/property-comments/${propertyId}`,
+        `${API_URL}/property-comments/${propertyId}`,
         {
           method: 'POST',
           headers,

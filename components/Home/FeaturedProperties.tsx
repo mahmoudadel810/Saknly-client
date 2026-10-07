@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
-import axios from 'axios';
 import {
   Box,
   Container,
@@ -20,6 +19,7 @@ import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 import PropertyCard from '../../shared/components/homeCard';
 
+import { api } from '@/shared/services/api';
 // Define tab types to match backend categories
 const tabTypes = ['all', 'rent', 'sale'];
 
@@ -38,23 +38,9 @@ const FeaturedProperties = () => {
     setError(null);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1';
-      if (!apiUrl) {
-        setError('Error: API URL not defined.');
-        setLoading(false);
-        return;
-      }
-
-      let url: string;
-      if (type === 'all') {
-        // For 'الكل' tab, get all featured properties
-        url = `${apiUrl}/properties/featured?limit=8`;
-      } else {
-        // For 'ايجار' and 'بيع', get featured properties and filter by category on frontend
-        url = `${apiUrl}/properties/featured?limit=20`; // Get more to filter from
-      }
-
-      const res = await axios.get(url);
+      // For 'ايجار' and 'بيع', get more featured properties and filter by category on the frontend
+      const limit = type === 'all' ? 8 : 20;
+      const res = await api.get('/properties/featured', { params: { limit } });
       let filteredProperties = Array.isArray(res.data.data) ? res.data.data : [];
       
       // If not 'all', filter by category on frontend

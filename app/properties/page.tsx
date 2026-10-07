@@ -45,6 +45,7 @@ import { useWishlist } from "../context/WishlistContext";
 import Snackbar from "@mui/material/Snackbar";
 
 import { TransitionGroup, CSSTransition } from "react-transition-group";
+import { api } from "@/shared/services/api";
 
 // Enhanced Property Card Component
 interface EnhancedPropertyCardProps {
@@ -595,10 +596,7 @@ const SearchPage: React.FC = () => {
       currentSearchParams.set("limit", limit);
       currentSearchParams.set("isApproved", "true");
 
-      const apiUrl = `${
-        process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'
-      }/properties/allProperties?${currentSearchParams.toString()}`;
-      const response = await axios.get(apiUrl, { signal });
+      const response = await api.get(`/properties/allProperties?${currentSearchParams.toString()}`, { signal });
       if (signal.aborted) return;
 
       if (response.data.success) {

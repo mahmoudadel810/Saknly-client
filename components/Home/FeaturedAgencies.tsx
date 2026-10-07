@@ -1,13 +1,13 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
-import axios from "axios";
 import { Box, Typography, Button, useTheme, IconButton } from "@mui/material";
 import { useRouter } from "next/navigation";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Pagination, Autoplay } from "swiper/modules";
+import { api } from "@/shared/services/api";
 import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
@@ -34,14 +34,7 @@ export default function FeaturedAgencies() {
     setLoading(true);
     setLoadError(false);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1';
-      if (!apiUrl) {
-        console.error("Error: NEXT_PUBLIC_API_URL is not defined.");
-        setLoading(false);
-        return;
-      }
-
-      const res = await axios.get(`${apiUrl}/agencies/featured`);
+      const res = await api.get('/agencies/featured');
       setAgencies(Array.isArray(res.data?.data) ? res.data.data : []);
     } catch (error) {
       setLoadError(true);

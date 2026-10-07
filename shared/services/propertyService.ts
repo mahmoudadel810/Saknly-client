@@ -1,25 +1,5 @@
-import axios from 'axios';
 import { Property, PropertyFilters, PaginatedResponse } from '../types';
-import { API_URL as API_BASE_URL, AUTH_PREFIX } from '../utils/auth';
-
-// Create axios instance with base configuration
-const apiClient = axios.create({
-  baseURL: API_BASE_URL, // Use as-is, do not append /saknly/v1
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Add request interceptor to include auth token
-apiClient.interceptors.request.use((config) => {
-  if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `${AUTH_PREFIX}${token}`;
-    }
-  }
-  return config;
-});
+import { api as apiClient } from './api';
 
 export const propertyService = {
   // Search properties

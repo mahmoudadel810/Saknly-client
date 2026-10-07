@@ -41,6 +41,7 @@ import { format } from "date-fns";
 import { ar } from "date-fns/locale";
 import { useDarkMode } from "@/app/context/DarkModeContext";
 import { authHeader } from "@/shared/utils/auth";
+import { API_URL } from "@/shared/services/api";
 
 // Types
 interface Property {
@@ -67,8 +68,6 @@ interface PropertyTypeConfig {
   color: 'primary' | 'success' | 'warning';
   gradient: string;
 }
-
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1';
 
 const propertyTypes: PropertyTypeConfig[] = [
   { 
