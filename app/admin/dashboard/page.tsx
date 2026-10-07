@@ -1,14 +1,10 @@
 "use client";
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  LineChart, Line, PieChart, Pie, Cell, AreaChart, Area 
-} from 'recharts';
 import {
   TrendingUp, TrendingDown, Users, Home, Building, 
   MessageCircle, Eye, DollarSign, Clock, CheckCircle,
   AlertCircle, Filter, Calendar, Download, RotateCcw,
-  Search, Bell, Settings
+  Search, Bell, Settings, Mail
 } from 'lucide-react';
 import axios from "axios";
 import { useMediaQuery } from "@mui/material";
@@ -87,7 +83,6 @@ const USERS_API = "/api/users"; // or your real endpoint
 
 const AdminDashboard = () => {
   const { isDarkMode } = useDarkMode();
-  const [timeRange, setTimeRange] = useState('7d');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -99,6 +94,12 @@ const AdminDashboard = () => {
   const [totalProperties, setTotalProperties] = useState<number | null>(null);
   const [totalAgencies, setTotalAgencies] = useState<number | null>(null);
   const [analyticsUserCount, setAnalyticsUserCount] = useState<number | null>(null);
+  const [activityCounts, setActivityCounts] = useState<{
+    pendingProperties: number | null;
+    testimonials: number | null;
+    propertyInquiries: number | null;
+    contactMessages: number | null;
+  } | null>(null);
   const [statsError, setStatsError] = useState(false);
   const [statsReloadKey, setStatsReloadKey] = useState(0);
 
@@ -138,11 +139,18 @@ const AdminDashboard = () => {
         setAnalyticsUserCount(count(analytics.userCount));
         setTotalProperties(count(analytics.propertyCount));
         setTotalAgencies(count(analytics.agencyCount));
+        setActivityCounts({
+          pendingProperties: count(analytics.pendingPropertyCount),
+          testimonials: count(analytics.testimonialCount),
+          propertyInquiries: count(analytics.inquiryCount),
+          contactMessages: count(analytics.contactCount),
+        });
       } catch (err) {
         // Unknown is not zero: show dashes and a retry instead of fake totals.
         setAnalyticsUserCount(null);
         setTotalProperties(null);
         setTotalAgencies(null);
+        setActivityCounts(null);
         setStatsError(true);
       }
     };
@@ -154,21 +162,6 @@ const AdminDashboard = () => {
     totalProperties: totalProperties,
     totalAgencies: totalAgencies
   };
-
-  const chartData = [
-    { name: 'يناير', users: 400, properties: 240 },
-    { name: 'فبراير', users: 300, properties: 139 },
-    { name: 'مارس', users: 200, properties: 980 },
-    { name: 'أبريل', users: 278, properties: 390 },
-    { name: 'مايو', users: 189, properties: 480 },
-    { name: 'يونيو', users: 239, properties: 380 },
-  ];
-
-  const pieData = [
-    { name: 'بيع', value: 45, color: '#3b82f6' },
-    { name: 'إيجار', value: 35, color: '#22c55e' },
-    { name: 'سكن طلبة', value: 20, color: '#f59e0b' },
-  ];
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -281,66 +274,52 @@ const AdminDashboard = () => {
           />
         </div>
 
-        {/* Charts Section */}
-        <div className="mb-8">
-          {/* Pie Chart */}
-          <div
-            className="rounded-xl p-6 shadow-sm border flex flex-col items-center"
-            style={{
-              background: isDarkMode ? 'var(--dark-700)' : '#fff',
-              borderColor: isDarkMode ? 'var(--dark-600)' : undefined,
-              color: isDarkMode ? 'var(--dark-text-900)' : undefined,
-            }}
-          >
-            <h3
-              className="text-lg font-semibold mb-4 text-center"
-              style={{ color: isDarkMode ? 'var(--dark-text-900)' : undefined }}
-            >
-              توزيع أنواع العقارات
-            </h3>
-            <ResponsiveContainer width={260} height={260}>
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  fill="#8884d8"
-                  dataKey="value"
-                  isAnimationActive={false}
-                >
-                  {pieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-            {/* Legend */}
-            <div className="flex flex-wrap justify-center gap-4 mt-6">
-              {pieData.map((item, idx) => (
-                <div key={item.name} className="flex items-center gap-2">
-                  <span
-                    className="inline-block w-4 h-4 rounded-full"
-                    style={{ backgroundColor: item.color }}
-                  ></span>
-                  <span
-                    className="text-sm font-medium"
-                    style={{ color: isDarkMode ? 'var(--dark-text-500)' : undefined }}
-                  >
-                    {item.name}
-                  </span>
-                  <span
-                    className="text-xs"
-                    style={{ color: isDarkMode ? 'var(--dark-text-700)' : undefined }}
-                  >
-                    ({item.value})
-                  </span>
-                </div>
-              ))}
-            </div>
+        {/* Activity counts — straight from /admin/analytics (no invented chart data) */}
+        <h3
+          className="text-lg font-semibold mb-4"
+          style={{ color: isDarkMode ? 'var(--dark-text-900)' : undefined }}
+        >
+          النشاط الحالي
+        </h3>
+        {activityCounts ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <StatCard
+              title="عقارات قيد المراجعة"
+              value={activityCounts.pendingProperties}
+              icon={Clock}
+              color="bg-warning-600"
+              trend={1}
+            />
+            <StatCard
+              title="آراء العملاء"
+              value={activityCounts.testimonials}
+              icon={MessageCircle}
+              color="bg-primary-600"
+              trend={1}
+            />
+            <StatCard
+              title="استفسارات العقارات"
+              value={activityCounts.propertyInquiries}
+              icon={Bell}
+              color="bg-success-600"
+              trend={1}
+            />
+            <StatCard
+              title="رسائل التواصل"
+              value={activityCounts.contactMessages}
+              icon={Mail}
+              color="bg-secondary-600"
+              trend={1}
+            />
           </div>
-        </div>
+        ) : (
+          <p
+            className="mb-8 text-sm"
+            style={{ color: isDarkMode ? 'var(--dark-text-500)' : undefined }}
+          >
+            {statsError ? 'بيانات النشاط غير متاحة حاليًا.' : 'جاري تحميل بيانات النشاط...'}
+          </p>
+        )}
 
         {/* Users Table */}
         <div
