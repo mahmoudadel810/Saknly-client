@@ -57,7 +57,7 @@ export default function ChatbotButton() {
 
   return (
     <>
-      {/* Floating button at the bottom inline-end corner; toasts use the bottom-start corner. */}
+      {/* Floating button at the bottom inline-start corner: the physical right in Arabic (owner, 2026-10-07). */}
       <Tooltip title="اسأل مساعد سكنلي" placement="top">
         <Fab
           color="primary"
@@ -65,7 +65,7 @@ export default function ChatbotButton() {
           onClick={() => setOpen(true)}
           aria-label="فتح مساعد سكنلي الذكي"
           aria-haspopup="dialog"
-          sx={{ position: "fixed", bottom: 16, insetInlineEnd: 16, zIndex: "fab" }}
+          sx={{ position: "fixed", bottom: 16, insetInlineStart: 16, zIndex: "fab" }}
         >
           <SmartToyOutlined fontSize="small" />
         </Fab>
