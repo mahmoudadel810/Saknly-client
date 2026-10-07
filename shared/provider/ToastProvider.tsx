@@ -1,17 +1,16 @@
 'use client';
 
-import { Snackbar, Alert, AlertColor } from '@mui/material';
+import Alert, { type AlertColor } from '@mui/material/Alert';
+import Snackbar from '@mui/material/Snackbar';
 import React, { createContext, useState, useContext, ReactNode, useCallback, useMemo } from 'react';
 
-// تعريف نوع الـ Context
 interface ToastContextType {
+    /** Copy uses the action's own verb: "نُشر العقار" after "نشر". */
     showToast: (message: string, severity?: AlertColor) => void;
 }
 
-// إنشاء السياق
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
-// هوك للوصول للسياق
 export const useToast = (): ToastContextType => {
     const context = useContext(ToastContext);
     if (!context) {
@@ -20,51 +19,70 @@ export const useToast = (): ToastContextType => {
     return context;
 };
 
-// Props للـ Provider
-interface ToastProviderProps {
-    children: ReactNode;
-}
-
-// الحالة الداخلية للتوست
 interface ToastState {
     open: boolean;
     message: string;
     severity: AlertColor;
+    /** Changes per toast so a new message replaces the old one instead of being merged into it. */
+    key: number;
 }
 
-// Provider نفسه
-export const ToastProvider = ({ children }: ToastProviderProps) => {
-    const [toast, setToast] = useState<ToastState>({
-        open: false,
-        message: '',
-        severity: 'success',
-    });
+const SEVERITY_TOKEN: Record<AlertColor, string> = {
+    success: '--c-success',
+    info: '--c-info',
+    warning: '--c-warning',
+    error: '--c-error',
+};
+
+/**
+ * The one toast provider (DESIGN-SYSTEM.md, Components): bottom-start, a raised surface with the severity's
+ * token colour on its inline-start edge and icon, and text in the normal reading direction.
+ * Snackbar positions with physical `left`, which the RTL style cache flips: "left" is the inline start.
+ */
+export const ToastProvider = ({ children }: { children: ReactNode }) => {
+    const [toast, setToast] = useState<ToastState>({ open: false, message: '', severity: 'success', key: 0 });
 
     const showToast = useCallback((message: string, severity: AlertColor = 'success') => {
-        setToast({ open: true, message, severity });
+        setToast((prev) => ({ open: true, message, severity, key: prev.key + 1 }));
     }, []);
 
-    const handleClose = () => {
+    const handleClose = (_event?: React.SyntheticEvent | Event, reason?: string) => {
+        if (reason === 'clickaway') return;
         setToast((prev) => ({ ...prev, open: false }));
     };
 
     const contextValue = useMemo(() => ({ showToast }), [showToast]);
+    const token = SEVERITY_TOKEN[toast.severity];
 
     return (
         <ToastContext.Provider value={contextValue}>
             {children}
             <Snackbar
+                key={toast.key}
                 open={toast.open}
-                autoHideDuration={3000}
+                autoHideDuration={toast.severity === 'error' ? 6000 : 4000}
                 onClose={handleClose}
-                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
             >
                 <Alert
                     onClose={handleClose}
                     severity={toast.severity}
-                    variant="filled"
-                    dir="ltr"
-                    sx={{ width: '100%' }}
+                    variant="outlined"
+                    slotProps={{ closeButton: { 'aria-label': 'إغلاق' } }}
+                    sx={{
+                        width: '100%',
+                        maxWidth: 420,
+                        alignItems: 'center',
+                        color: 'text.primary',
+                        bgcolor: 'var(--c-surface-raised)',
+                        border: '1px solid',
+                        borderColor: `color-mix(in srgb, var(${token}) 40%, var(--c-border))`,
+                        borderInlineStartWidth: 4,
+                        borderInlineStartColor: `var(${token})`,
+                        boxShadow: 8,
+                        fontSize: '0.875rem',
+                        '& .MuiAlert-icon': { color: `var(${token})` },
+                    }}
                 >
                     {toast.message}
                 </Alert>
