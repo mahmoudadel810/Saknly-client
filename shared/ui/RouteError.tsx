@@ -36,12 +36,23 @@ export default function RouteError({
   }, [error]);
 
   return (
-    <Box component={landmark ? "main" : "div"} id={landmark ? "main" : undefined} sx={{ maxWidth: 640, mx: "auto", px: 2, py: { xs: 6, md: 10 } }}>
-      <ErrorState title={title} description={description} onRetry={reset} />
-      <Box sx={{ display: "flex", justifyContent: "center" }}>
-        <Button component={Link} href={homeHref} variant="text">
-          {homeLabel}
-        </Button>
+    <Box component={landmark ? "main" : "div"} id={landmark ? "main" : undefined} sx={{ maxWidth: 640, mx: "auto", px: 2, py: { xs: 5, md: 9 } }}>
+      <Box
+        sx={{
+          pb: 3,
+          border: 1,
+          borderColor: "divider",
+          borderRadius: "var(--r-card)",
+          bgcolor: "background.paper",
+          boxShadow: "var(--c-card-shadow)",
+        }}
+      >
+        <ErrorState title={title} description={description} onRetry={reset} />
+        <Box sx={{ display: "flex", justifyContent: "center", mt: -3 }}>
+          <Button component={Link} href={homeHref} variant="text">
+            {homeLabel}
+          </Button>
+        </Box>
       </Box>
     </Box>
   );
