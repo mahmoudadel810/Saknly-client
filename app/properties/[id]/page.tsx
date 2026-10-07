@@ -220,7 +220,8 @@ function MobileContactBar({ listing }: { listing: Listing }) {
         position: "fixed",
         insetInline: 0,
         bottom: 0,
-        zIndex: "appBar",
+        // Below the chatbot button (zIndex fab), which floats over the reserved corner.
+        zIndex: "mobileStepper",
         height: 68,
         alignItems: "center",
         gap: 1,
