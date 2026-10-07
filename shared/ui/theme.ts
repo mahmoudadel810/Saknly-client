@@ -283,7 +283,12 @@ export const theme = createTheme({
     MuiSelect: {
       defaultProps: {
         IconComponent: KeyboardArrowDownOutlined,
-        MenuProps: { slotProps: { paper: { sx: { maxHeight: 340 } } } },
+        // The menu opens below the field, aligned to its inline start (the right: the site is RTL only).
+        MenuProps: {
+          anchorOrigin: { vertical: 'bottom', horizontal: 'right' },
+          transformOrigin: { vertical: 'top', horizontal: 'right' },
+          slotProps: { paper: { sx: { maxHeight: 340, mt: 0.75, minWidth: 200 } } },
+        },
       },
       styleOverrides: {
         icon: ({ theme }) => ({
