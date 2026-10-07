@@ -22,6 +22,9 @@ import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 const Testimonials = () => {
     const [open, setOpen] = useState(false);
     const [snackbar, setSnackbar] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+    // Kept apart from the list's load error so a failed submit does not hide the testimonials.
+    const [submitError, setSubmitError] = useState<string | null>(null);
     const [form, setForm] = useState({ name: '', text: ''});
     const [errors, setErrors] = useState<{ name?: string; text?: string }>({});
     const [current, setCurrent] = useState(0);
@@ -58,6 +61,7 @@ const Testimonials = () => {
         setOpen(false);
         setForm({ name: '', text: ''});
         setErrors({});
+        setSubmitError(null);
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -82,6 +86,9 @@ const Testimonials = () => {
             setErrors(errs);
             return;
         }
+        if (submitting) return;
+        setSubmitting(true);
+        setSubmitError(null);
         try {
             const res = await fetch(API_URL, {
                 method: 'POST',
@@ -95,19 +102,16 @@ const Testimonials = () => {
             });
             const data = await res.json();
             if (res.ok && data.success) {
+                // New testimonials are stored as pending, so the approved list does not change yet.
                 setSnackbar(true);
-                // Fetch the updated list of approved testimonials
-                const updatedRes = await fetch(`${API_URL}?status=approved&type=general`);
-                const updatedData = await updatedRes.json();
-                if (updatedData.success) {
-                    setTestimonials(updatedData.data);
-                }
                 handleClose();
             } else {
-                setError(data.message || 'حدث خطأ أثناء الإرسال');
+                setSubmitError(data.message || 'حدث خطأ أثناء الإرسال');
             }
         } catch (err) {
-            setError('تعذر الاتصال بالخادم');
+            setSubmitError('تعذر الاتصال بالخادم');
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -374,6 +378,7 @@ const Testimonials = () => {
                     <Typography variant="h4" fontWeight="bold" mb={4} align="center" className="text-black dark:text-white" id="add-testimonial-modal">
                         أضف رأيك في سكنلي
                     </Typography>
+                    {submitError && <Alert severity="error">{submitError}</Alert>}
                     <TextField
                         label="اسمك"
                         name="name"
@@ -407,7 +412,9 @@ const Testimonials = () => {
                     </Typography>
                     <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 2 }}>
                         <Button onClick={handleClose} color="inherit">إلغاء</Button>
-                        <Button type="submit" variant="contained" color="primary">إرسال</Button>
+                        <Button type="submit" variant="contained" color="primary" disabled={submitting}>
+                            {submitting ? 'جاري الإرسال...' : 'إرسال'}
+                        </Button>
                     </Box>
                 </Box>
             </Modal>
