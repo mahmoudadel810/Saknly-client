@@ -29,9 +29,24 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   return (
     <Box
       component="fieldset"
-      sx={{ m: 0, p: 0, border: 0, minWidth: 0, py: 2.5, borderTop: 1, borderColor: "divider", "&:first-of-type": { borderTop: 0, pt: 0 } }}
+      sx={{
+        m: 0,
+        p: 0,
+        border: 0,
+        minWidth: 0,
+        py: 2.5,
+        borderTop: 1,
+        borderColor: "divider",
+        "&:first-of-type": { borderTop: 0, pt: 0 },
+        // A floated legend sits inside the box instead of cutting into the top rule.
+        "& > legend + *": { clear: "both" },
+      }}
     >
-      <Typography component="legend" variant="subtitle2" sx={{ p: 0, mb: 1.5, fontSize: "0.875rem", fontWeight: 600 }}>
+      <Typography
+        component="legend"
+        variant="subtitle2"
+        sx={{ float: "inline-start", width: "100%", p: 0, mb: 1.5, fontSize: "0.9375rem", fontWeight: 700 }}
+      >
         {title}
       </Typography>
       {children}
@@ -129,6 +144,7 @@ export default function FilterSidebar({ filters }: { filters: PropertyFilters })
             type="number"
             value={draft.priceMin}
             onChange={(event) => type("priceMin", event.target.value)}
+            placeholder="أي سعر"
             slotProps={{ htmlInput: { ...numberInput, step: bounds.step } }}
           />
           <TextField
@@ -136,6 +152,7 @@ export default function FilterSidebar({ filters }: { filters: PropertyFilters })
             type="number"
             value={draft.priceMax}
             onChange={(event) => type("priceMax", event.target.value)}
+            placeholder="أي سعر"
             slotProps={{ htmlInput: { ...numberInput, step: bounds.step } }}
           />
         </div>
