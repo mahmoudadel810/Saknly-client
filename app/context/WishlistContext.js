@@ -10,6 +10,8 @@ const WishlistContext = createContext();
 export function WishlistProvider({ children }) {
   const [wishlist, setWishlist] = useState([]);
   const [loading, setLoading] = useState(false);
+  // Set when the last load failed, so the wishlist page can offer a retry instead of an empty list.
+  const [loadError, setLoadError] = useState(false);
   const { user } = useAuth();
   const { showToast } = useToast();
   const router = useRouter();
@@ -28,6 +30,7 @@ export function WishlistProvider({ children }) {
     if (!user || !user._id) return;
 
     setLoading(true);
+    setLoadError(false);
     try {
       const wishlistData = await propertyService.getUserWishlist();
       const formattedWishlist = wishlistData.map(item => ({
@@ -46,7 +49,8 @@ export function WishlistProvider({ children }) {
       setWishlist(formattedWishlist);
     } catch (error) {
       console.error('Error loading wishlist:', error);
-      showToast('فشل في تحميل قائمة الأمنيات', 'error');
+      setLoadError(true);
+      showToast('تعذر تحميل المفضلة', 'error');
     } finally {
       setLoading(false);
     }
@@ -54,7 +58,7 @@ export function WishlistProvider({ children }) {
 
   const addToWishlist = async (property) => {
     if (!user || !user._id) {
-      showToast('يجب تسجيل الدخول لإضافة العقار للمفضلة', 'warning');
+      showToast('سجّل الدخول لتحفظ الإعلان في المفضلة', 'warning');
       setTimeout(() => {
         router.push('/login');
       }, 2000);
@@ -87,17 +91,17 @@ export function WishlistProvider({ children }) {
           : [...prev, propertyData]
       );
 
-      showToast('تمت الإضافة إلى قائمة الأمنيات بنجاح!', 'success');
+      showToast('أُضيف الإعلان إلى المفضلة.', 'success');
       return true;
     } catch (error) {
       const status = error?.response?.status;
       if (status === 404) {
         // The server only accepts approved, active listings; this one is pending, hidden or deleted.
-        showToast('هذا العقار غير متاح حاليًا، ولا يمكن إضافته للمفضلة', 'warning');
+        showToast('هذا الإعلان غير متاح الآن، فلا يمكن حفظه.', 'warning');
       } else if (status === 401) {
-        showToast('انتهت الجلسة، سجّل الدخول مرة أخرى لإضافة العقار للمفضلة', 'warning');
+        showToast('انتهت جلستك. سجّل الدخول مرة أخرى لتحفظ الإعلان.', 'warning');
       } else {
-        showToast('فشل في إضافة العقار للمفضلة', 'error');
+        showToast('تعذر حفظ الإعلان في المفضلة.', 'error');
       }
       return false;
     }
@@ -105,36 +109,36 @@ export function WishlistProvider({ children }) {
 
   const removeFromWishlist = async (propertyId) => {
     if (!user || !user._id) {
-      showToast('يجب تسجيل الدخول لإزالة العقار من المفضلة', 'warning');
+      showToast('سجّل الدخول لتعدّل المفضلة.', 'warning');
       return false;
     }
 
     try {
       await propertyService.removeFromWishlist(propertyId);
       setWishlist(prev => prev.filter(item => item.id !== propertyId));
-      showToast('تمت الإزالة من قائمة الأمنيات بنجاح!', 'success');
+      showToast('أُزيل الإعلان من المفضلة.', 'success');
       return true;
     } catch (error) {
       console.error('Error removing from wishlist:', error);
-      showToast('فشل في إزالة العقار من المفضلة', 'error');
+      showToast('تعذر إزالة الإعلان من المفضلة.', 'error');
       return false;
     }
   };
 
   const removeAllFromWishlist = async () => {
     if (!user || !user._id) {
-      showToast('يجب تسجيل الدخول لإزالة جميع العناصر', 'warning');
+      showToast('سجّل الدخول لتعدّل المفضلة.', 'warning');
       return false;
     }
 
     try {
       await propertyService.clearWishlist();
       setWishlist([]);
-      showToast('تمت إزالة جميع العناصر من قائمة الأمنيات بنجاح!', 'success');
+      showToast('أُزيلت كل الإعلانات من المفضلة.', 'success');
       return true;
     } catch (error) {
       console.error('Error clearing wishlist:', error);
-      showToast('فشل في إزالة جميع العناصر', 'error');
+      showToast('تعذر إفراغ المفضلة.', 'error');
       return false;
     }
   };
@@ -150,6 +154,7 @@ export function WishlistProvider({ children }) {
       value={{
         wishlist,
         loading,
+        loadError,
         addToWishlist,
         removeFromWishlist,
         removeAllFromWishlist,
