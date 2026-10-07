@@ -6,7 +6,8 @@ import { authHeader } from '@/shared/utils/auth';
 
 interface Comment {
   _id: string;
-  user: { userName: string; email: string };
+  // null when the author's account was deleted (the server does not cascade comments)
+  user: { userName: string; email: string } | null;
   text: string;
   createdAt: string;
   rating?: number;
@@ -27,14 +28,15 @@ const CommentSection: React.FC<CommentSectionProps> = ({
 }) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [postError, setPostError] = useState<string | null>(null);
   const [newComment, setNewComment] = useState('');
   const [posting, setPosting] = useState(false);
   const [success, setSuccess] = useState(false);
 
   const fetchComments = async () => {
     setLoading(true);
-    setError(null);
+    setLoadError(null);
     try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL || 'https://saknly-server-9air.vercel.app/api/saknly/v1'}/property-comments/${propertyId}`
@@ -43,10 +45,10 @@ const CommentSection: React.FC<CommentSectionProps> = ({
       if (data.success) {
         setComments(data.data);
       } else {
-        setError('حدث خطأ أثناء جلب التعليقات');
+        setLoadError('حدث خطأ أثناء جلب التعليقات');
       }
     } catch (err) {
-      setError('تعذر الاتصال بالخادم');
+      setLoadError('تعذر الاتصال بالخادم');
     } finally {
       setLoading(false);
     }
@@ -63,12 +65,12 @@ const CommentSection: React.FC<CommentSectionProps> = ({
 
     // If not authenticated, prevent posting and show error
     if (!isAuthenticated) {
-      setError('يجب تسجيل الدخول لإضافة تعليق.');
+      setPostError('يجب تسجيل الدخول لإضافة تعليق.');
       return;
     }
 
     setPosting(true);
-    setError(null);
+    setPostError(null);
     setSuccess(false);
 
     try {
@@ -93,18 +95,18 @@ const CommentSection: React.FC<CommentSectionProps> = ({
           credentials: 'include',
         }
       );
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (res.status === 401) {
-        setError('يجب تسجيل الدخول لإضافة تعليق.');
+        setPostError('يجب تسجيل الدخول لإضافة تعليق.');
       } else if (data.success) {
         setNewComment('');
         setSuccess(true);
-        setComments([data.data, ...comments]);
+        setComments(prev => [data.data, ...prev]);
       } else {
-        setError(data.message || 'حدث خطأ أثناء إضافة التعليق');
+        setPostError(data.message || 'حدث خطأ أثناء إضافة التعليق');
       }
     } catch (err) {
-      setError('تعذر الاتصال بالخادم');
+      setPostError('تعذر الاتصال بالخادم');
     } finally {
       setPosting(false);
     }
@@ -119,10 +121,24 @@ const CommentSection: React.FC<CommentSectionProps> = ({
         <Box display="flex" justifyContent="center" my={3}>
           <CircularProgress />
         </Box>
-      ) : error ? (
-        <Alert severity="error">{error}</Alert>
+      ) : loadError ? (
+        <Alert
+          severity="error"
+          action={
+            <Button color="inherit" size="small" onClick={fetchComments}>
+              إعادة المحاولة
+            </Button>
+          }
+        >
+          {loadError}
+        </Alert>
       ) : (
         <>
+          {postError && (
+            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setPostError(null)}>
+              {postError}
+            </Alert>
+          )}
           {isAuthenticated ? (
             <Box component="form" onSubmit={handleAddComment} mb={3} display="flex" gap={2} alignItems="center">
               <TextField
@@ -161,11 +177,13 @@ const CommentSection: React.FC<CommentSectionProps> = ({
             </Typography>
           ) : (
             <Box display="flex" flexDirection="column" gap={2}>
-              {comments.map(comment => (
+              {comments.map(comment => {
+                const authorName = comment.user?.userName || 'مستخدم محذوف';
+                return (
                 <Box key={comment._id} display="flex" alignItems="flex-start" gap={2} p={2} bgcolor="#f7f7f7" borderRadius={2}>
-                  <Avatar>{comment.user.userName?.[0] || '?'}</Avatar>
+                  <Avatar>{comment.user?.userName?.[0] || '?'}</Avatar>
                   <Box>
-                    <Typography fontWeight={700}>{comment.user.userName}</Typography>
+                    <Typography fontWeight={700}>{authorName}</Typography>
                     <Box display="flex" alignItems="center" gap={1} mb={0.5}>
                       <Typography variant="body2" color="text.secondary">
                         {new Date(comment.createdAt).toLocaleString('ar-EG')}
@@ -174,7 +192,8 @@ const CommentSection: React.FC<CommentSectionProps> = ({
                     <Typography>{comment.text}</Typography>
                   </Box>
                 </Box>
-              ))}
+                );
+              })}
             </Box>
           )}
         </>
