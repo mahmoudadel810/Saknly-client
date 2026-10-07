@@ -19,7 +19,6 @@ import Footer from "../shared/components/Footer";
 import { ToastProvider } from "@/shared/provider/ToastProvider";
 import AuthGuard from "@/shared/components/AuthGuard";
 import ChatbotButton from "@/components/ChatbotButton";
-import BackToTop from "../shared/components/BackToTop";
 import ErrorBoundary from "@/shared/components/ErrorBoundary";
 
 // One family for Arabic and Latin (DESIGN-SYSTEM.md, Typography); the theme and Tailwind read --font-sans.
@@ -131,7 +130,6 @@ export default function RootLayout({
                     <div id="root" className="relative">
                       {children}
                       <ChatbotButton />
-                      <BackToTop />
                     </div>
                     <Footer />
                     <div id="modal-root" />

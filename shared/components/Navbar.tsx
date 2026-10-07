@@ -1,593 +1,430 @@
 "use client";
 
-import React, { useContext, useState } from "react";
+import React, { Suspense, useEffect, useId, useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { usePathname, useSearchParams } from "next/navigation";
 import AppBar from "@mui/material/AppBar";
-import Toolbar from "@mui/material/Toolbar";
-import IconButton from "@mui/material/IconButton";
-import Typography from "@mui/material/Typography";
-import Menu from "@mui/material/Menu";
-import MenuItem from "@mui/material/MenuItem";
-import Drawer from "@mui/material/Drawer";
-import List from "@mui/material/List";
-import ListItem from "@mui/material/ListItem";
-import ListItemText from "@mui/material/ListItemText";
-import Divider from "@mui/material/Divider";
+import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Avatar from "@mui/material/Avatar";
-import Badge from "@mui/material/Badge";
-import useMediaQuery from "@mui/material/useMediaQuery";
-import MenuIcon from "@mui/icons-material/Menu";
-import HomeIcon from "@mui/icons-material/Home";
-import AddBusinessIcon from "@mui/icons-material/AddBusiness";
-import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
-import AccountCircleIcon from "@mui/icons-material/AccountCircle";
-import LogoutIcon from "@mui/icons-material/Logout";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import Divider from "@mui/material/Divider";
+import Drawer from "@mui/material/Drawer";
+import IconButton from "@mui/material/IconButton";
+import List from "@mui/material/List";
+import ListItemButton from "@mui/material/ListItemButton";
+import ListItemIcon from "@mui/material/ListItemIcon";
+import ListItemText from "@mui/material/ListItemText";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
+import Skeleton from "@mui/material/Skeleton";
+import Typography from "@mui/material/Typography";
+import useScrollTrigger from "@mui/material/useScrollTrigger";
 import { useTheme } from "@mui/material/styles";
+import AddHomeOutlined from "@mui/icons-material/AddHomeOutlined";
+import CloseOutlined from "@mui/icons-material/CloseOutlined";
+import DashboardOutlined from "@mui/icons-material/DashboardOutlined";
+import FavoriteBorderOutlined from "@mui/icons-material/FavoriteBorderOutlined";
+import LoginOutlined from "@mui/icons-material/LoginOutlined";
+import LogoutOutlined from "@mui/icons-material/LogoutOutlined";
+import MenuOutlined from "@mui/icons-material/MenuOutlined";
+import PersonOutlineOutlined from "@mui/icons-material/PersonOutlineOutlined";
 import { useAuth } from "@/app/context/AuthContext";
 import { useWishlist } from "@/app/context/WishlistContext";
-import Image from "next/image";
-import { CircularProgress } from "@mui/material";
-import { useRouter } from "next/navigation";
-import DarkModeToggle from "./DarkModeToggle";
-import { useToast } from '@/shared/provider/ToastProvider';
+import ThemeToggle from "@/shared/ui/ThemeToggle";
 
-const NAV_LINKS = [
-  { label: "الرئيسية", href: "/", icon: <HomeIcon sx={{ ml: 0.5 }} /> },
-  { label: "العقارات", href: "/properties" },
-  { label: "من نحن", href: "/about" },
-  { label: "اتصل بنا", href: "/contact" },
-  { label: "قائمة الأمنيات", href: "/wishlist", icon: <FavoriteBorderIcon sx={{ ml: 1, mr: 1 }} /> },
+type Query = URLSearchParams | null;
+
+/**
+ * Header navigation (DESIGN-SYSTEM.md, Shells). There is no agencies index route (only /agencies/[id]), so
+ * the agencies link waits for one. Student housing is the browse page's own filter.
+ */
+const NAV_LINKS: { href: string; label: string; isActive: (pathname: string, query: Query) => boolean }[] = [
+  {
+    href: "/properties",
+    label: "العقارات",
+    isActive: (pathname, query) =>
+      pathname.startsWith("/properties") && query?.get("isStudentFriendly") !== "true",
+  },
+  {
+    href: "/properties?isStudentFriendly=true",
+    label: "سكن الطلاب",
+    isActive: (pathname, query) => pathname === "/properties" && query?.get("isStudentFriendly") === "true",
+  },
 ];
 
+function WithQuery({ children }: { children: (query: Query) => React.ReactNode }) {
+  return <>{children(useSearchParams())}</>;
+}
+
+/**
+ * useSearchParams in a layout needs its own Suspense boundary, or every statically rendered page bails out
+ * of prerendering. The fallback renders the same links without the query-dependent active state.
+ */
+function QueryAware({ children }: { children: (query: Query) => React.ReactNode }) {
+  return (
+    <Suspense fallback={children(null)}>
+      <WithQuery>{children}</WithQuery>
+    </Suspense>
+  );
+}
+
+function Logo() {
+  return (
+    <Box
+      component={Link}
+      href="/"
+      sx={{ display: "inline-flex", alignItems: "center", gap: 1, color: "text.primary", textDecoration: "none" }}
+    >
+      <Image src="/logo.svg" alt="" width={32} height={32} priority />
+      <Typography component="span" sx={{ fontSize: "1.125rem", fontWeight: 700 }}>
+        سكنلي
+      </Typography>
+    </Box>
+  );
+}
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading } = useAuth();
   const { getWishlistCount } = useWishlist();
-  const pathname = usePathname();
-  const router = useRouter();
-  const { showToast } = useToast();
-
+  const pathname = usePathname() ?? "/";
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const scrolled = useScrollTrigger({ disableHysteresis: true, threshold: 0 });
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [anchorEl, setAnchorEl] = useState(null);
-  const [uploadAnchorEl, setUploadAnchorEl] = useState(null);
+  const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
+  const accountMenuId = useId();
+  const drawerId = useId();
+  const wishlistCount: number = getWishlistCount();
+  const isAdmin = user?.role === "admin";
+  const displayName = user?.userName || [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "حسابي";
+  // Menus open from the inline-end edge of their button (Popover origins are physical).
+  const endEdge = theme.direction === "rtl" ? "left" : "right";
 
+  // A navigation closes the drawer and the account menu.
+  useEffect(() => {
+    setDrawerOpen(false);
+    setMenuAnchor(null);
+  }, [pathname]);
 
-  // Profile menu
-  const handleMenu = (event: any) => setAnchorEl(event.currentTarget);
-  const handleClose = () => setAnchorEl(null);
+  const closeMenu = () => setMenuAnchor(null);
 
-  // Upload menu
-  const handleUploadMenu = (event: any) => setUploadAnchorEl(event.currentTarget);
-  const handleUploadClose = () => setUploadAnchorEl(null);
+  const navButtonSx = (active: boolean) => ({
+    px: 1.5,
+    height: 40,
+    color: active ? "primary.main" : "text.secondary",
+    bgcolor: active ? "var(--c-primary-soft)" : "transparent",
+    fontWeight: active ? 600 : 500,
+    "&:hover": { bgcolor: active ? "var(--c-primary-soft)" : "action.hover", color: active ? "primary.main" : "text.primary" },
+  });
 
-  // Drawer
-  const toggleDrawer = (open: boolean) => () => setDrawerOpen(open);
-
-  // RTL: logo right, menu left
   return (
-    <AppBar 
-      position="sticky" 
-      color="inherit" 
-      elevation={0} 
-      className="bg-white/92 dark:bg-[#1f2937] border-b border-gray-200/40 dark:border-dark-700/40 text-black dark:text-white"
-      sx={{ 
-        zIndex: 1201, 
-        backdropFilter: 'blur(8px)',
-        transition: 'all 0.3s ease'
+    <AppBar
+      position="sticky"
+      elevation={0}
+      color="inherit"
+      sx={{
+        bgcolor: "background.paper",
+        color: "text.primary",
+        borderBottom: 1,
+        borderColor: "divider",
+        boxShadow: scrolled ? 3 : "none",
+        transition: "box-shadow 200ms ease-out",
       }}
     >
-      <Toolbar sx={{ 
-        display: "flex", 
-        justifyContent: "space-between", 
-        alignItems: "center", 
-        minHeight: 60,
-        px: { xs: 2, md: 4 },
-        maxWidth: 1400,
-        mx: 'auto',
-        width: '100%'
-      }}>
-        {/* Logo */}
-        <Box sx={{ display: "flex", alignItems: "center" }}>
-          <Link href="/" style={{ display: "flex", alignItems: "center", textDecoration: 'none' }} aria-label="سكنلي الرئيسية">
-            <Box sx={{ 
-              position: 'relative',
-              transition: 'transform 0.2s ease',
-              '&:hover': { transform: 'scale(1.03)' }
-            }}>
-              <Image 
-                src="/logo.svg" 
-                alt="شعار سكنلي" 
-                width={36} 
-                height={36} 
-                style={{ marginLeft: 10, transition: 'filter 0.18s' }} 
-                className="navbar-logo" 
-              />
-            </Box>
-            <Typography 
-              variant="h6" 
-              className="navbar-logo-text dark:text-white text-black"
-              sx={{ 
-                fontWeight: 800, 
-                ml: 1.2, 
-                letterSpacing: '-0.3px',
-                transition: 'color 0.2s ease',
-                '&:hover': { color: 'primary.light' }
-              }}
-            >
-              سكنلي
-            </Typography>
-          </Link>
-        </Box>
-
-        {/* Desktop Menu */}
-        {!isMobile && (
-          <Box sx={{ 
-            display: "flex", 
-            alignItems: "center", 
-            gap: 0.8,
-            flex: 1,
-            justifyContent: 'center'
-          }}>
-            {NAV_LINKS.map((link) => {
-              const isActive = pathname === link.href;
-              const isWishlistLink = link.href === "/wishlist";
-              
-              return (
-                <Button
-                  key={link.href}
-                  component={Link}
-                  href={link.href}
-                  startIcon={isWishlistLink ? (
-                    <Badge 
-                      badgeContent={getWishlistCount()} 
-                      color="error"
-                      sx={{
-                        '& .MuiBadge-badge': {
-                          fontSize: '0.7rem',
-                          minWidth: '18px',
-                          height: '18px',
-                          borderRadius: '9px',
-                          bgcolor: 'error.main',
-                          color: 'white',
-                          fontWeight: 'bold'
-                        }
-                      }}
-                    >
-                      <FavoriteBorderIcon sx={{ ml: 1, mr: 1 }} />
-                    </Badge>
-                  ) : link.icon}
-                  className={"dark:text-white text-black" + (isActive ? " font-semibold" : " font-normal")}
-                  sx={{
-                    fontWeight: isActive ? 600 : 400,
-                    fontSize: '0.9rem',
-                    px: 1.8,
-                    py: 1,
-                    mx: 0.3,
-                    borderRadius: 1.5,
-                    position: 'relative',
-                    transition: 'all 0.2s ease',
-                    '&::after': isActive ? {
-                      content: '""',
-                      position: 'absolute',
-                      bottom: 0,
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      width: '50%',
-                      height: '1.5px',
-                      bgcolor: 'primary.main',
-                      borderRadius: 1
-                    } : {},
-                    '&:hover': {
-                      color: 'primary.main',
-                      bgcolor: 'rgba(59, 130, 246, 0.06)',
-                      transform: 'translateY(-0.5px)'
-                    }
-                  }}
-                >
-                  {link.label}
-                </Button>
-              );
-            })}
-          </Box>
-        )}
-
-        {/* Right Section */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.2 }}>
-          {/* Dark Mode Toggle */}
-          <DarkModeToggle />
-          {/* Admin-only pending properties link */}
-          {!isMobile && user && user.role === 'admin' && (
-            <Button
-              component={Link}
-              href="/admin/dashboard"
-              startIcon={<AddBusinessIcon sx={{ ml: 0.5 }} />}
-              sx={{ 
-                color: "secondary.light", 
-                fontWeight: 500, 
-                fontSize: '0.85rem',
-                px: 1.8,
-                py: 0.8,
-                borderRadius: 1.5,
-                border: '1px solid',
-                borderColor: 'secondary.light',
-                transition: 'all 0.2s ease',
-                '&:hover': {
-                  bgcolor: 'secondary.light',
-                  color: 'white'
-                }
-              }}
-            >
-              لوحة تحكم الأدمن
-            </Button>
-          )}
-
-          {/* Upload Button */}
-          {!isMobile && (
-            <Button
-              onClick={() => {
-                if (user) {
-                  router.push("/uploadProperty");
-                } else {
-                  showToast && showToast('يجب تسجيل الدخول أولاً لعرض عقارك', 'warning');
-                  setTimeout(() => {
-                    router.push("/login");
-                  }, 1500);
-                }
-              }}
-              startIcon={<AddBusinessIcon sx={{ ml: 0.5 }} />}
-              sx={{ 
-                color: "#fff", 
-                bgcolor: "primary.light", 
-                fontWeight: 500, 
-                fontSize: '0.85rem',
-                px: 2.2,
-                py: 1,
-                borderRadius: 2,
-                boxShadow: '0 1px 4px rgba(59,130,246,0.15)',
-                transition: 'all 0.2s ease',
-                ml: 1,
-                '&:hover': { 
-                  bgcolor: 'primary.main',
-                  transform: 'translateY(-1px)',
-                  boxShadow: '0 2px 8px rgba(59,130,246,0.2)'
-                }
-              }}
-            >
-              أضف عقارك
-            </Button>
-          )}
-
-          {/* Auth/Profile Section */}
-          {user ? (
-            <>
-              <IconButton 
-                onClick={handleMenu} 
-                sx={{ 
-                  ml: 1,
-                  transition: 'all 0.2s ease',
-                  '&:hover': { transform: 'scale(1.03)' }
-                }} 
-                aria-label="قائمة المستخدم" 
-                size="medium"
-              >
-                <Avatar 
-                  src={user?.avatar?.url} 
-                  alt={user?.userName || "المستخدم"} 
-                  sx={{ 
-                    bgcolor: "primary.light",
-                    width: 36,
-                    height: 36,
-                    border: '1.5px solid',
-                    borderColor: 'primary.light'
-                  }}
-                >
-                  {user?.userName?.[0] || <AccountCircleIcon />}
-                </Avatar>
-              </IconButton>
-              <Menu
-                anchorEl={anchorEl}
-                open={Boolean(anchorEl)}
-                onClose={handleClose}
-                anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-                transformOrigin={{ vertical: "top", horizontal: "right" }}
-                dir="rtl"
-                PaperProps={{
-                  sx: {
-                    mt: 1,
-                    borderRadius: 1.5,
-                    boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-                    border: '1px solid rgba(0,0,0,0.04)'
-                  }
-                }}
-              >
-                <MenuItem 
-                  component={Link} 
-                  href="/userProfile" 
-                  onClick={handleClose} 
-                  sx={{ 
-                    py: 1.2,
-                    px: 2,
-                    transition: 'all 0.2s ease',
-                    '&:hover': { bgcolor: 'rgba(59,130,246,0.06)' }
-                  }}
-                >
-                  <AccountCircleIcon sx={{ ml: 1, color: 'primary.light' }} /> 
-                  الملف الشخصي
-                </MenuItem>
-                <MenuItem 
-                  onClick={() => { handleClose(); logout(); }} 
-                  sx={{ 
-                    color: "error.light", 
-                    py: 1.2,
-                    px: 2,
-                    transition: 'all 0.2s ease',
-                    '&:hover': { bgcolor: 'rgba(244,67,54,0.06)' }
-                  }}
-                >
-                  <LogoutIcon sx={{ ml: 1 }} /> 
-                  تسجيل الخروج
-                </MenuItem>
-              </Menu>
-            </>
-          ) : (
-            <>
-              <Button 
-                component={Link} 
-                href="/login" 
-                color="primary" 
-                variant="contained" 
-                sx={{ 
-                  fontWeight: 500, 
-                  px: 2.2,
-                  py: 0.8,
-                  borderRadius: 2,
-                  fontSize: '0.85rem',
-                  bgcolor: 'primary.light',
-                  boxShadow: '0 1px 4px rgba(59,130,246,0.15)',
-                  transition: 'all 0.2s ease',
-                  ml: 1,
-                  '&:hover': { 
-                    bgcolor: 'primary.main',
-                    transform: 'translateY(-0.5px)',
-                    boxShadow: '0 2px 8px rgba(59,130,246,0.2)'
-                  }
-                }}
-              >
-                تسجيل الدخول
-              </Button>
-            </>
-          )}
-
-          {/* Mobile Hamburger */}
-          {isMobile && (
-            <IconButton
-              edge="start"
-              color="primary"
-              aria-label="فتح القائمة"
-              onClick={toggleDrawer(true)}
-              sx={{ 
-                ml: 1,
-                transition: 'all 0.2s ease',
-                '&:hover': { 
-                  bgcolor: 'rgba(59,130,246,0.06)',
-                  transform: 'scale(1.03)' 
-                }
-              }}
-            >
-              <MenuIcon />
-            </IconButton>
-          )}
-        </Box>
-      </Toolbar>
-
-      {/* Mobile Drawer */}
-      <Drawer
-        anchor="right"
-        open={drawerOpen}
-        onClose={toggleDrawer(false)}
-        PaperProps={{ 
-          sx: { 
-            width: 260, 
-            bgcolor: 'rgba(255, 255, 255, 0.95)',
-            backdropFilter: 'blur(8px)'
-          } 
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          gap: 1,
+          height: 64,
+          width: "100%",
+          maxWidth: 1240,
+          mx: "auto",
+          px: { xs: 2, md: 3 },
         }}
       >
-        <Box sx={{ p: 2.5, display: "flex", alignItems: "center", borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
-          <Link href="/" style={{ display: "flex", alignItems: "center", textDecoration: 'none' }} aria-label="سكنلي الرئيسية">
-            <Image src="/logo.svg" alt="شعار سكنلي" width={32} height={32} style={{ marginLeft: 8 }} />
-            <Typography variant="h6" sx={{ fontWeight: 800, color: "primary.main", ml: 1 }}>
-              سكنلي
-            </Typography>
-          </Link>
-        </Box>
-        <Divider />
-        <List sx={{ py: 1.5 }}>
-          {NAV_LINKS.map((link) => {
-            const isWishlistLink = link.href === "/wishlist";
-            const isActive = pathname === link.href;
-            return (
-              <ListItem 
-                key={link.href} 
-                component={Link} 
-                href={link.href} 
-                onClick={toggleDrawer(false)}
-                sx={{
-                  py: 1.2,
-                  px: 2.5,
-                  transition: 'all 0.2s ease',
-                  bgcolor: isActive ? 'rgba(59,130,246,0.08)' : 'transparent',
-                  '&:hover': { bgcolor: 'rgba(59,130,246,0.06)' }
-                }}
-              >
-                {isWishlistLink ? (
-                  <Badge 
-                    badgeContent={getWishlistCount()} 
-                    color="error"
-                    sx={{
-                      '& .MuiBadge-badge': {
-                        fontSize: '0.7rem',
-                        minWidth: '18px',
-                        height: '18px',
-                        borderRadius: '9px',
-                        bgcolor: 'error.main',
-                        color: 'white',
-                        fontWeight: 'bold'
-                      }
-                    }}
+        <Logo />
+
+        <Box
+          component="nav"
+          aria-label="التنقل الرئيسي"
+          sx={{ display: { xs: "none", md: "flex" }, alignItems: "center", gap: 0.5, marginInlineStart: 3 }}
+        >
+          <QueryAware>
+            {(query) =>
+              NAV_LINKS.map((link) => {
+                const active = link.isActive(pathname, query);
+                return (
+                  <Button
+                    key={link.href}
+                    component={Link}
+                    href={link.href}
+                    aria-current={active ? "page" : undefined}
+                    sx={navButtonSx(active)}
                   >
-                    <FavoriteBorderIcon sx={{ ml: 1, mr: 1 }} />
-                  </Badge>
-                ) : link.icon}
-                <ListItemText 
-                  primary={link.label} 
-                  sx={{ 
-                    textAlign: "start", 
-                    '& .MuiTypography-root': {
-                      fontWeight: isActive ? 600 : 400,
-                      fontSize: '0.95rem',
-                      color: isActive ? 'primary.main' : 'text.secondary'
-                    }
-                  }} 
-                />
-              </ListItem>
-            );
-          })}
-          {/* Admin-only pending properties link in mobile drawer */}
-          {user && user.role === 'admin' && (
-            <ListItem 
-              component={Link} 
-              href="/admin/dashboard" 
-              onClick={toggleDrawer(false)}
-              sx={{
-                py: 1.2,
-                px: 2.5,
-                transition: 'all 0.2s ease',
-                bgcolor: pathname === '/admin/dashboard' ? 'rgba(156,39,176,0.08)' : 'transparent',
-                '&:hover': { bgcolor: 'rgba(156,39,176,0.06)' }
-              }}
-            >
-              <AddBusinessIcon sx={{ ml: 1, color: 'secondary.light' }} />
-              <ListItemText 
-                primary="لوحة تحكم الأدمن" 
-                sx={{ 
-                  textAlign: "start", 
-                  '& .MuiTypography-root': {
-                    fontWeight: 400,
-                    fontSize: '0.95rem',
-                    color: 'secondary.light'
-                  }
-                }} 
-              />
-            </ListItem>
-          )}
-          <ListItem 
-            component="button"
-            onClick={() => {
-              if (user) {
-                router.push('/uploadProperty');
-                setDrawerOpen(false);
-              } else {
-                showToast && showToast('يجب تسجيل الدخول أولاً لعرض عقارك', 'warning');
-                setTimeout(() => {
-                  router.push('/login');
-                  setDrawerOpen(false);
-                }, 1500);
-              }
-            }}
-            sx={{
-              py: 1.2,
-              px: 2.5,
-              transition: 'all 0.2s ease',
-              bgcolor: pathname === '/uploadProperty' ? 'rgba(59,130,246,0.08)' : 'transparent',
-              '&:hover': { bgcolor: 'rgba(59,130,246,0.06)' }
-            }}
-          >
-            <AddBusinessIcon sx={{ ml: 1, color: 'primary.light' }} />
-            <ListItemText 
-              primary="أضف عقارك" 
-              sx={{ 
-                textAlign: "start", 
-                '& .MuiTypography-root': {
-                  fontWeight: 400,
-                  fontSize: '0.95rem',
-                  color: 'primary.light'
-                }
-              }} 
-            />
-          </ListItem>
-        </List>
-        <Divider />
-        <Box sx={{ p: 2.5, display: "flex", flexDirection: "column", gap: 1.2 }}>
-          {user ? (
-            <>
-              <Button
-                component={Link}
-                href="/userProfile"
-                startIcon={<AccountCircleIcon />}
-                sx={{ 
-                  justifyContent: "flex-start", 
-                  py: 1.2,
-                  borderRadius: 1.5,
-                  transition: 'all 0.2s ease',
-                  '&:hover': { bgcolor: 'rgba(59,130,246,0.06)' }
-                }}
-                onClick={() => setDrawerOpen(false)}
-              >
-                الملف الشخصي
-              </Button>
-              <Button
-                startIcon={<LogoutIcon />}
-                color="error"
-                sx={{ 
-                  justifyContent: "flex-start", 
-                  py: 1.2,
-                  borderRadius: 1.5,
-                  transition: 'all 0.2s ease',
-                  '&:hover': { bgcolor: 'rgba(244,67,54,0.06)' }
-                }}
-                onClick={() => { setDrawerOpen(false); logout(); }}
-              >
-                تسجيل الخروج
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button 
-                component={Link} 
-                href="/register" 
-                color="primary" 
-                variant="contained" 
-                sx={{ 
-                  fontWeight: 500, 
-                  py: 1.2,
-                  borderRadius: 2,
-                  bgcolor: 'primary.light',
-                  boxShadow: '0 1px 4px rgba(59,130,246,0.15)',
-                  transition: 'all 0.2s ease',
-                  '&:hover': { bgcolor: 'primary.main' }
-                }} 
-                onClick={() => setDrawerOpen(false)}
-              >
-                إنشاء حساب
-              </Button>
-            </>
-          )}
+                    {link.label}
+                  </Button>
+                );
+              })
+            }
+          </QueryAware>
         </Box>
+
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, marginInlineStart: "auto" }}>
+          <Button
+            component={Link}
+            href="/uploadProperty"
+            variant="outlined"
+            color="primary"
+            startIcon={<AddHomeOutlined />}
+            sx={{ display: { xs: "none", md: "inline-flex" }, height: 36 }}
+          >
+            أضف عقارك
+          </Button>
+
+          <ThemeToggle />
+
+          <Box sx={{ display: { xs: "none", md: "flex" }, alignItems: "center", gap: 1 }}>
+            {isLoading ? (
+              <Skeleton variant="circular" width={32} height={32} aria-hidden />
+            ) : user ? (
+              <>
+                <IconButton
+                  onClick={(event) => setMenuAnchor(event.currentTarget)}
+                  aria-label="قائمة الحساب"
+                  aria-haspopup="menu"
+                  aria-controls={menuAnchor ? accountMenuId : undefined}
+                  aria-expanded={menuAnchor ? true : undefined}
+                  sx={{ p: 0.5 }}
+                >
+                  <Avatar
+                    src={user.avatar?.url}
+                    alt=""
+                    sx={{ width: 32, height: 32, fontSize: "0.875rem", bgcolor: "primary.main", color: "primary.contrastText" }}
+                  >
+                    {displayName.charAt(0)}
+                  </Avatar>
+                </IconButton>
+                <Menu
+                  id={accountMenuId}
+                  anchorEl={menuAnchor}
+                  open={Boolean(menuAnchor)}
+                  onClose={closeMenu}
+                  anchorOrigin={{ vertical: "bottom", horizontal: endEdge }}
+                  transformOrigin={{ vertical: "top", horizontal: endEdge }}
+                  slotProps={{ paper: { sx: { mt: 1, minWidth: 220 } } }}
+                >
+                  <Box sx={{ px: 2, py: 1 }}>
+                    <Typography variant="subtitle2" noWrap>
+                      {displayName}
+                    </Typography>
+                    {user.email && (
+                      <Typography variant="caption" color="text.secondary" noWrap component="p">
+                        {user.email}
+                      </Typography>
+                    )}
+                  </Box>
+                  <Divider />
+                  <MenuItem component={Link} href="/userProfile" onClick={closeMenu}>
+                    <ListItemIcon>
+                      <PersonOutlineOutlined fontSize="small" />
+                    </ListItemIcon>
+                    الملف الشخصي
+                  </MenuItem>
+                  <MenuItem component={Link} href="/wishlist" onClick={closeMenu}>
+                    <ListItemIcon>
+                      <FavoriteBorderOutlined fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText>المفضلة</ListItemText>
+                    {wishlistCount > 0 && (
+                      <Typography variant="caption" color="text.secondary" className="num">
+                        {wishlistCount}
+                      </Typography>
+                    )}
+                  </MenuItem>
+                  {isAdmin && (
+                    <MenuItem component={Link} href="/admin/dashboard" onClick={closeMenu}>
+                      <ListItemIcon>
+                        <DashboardOutlined fontSize="small" />
+                      </ListItemIcon>
+                      لوحة التحكم
+                    </MenuItem>
+                  )}
+                  <Divider />
+                  <MenuItem
+                    onClick={() => {
+                      closeMenu();
+                      logout();
+                    }}
+                    sx={{ color: "error.main" }}
+                  >
+                    <ListItemIcon sx={{ color: "inherit" }}>
+                      <LogoutOutlined fontSize="small" />
+                    </ListItemIcon>
+                    تسجيل الخروج
+                  </MenuItem>
+                </Menu>
+              </>
+            ) : (
+              <>
+                <Button component={Link} href="/login" color="inherit" sx={{ height: 36 }}>
+                  تسجيل الدخول
+                </Button>
+                <Button component={Link} href="/register" variant="contained" sx={{ height: 36 }}>
+                  إنشاء حساب
+                </Button>
+              </>
+            )}
+          </Box>
+
+          <IconButton
+            onClick={() => setDrawerOpen(true)}
+            aria-label="فتح القائمة"
+            aria-haspopup="dialog"
+            aria-controls={drawerOpen ? drawerId : undefined}
+            aria-expanded={drawerOpen}
+            sx={{ display: { xs: "inline-flex", md: "none" }, color: "text.primary" }}
+          >
+            <MenuOutlined />
+          </IconButton>
+        </Box>
+      </Box>
+
+      {/* The menu button sits at the inline end, so the drawer opens there ("right" is flipped by the RTL theme). */}
+      <Drawer
+        id={drawerId}
+        anchor="right"
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        slotProps={{ paper: { sx: { width: 288, maxWidth: "85vw" } } }}
+      >
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            height: 64,
+            px: 2,
+            borderBottom: 1,
+            borderColor: "divider",
+          }}
+        >
+          <Logo />
+          <IconButton onClick={() => setDrawerOpen(false)} aria-label="إغلاق القائمة">
+            <CloseOutlined />
+          </IconButton>
+        </Box>
+
+        <Box component="nav" aria-label="التنقل الرئيسي">
+          <List sx={{ px: 1, py: 1 }}>
+            <QueryAware>
+              {(query) =>
+                NAV_LINKS.map((link) => {
+                  const active = link.isActive(pathname, query);
+                  return (
+                    <ListItemButton
+                      key={link.href}
+                      component={Link}
+                      href={link.href}
+                      selected={active}
+                      aria-current={active ? "page" : undefined}
+                      onClick={() => setDrawerOpen(false)}
+                      sx={{
+                        borderRadius: "6px",
+                        "&.Mui-selected, &.Mui-selected:hover": { bgcolor: "var(--c-primary-soft)", color: "primary.main" },
+                      }}
+                    >
+                      <ListItemText primary={link.label} slotProps={{ primary: { fontWeight: active ? 600 : 500 } }} />
+                    </ListItemButton>
+                  );
+                })
+              }
+            </QueryAware>
+          </List>
+        </Box>
+
+        <Box sx={{ px: 2, pb: 2 }}>
+          <Button
+            component={Link}
+            href="/uploadProperty"
+            variant="outlined"
+            fullWidth
+            startIcon={<AddHomeOutlined />}
+            onClick={() => setDrawerOpen(false)}
+          >
+            أضف عقارك
+          </Button>
+        </Box>
+
+        <Divider />
+
+        {isLoading ? null : user ? (
+          <List sx={{ px: 1, py: 1 }} aria-label="الحساب">
+            <Box sx={{ px: 2, py: 1 }}>
+              <Typography variant="subtitle2" noWrap>
+                {displayName}
+              </Typography>
+              {user.email && (
+                <Typography variant="caption" color="text.secondary" noWrap component="p">
+                  {user.email}
+                </Typography>
+              )}
+            </Box>
+            <ListItemButton component={Link} href="/userProfile" onClick={() => setDrawerOpen(false)} sx={{ borderRadius: "6px" }}>
+              <ListItemIcon sx={{ minWidth: 36 }}>
+                <PersonOutlineOutlined fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primary="الملف الشخصي" />
+            </ListItemButton>
+            <ListItemButton component={Link} href="/wishlist" onClick={() => setDrawerOpen(false)} sx={{ borderRadius: "6px" }}>
+              <ListItemIcon sx={{ minWidth: 36 }}>
+                <FavoriteBorderOutlined fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primary="المفضلة" />
+              {wishlistCount > 0 && (
+                <Typography variant="caption" color="text.secondary" className="num">
+                  {wishlistCount}
+                </Typography>
+              )}
+            </ListItemButton>
+            {isAdmin && (
+              <ListItemButton component={Link} href="/admin/dashboard" onClick={() => setDrawerOpen(false)} sx={{ borderRadius: "6px" }}>
+                <ListItemIcon sx={{ minWidth: 36 }}>
+                  <DashboardOutlined fontSize="small" />
+                </ListItemIcon>
+                <ListItemText primary="لوحة التحكم" />
+              </ListItemButton>
+            )}
+            <ListItemButton
+              onClick={() => {
+                setDrawerOpen(false);
+                logout();
+              }}
+              sx={{ borderRadius: "6px", color: "error.main" }}
+            >
+              <ListItemIcon sx={{ minWidth: 36, color: "inherit" }}>
+                <LogoutOutlined fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primary="تسجيل الخروج" />
+            </ListItemButton>
+          </List>
+        ) : (
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1, p: 2 }}>
+            <Button
+              component={Link}
+              href="/login"
+              variant="contained"
+              startIcon={<LoginOutlined />}
+              onClick={() => setDrawerOpen(false)}
+            >
+              تسجيل الدخول
+            </Button>
+            <Button component={Link} href="/register" color="inherit" onClick={() => setDrawerOpen(false)}>
+              إنشاء حساب
+            </Button>
+          </Box>
+        )}
       </Drawer>
-      {/* أضف CSS صغير لتأثير hover على الشعار */}
-      <style jsx global>{`
-        .navbar-logo:hover, .navbar-logo-text:hover {
-          filter: brightness(1.15) drop-shadow(0 2px 8px rgba(59,130,246,0.08));
-          color: #174ea6 !important;
-          cursor: pointer;
-        }
-      `}</style>
     </AppBar>
   );
 }

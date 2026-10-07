@@ -3,15 +3,15 @@ import { useState, useEffect, useRef } from "react";
 import {
   Box,
   Fab,
-  Typography,
   Dialog,
   DialogTitle,
   DialogContent,
   TextField,
   IconButton,
-  CircularProgress
+  CircularProgress,
+  Tooltip
 } from "@mui/material";
-import SmartToyIcon from "@mui/icons-material/SmartToy";
+import SmartToyOutlined from "@mui/icons-material/SmartToyOutlined";
 import SendIcon from "@mui/icons-material/Send";
 import { API_URL } from "@/shared/services/api";
 
@@ -57,13 +57,19 @@ export default function ChatbotButton() {
 
   return (
     <>
-      {/* الزر العائم */}
-      <Box sx={{ position: "fixed", bottom: 20, right: 20, zIndex: 1300, textAlign: "center" }}>
-        <Typography variant="caption" color="primary">هل تحتاج لمساعدة!</Typography>
-        <Fab color="primary" onClick={() => setOpen(true)}>
-          <SmartToyIcon />
+      {/* Floating button at the bottom inline-end corner; toasts use the bottom-start corner. */}
+      <Tooltip title="اسأل مساعد سكنلي" placement="top">
+        <Fab
+          color="primary"
+          size="small"
+          onClick={() => setOpen(true)}
+          aria-label="فتح مساعد سكنلي الذكي"
+          aria-haspopup="dialog"
+          sx={{ position: "fixed", bottom: 16, insetInlineEnd: 16, zIndex: "fab" }}
+        >
+          <SmartToyOutlined fontSize="small" />
         </Fab>
-      </Box>
+      </Tooltip>
 
       {/* نافذة الشات */}
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
