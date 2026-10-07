@@ -1,125 +1,93 @@
-"use client";
+import type { Metadata } from "next";
+import MuiLink from "@mui/material/Link";
+import Typography from "@mui/material/Typography";
+import ContentPage, { ContentSection } from "@/shared/ui/ContentPage";
+import { CONTACT_INFO } from "@/shared/constants";
 
-import React from "react";
-import {
-  Box,
-  Typography,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  Container,
-  Divider,
-  Button,
-} from "@mui/material";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import Link from "next/link";
+export const metadata: Metadata = {
+  title: "سياسة الخصوصية",
+  description: "ما البيانات التي يجمعها سكنلي، وكيف يستخدمها، ومن يراها.",
+};
 
+// Written from what the code does (server/modules, server/services). Update it when data handling changes.
 export default function PrivacyPolicyPage() {
   return (
-    <Container
-      maxWidth="md"
-      sx={{ py: { xs: 2, md: 6 }, bgcolor: "#FFF", minHeight: "100vh" }}
-      dir="rtl"
+    <ContentPage
+      title="سياسة الخصوصية"
+      description={
+        <>
+          آخر تحديث: <span className="num">7</span> أكتوبر <span className="num">2026</span>
+        </>
+      }
     >
-      <Box
-        sx={{
-          background: "#fff",
-          borderRadius: 4,
-          border: "1.5px solid #f0f0f0",
-          boxShadow: "0 4px 24px 0 rgba(12, 148, 136, 0.07)",
-          p: { xs: 2, md: 6 },
-          mb: 6,
-          mt: 4,
-        }}
-      >
-        <Typography
-          variant="h3"
-          align="center"
-          fontWeight={600}
-          gutterBottom
-          sx={{ color: "#0284c7", fontSize: { xs: 32, md: 44 } }}
-        >
-          سياسة الخصوصية
-        </Typography>
-        <Typography
-          align="center"
-          color="text.secondary"
-          sx={{ mb: 4, fontSize: { xs: 14, md: 18 } }}
-        >
-          آخر تحديث: 14 يونيو 2025
-        </Typography>
-        <Divider sx={{ mb: 4, bgcolor: "#e0e0e0" }} />
-        <Typography
-          variant="h6"
-          fontWeight={600}
-          sx={{ mb: 1, color: "#0284c7", fontSize: { xs: 18, md: 22 } }}
-        >
-          ١. المقدمة
-        </Typography>
-        <Typography sx={{ mb: 3, fontSize: { xs: 15, md: 17 } }}>
-          مرحبًا بك في سكنلي. نحن ملتزمون بحماية خصوصيتك. توضح هذه السياسة كيف نجمع ونستخدم ونفصح عن معلوماتك عند زيارتك لموقعنا. يرجى قراءة هذه السياسة بعناية، وإذا لم توافق على الشروط، يرجى عدم استخدام الموقع.
-        </Typography>
-        <Typography
-          variant="h6"
-          fontWeight={600}
-          sx={{ mb: 1, color: "#0284c7", fontSize: { xs: 18, md: 22 } }}
-        >
-          ٢. المعلومات التي نجمعها
-        </Typography>
-        <Typography sx={{ mb: 1, fontSize: { xs: 15, md: 17 } }}>
-          قد نقوم بجمع معلومات عنك بعدة طرق. تشمل المعلومات التي قد نجمعها عبر الموقع:
-        </Typography>
-        <ul style={{ marginLeft: 24, marginBottom: 20, fontSize: 16, textAlign: "start" }}>
-          <li style={{ marginBottom: 8 }}>
-            <b>البيانات الشخصية:</b> معلومات تعريفية مثل الاسم، عنوان البريد الإلكتروني، رقم الهاتف، والعنوان، بالإضافة إلى معلومات ديموغرافية مثل العمر والجنس والاهتمامات، والتي تقدمها لنا طوعًا عند التسجيل أو المشاركة في أنشطة الموقع.
+      <ContentSection id="privacy-collect" title="البيانات التي نجمعها">
+        <ul className="flex list-disc flex-col gap-2 ps-5">
+          <li>
+            <strong>بيانات حسابك:</strong> اسم المستخدم والبريد الإلكتروني ورقم الهاتف والعنوان. نحفظ كلمة المرور بصيغة
+            مشفّرة لا يمكن قراءتها. إذا سجّلت الدخول بحساب Google نحصل منه على اسمك وبريدك الإلكتروني.
           </li>
           <li>
-            <b>بيانات مشتقة:</b> معلومات يتم جمعها تلقائيًا عند استخدامك للموقع مثل عنوان الـ IP، نوع المتصفح، نظام التشغيل، أوقات الدخول، والصفحات التي قمت بزيارتها قبل وبعد استخدام الموقع.
+            <strong>بيانات إعلاناتك:</strong> تفاصيل العقار وصوره وموقعه على الخريطة وبيانات التواصل التي تكتبها في
+            الإعلان.
+          </li>
+          <li>
+            <strong>ما ترسله إلينا:</strong> رسائل «تواصل معنا»، وتعليقاتك على العقارات، وأسئلتك لمساعد سكنلي.
+          </li>
+          <li>
+            <strong>بيانات تقنية:</strong> عنوان IP ونوع المتصفح في سجلات الخادم. ويحفظ متصفحك رمز تسجيل الدخول ووضع
+            العرض (فاتح أو داكن).
           </li>
         </ul>
-        <Typography
-          variant="h6"
-          fontWeight={600}
-          sx={{ mb: 1, color: "#0284c7", fontSize: { xs: 18, md: 22 } }}
-        >
-          ٣. استخدام المعلومات
-        </Typography>
-        <Typography sx={{ mb: 3, fontSize: { xs: 15, md: 17 } }}>
-          تساعدنا دقة المعلومات التي تقدمها في تقديم تجربة أفضل وأكثر تخصيصًا لك. نستخدم المعلومات لإدارة حسابك، التواصل معك بشأن الحساب أو الطلبات، تمكين التواصل بين المستخدمين، والرد على استفسارات الدعم الفني.
-        </Typography>
-        <Typography
-          variant="h6"
-          fontWeight={600}
-          sx={{ mb: 1, color: "#0284c7", fontSize: { xs: 18, md: 22 } }}
-        >
-          ٤. أمان البيانات
-        </Typography>
-        <Typography sx={{ mb: 3, fontSize: { xs: 15, md: 17 } }}>
-          نستخدم تدابير إدارية وتقنية وفيزيائية لحماية معلوماتك الشخصية. رغم جهودنا، لا توجد وسيلة نقل بيانات أو تخزين إلكتروني آمنة 100%، ولا يمكننا ضمان الحماية المطلقة للمعلومات.
-        </Typography>
-      </Box>
-      <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
-        <Link href="/">
-          <Button
-            variant="outlined"
-            sx={{
-              borderColor: "#0284c7",
-              color: "#0284c7",
-              fontWeight: 600,
-              px: 4,
-              py: 1,
-              borderRadius: 2,
-              "&:hover": {
-                background: "#0284c7",
-                color: "#fff",
-                borderColor: "#0284c7",
-              },
-            }}
-          >
-            Back to Home
-          </Button>
-        </Link>
-      </Box>
-    </Container>
+      </ContentSection>
+
+      <ContentSection id="privacy-use" title="كيف نستخدمها">
+        <p>
+          نستخدم بياناتك لتشغيل حسابك، وعرض إعلاناتك ومراجعتها قبل النشر، والرد على رسائلك، وإرسال رسائل الحساب إلى
+          بريدك: تأكيد البريد، ورمز استعادة كلمة المرور، وقرار مراجعة إعلانك.
+        </p>
+      </ContentSection>
+
+      <ContentSection id="privacy-public" title="ما يراه الآخرون">
+        <p>
+          تفاصيل إعلانك المنشور، ومنها بيانات التواصل التي كتبتها فيه، يراها كل زوار الموقع. وتظهر تعليقاتك مع اسم
+          المستخدم الخاص بك. لا نعرض بريدك أو هاتفك المسجّلين في الحساب.
+        </p>
+      </ContentSection>
+
+      <ContentSection id="privacy-services" title="الخدمات التي نستعين بها">
+        <p>
+          نحفظ صور الإعلانات لدى خدمة Cloudinary، ونرسل رسائل البريد عبر مزوّد بريد إلكتروني، ونستضيف الموقع لدى Vercel.
+          تُرسل أسئلتك لمساعد سكنلي إلى خدمة Gemini من Google لتوليد الإجابة، فلا تكتب فيها بيانات شخصية. ولا نبيع
+          بياناتك لأي جهة.
+        </p>
+      </ContentSection>
+
+      <ContentSection id="privacy-choices" title="حقوقك">
+        <p>
+          تستطيع حذف إعلاناتك من «حسابي». ولحذف حسابك أو تصحيح بياناته، راسلنا على{" "}
+          <MuiLink href={`mailto:${CONTACT_INFO.EMAIL}`}>
+            <span dir="ltr">{CONTACT_INFO.EMAIL}</span>
+          </MuiLink>
+          .
+        </p>
+      </ContentSection>
+
+      <ContentSection id="privacy-security" title="حماية البيانات">
+        <p>
+          نتخذ احتياطات تقنية لحماية بياناتك، مثل تشفير كلمات المرور واستخدام اتصال آمن. ومع ذلك لا توجد طريقة نقل أو
+          تخزين آمنة تمامًا.
+        </p>
+      </ContentSection>
+
+      <Typography variant="body2" color="text.secondary" sx={{ mt: 5 }}>
+        لأي سؤال عن هذه السياسة اتصل بنا على{" "}
+        <MuiLink href={`tel:${CONTACT_INFO.PHONE_E164}`}>
+          <span dir="ltr" className="num">
+            {CONTACT_INFO.PHONE_DISPLAY}
+          </span>
+        </MuiLink>
+        .
+      </Typography>
+    </ContentPage>
   );
 }
