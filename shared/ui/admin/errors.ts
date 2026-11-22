@@ -12,6 +12,7 @@ const KNOWN: Record<string, string> = {
   "You cannot delete your own account": "لا يمكنك حذف حسابك من لوحة الإدارة.",
   "User not found": "المستخدم غير موجود. ربما حُذف بالفعل.",
   "Property not found": "العقار غير موجود. ربما عولج بالفعل.",
+  "Property was already reviewed": "راجع مشرف آخر هذا الإعلان بالفعل.",
   "Property inquiry not found": "الاستفسار غير موجود. ربما حُذف بالفعل.",
   "Message not found": "الرسالة غير موجودة. ربما حُذفت بالفعل.",
 };
