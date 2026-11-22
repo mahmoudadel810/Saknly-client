@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDebounce } from "use-debounce";
@@ -167,6 +167,15 @@ export default function AdminPropertiesPage() {
     }
   };
 
+  // The listing left the queue (another admin reviewed it): close its deny dialog
+  useEffect(() => {
+    if (denyTarget && pending.data && !allPending.some((p) => p._id === denyTarget._id)) {
+      setDenyTarget(null);
+      setReason("");
+      setReasonTouched(false);
+    }
+  }, [allPending, denyTarget, pending.data]);
+
   const denyNeedsReason = Boolean(denyTarget?.contactInfo?.email);
   const reasonMissing = denyNeedsReason && !reason.trim();
 
@@ -198,6 +207,8 @@ export default function AdminPropertiesPage() {
     } catch (err) {
       // The dialog stays open so the admin can retry or cancel.
       showToast(adminErrorMessage(err, "تعذّر رفض الإعلان. حاول مرة أخرى."), "error");
+      // Another admin may have reviewed it already: refetch so the stale row goes away.
+      await refreshAfterModeration().catch(() => {});
     } finally {
       setRowBusy(target._id, null);
     }
