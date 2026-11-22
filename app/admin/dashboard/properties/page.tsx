@@ -159,6 +159,8 @@ export default function AdminPropertiesPage() {
       return true;
     } catch (err) {
       showToast(adminErrorMessage(err, "تعذّر اعتماد الإعلان. حاول مرة أخرى."), "error");
+      // Another admin may have handled it already: refetch so a stale row (and its dialog) goes away.
+      await refreshAfterModeration().catch(() => {});
       return false;
     } finally {
       setRowBusy(property._id, null);
