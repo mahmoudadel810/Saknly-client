@@ -111,6 +111,7 @@ export default function AdminPropertiesPage() {
   const [bulkReport, setBulkReport] = useState<{ ok: number; failed: { title: string; reason: string }[] } | null>(
     null,
   );
+  const [approveIds, setApproveIds] = useState<string[] | null>(null);
   const [denyTarget, setDenyTarget] = useState<PendingProperty | null>(null);
   const [reason, setReason] = useState("");
   const [reasonTouched, setReasonTouched] = useState(false);
@@ -228,6 +229,21 @@ export default function AdminPropertiesPage() {
         : `تم اعتماد ${listingsCount(ok)}.`,
       failed.length ? "warning" : "success",
     );
+  };
+
+  const approveTargets = approveIds ? allPending.filter((p) => approveIds.includes(p._id)) : [];
+  const approveSingle = approveTargets.length === 1 ? approveTargets[0] : null;
+  const approving = approveTargets.some((p) => busy[p._id]) || bulkRunning;
+
+  const closeApprove = () => {
+    if (!approving) setApproveIds(null);
+  };
+
+  const confirmApprove = async () => {
+    if (approveTargets.length === 0) return;
+    if (approveSingle) await approve(approveSingle);
+    else await bulkApprove(approveTargets.map((p) => p._id));
+    setApproveIds(null);
   };
 
   const pendingColumns: DataTableColumn<PendingProperty>[] = [
@@ -405,7 +421,7 @@ export default function AdminPropertiesPage() {
                   variant="contained"
                   startIcon={bulkRunning ? <CircularProgress size={14} color="inherit" aria-hidden /> : <DoneAllOutlined />}
                   disabled={bulkRunning}
-                  onClick={() => bulkApprove(ids)}
+                  onClick={() => setApproveIds(ids)}
                 >
                   {bulkRunning ? "جارٍ الاعتماد…" : "اعتماد المحدد"}
                 </Button>
@@ -444,7 +460,7 @@ export default function AdminPropertiesPage() {
               {
                 label: "اعتماد",
                 icon: <CheckCircleOutlineOutlined fontSize="small" />,
-                onClick: approve,
+                onClick: (row) => setApproveIds([row._id]),
                 disabled: Boolean(busy[p._id]) || bulkRunning,
               },
               {
@@ -533,6 +549,35 @@ export default function AdminPropertiesPage() {
           />
         </Box>
       )}
+
+      <ConfirmDialog
+        open={approveTargets.length > 0}
+        destructive={false}
+        title={approveSingle ? "اعتماد الإعلان" : `اعتماد ${listingsCount(approveTargets.length)}`}
+        description={
+          approveSingle ? (
+            <>
+              <Typography component="span" sx={{ display: "block", mb: 1 }}>
+                سيُنشر الإعلان «{approveSingle.title}» ويظهر في نتائج البحث لكل الزوار.
+              </Typography>
+              <Typography component="span" sx={{ display: "block" }}>
+                {approveSingle.contactInfo?.email
+                  ? `سيصل إلى المعلن بريد على ${approveSingle.contactInfo.email} يخبره بالاعتماد.`
+                  : "لا يوجد بريد للتواصل في هذا الإعلان، لذلك لن يُبلَّغ المعلن."}
+              </Typography>
+            </>
+          ) : (
+            <Typography component="span" sx={{ display: "block" }}>
+              ستُنشر الإعلانات المحددة وتظهر في نتائج البحث، ويصل بريد بالاعتماد إلى كل معلن لديه بريد للتواصل.
+            </Typography>
+          )
+        }
+        confirmLabel="اعتماد ونشر"
+        loadingLabel="جارٍ الاعتماد…"
+        loading={approving}
+        onConfirm={confirmApprove}
+        onClose={closeApprove}
+      />
 
       <ConfirmDialog
         open={Boolean(denyTarget)}
