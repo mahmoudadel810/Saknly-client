@@ -6,6 +6,7 @@ import { ChatConversation } from "@/components/ChatbotButton";
 export const metadata: Metadata = {
   title: "مساعد سكنلي",
   description: "اسأل مساعد سكنلي عن العقارات المعروضة للبيع والإيجار والسكن الطلابي.",
+  alternates: { canonical: "/chatBot" },
 };
 
 /** A full-page conversation with the same assistant as the floating button (which is hidden here). */

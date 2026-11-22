@@ -9,6 +9,7 @@ import FaqAccordion, { type Faq } from "./FaqAccordion";
 export const metadata: Metadata = {
   title: "الأسئلة الشائعة",
   description: "إجابات عن نشر العقارات ومراجعتها، والتواصل مع أصحاب العقارات، وحسابك على سكنلي.",
+  alternates: { canonical: "/faq" },
 };
 
 // Every answer describes what the site does today. Do not promise features it lacks (editing, paid ads, SLAs).

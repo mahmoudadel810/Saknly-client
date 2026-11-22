@@ -55,14 +55,13 @@ export const metadata: Metadata = {
     telephone: false,
   },
   metadataBase: new URL("https://saknly-ruddy.vercel.app"),
+  // No canonical here: it would be inherited by every route. Each page sets its own `alternates.canonical`.
   alternates: {
-    canonical: "/",
     languages: SEO_CONFIG.alternateLanguages,
   },
   openGraph: {
     type: "website",
     locale: ARABIC_CONFIG.locale,
-    url: "/",
     title: SEO_CONFIG.defaultTitle,
     description: SEO_CONFIG.defaultDescription,
     siteName: "سكنلي",

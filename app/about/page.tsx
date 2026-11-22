@@ -9,6 +9,7 @@ import PropertyCount from "./PropertyCount";
 export const metadata: Metadata = {
   title: "عن سكنلي",
   description: "سكنلي منصة لعرض العقارات للبيع والإيجار والسكن الطلابي، وكل إعلان يُراجع قبل نشره.",
+  alternates: { canonical: "/about" },
 };
 
 export default function AboutPage() {

@@ -7,6 +7,7 @@ import { CONTACT_INFO } from "@/shared/constants";
 export const metadata: Metadata = {
   title: "سياسة الخصوصية",
   description: "ما البيانات التي يجمعها سكنلي، وكيف يستخدمها، ومن يراها.",
+  alternates: { canonical: "/privacy-policy" },
 };
 
 // Written from what the code does (server/modules, server/services). Update it when data handling changes.

@@ -11,6 +11,7 @@ import { CONTACT_INFO } from "@/shared/constants";
 export const metadata: Metadata = {
   title: "تواصل معنا",
   description: "راسل فريق سكنلي أو اتصل بنا مباشرة.",
+  alternates: { canonical: "/contact" },
 };
 
 const panelSx = {
