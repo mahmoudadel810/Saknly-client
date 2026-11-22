@@ -147,16 +147,19 @@ export default function AdminPropertiesPage() {
   const approveRequest = (id: string) =>
     api.put(`/properties/${id}/approve`, { status: "available", isActive: true, isApproved: true });
 
-  const approve = async (property: PendingProperty) => {
-    if (busy[property._id]) return;
+  /** Resolves true when the listing was approved. */
+  const approve = async (property: PendingProperty): Promise<boolean> => {
+    if (busy[property._id]) return false;
     setRowBusy(property._id, "approve");
     try {
       await approveRequest(property._id);
       await refreshAfterModeration();
       setSelectedIds((ids) => ids.filter((id) => id !== property._id));
       showToast("تم اعتماد الإعلان ونشره.", "success");
+      return true;
     } catch (err) {
       showToast(adminErrorMessage(err, "تعذّر اعتماد الإعلان. حاول مرة أخرى."), "error");
+      return false;
     } finally {
       setRowBusy(property._id, null);
     }
@@ -198,20 +201,22 @@ export default function AdminPropertiesPage() {
     }
   };
 
-  /** Approves the selected listings one at a time and reports each one's result. */
-  const bulkApprove = async (ids: string[]) => {
+  /** Approves the selected listings one at a time and reports each one's result; resolves the ids that failed. */
+  const bulkApprove = async (ids: string[]): Promise<string[]> => {
     const targets = allPending.filter((p) => ids.includes(p._id) && !busy[p._id]);
-    if (targets.length === 0 || bulkRunning) return;
+    if (targets.length === 0 || bulkRunning) return ids;
     setBulkRunning(true);
     setBulkReport(null);
     let ok = 0;
     const failed: { title: string; reason: string }[] = [];
+    const failedIds: string[] = [];
     for (const property of targets) {
       setRowBusy(property._id, "approve");
       try {
         await approveRequest(property._id);
         ok += 1;
       } catch (err) {
+        failedIds.push(property._id);
         failed.push({
           title: property.title || "إعلان بدون عنوان",
           reason: adminErrorMessage(err, "تعذّر الاعتماد."),
@@ -229,6 +234,7 @@ export default function AdminPropertiesPage() {
         : `تم اعتماد ${listingsCount(ok)}.`,
       failed.length ? "warning" : "success",
     );
+    return failedIds;
   };
 
   const approveTargets = approveIds ? allPending.filter((p) => approveIds.includes(p._id)) : [];
@@ -239,11 +245,15 @@ export default function AdminPropertiesPage() {
     if (!approving) setApproveIds(null);
   };
 
+  // On failure the dialog stays open (on the listings that failed) so the admin can retry or cancel.
   const confirmApprove = async () => {
     if (approveTargets.length === 0) return;
-    if (approveSingle) await approve(approveSingle);
-    else await bulkApprove(approveTargets.map((p) => p._id));
-    setApproveIds(null);
+    if (approveSingle) {
+      if (await approve(approveSingle)) setApproveIds(null);
+      return;
+    }
+    const failedIds = await bulkApprove(approveTargets.map((p) => p._id));
+    setApproveIds(failedIds.length ? failedIds : null);
   };
 
   const pendingColumns: DataTableColumn<PendingProperty>[] = [
