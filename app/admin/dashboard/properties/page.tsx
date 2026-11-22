@@ -288,6 +288,31 @@ export default function AdminPropertiesPage() {
     search: debouncedPublishedSearch.trim(),
   };
   const publishedList = useQuery({ ...publishedPropertiesQuery(publishedParams), enabled: tab === "published" });
+  const [deleteTarget, setDeleteTarget] = useState<PublishedProperty | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const closeDelete = () => {
+    if (!deleting) setDeleteTarget(null);
+  };
+
+  const deletePublished = async () => {
+    if (!deleteTarget || deleting) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/properties/deleteProperty/${deleteTarget._id}`);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin", "published-properties"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin", "analytics"] }),
+      ]);
+      setDeleteTarget(null);
+      showToast("تم حذف الإعلان.", "success");
+    } catch (err) {
+      // The dialog stays open so the admin can retry or cancel.
+      showToast(adminErrorMessage(err, "تعذّر حذف الإعلان. حاول مرة أخرى."), "error");
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const publishedColumns: DataTableColumn<PublishedProperty>[] = [
     { id: "title", header: "الإعلان", card: "title", cell: (p) => <TitleCell id={p._id} title={p.title} images={p.images} /> },
@@ -488,6 +513,13 @@ export default function AdminPropertiesPage() {
             }
             rowActions={(p) => [
               { label: "عرض الإعلان", icon: <OpenInNewOutlined fontSize="small" />, onClick: () => openListing(p._id) },
+              {
+                label: "حذف الإعلان",
+                icon: <DeleteOutlineOutlined fontSize="small" />,
+                destructive: true,
+                onClick: (row) => setDeleteTarget(row),
+                disabled: deleting && deleteTarget?._id === p._id,
+              },
             ]}
             loading={publishedList.isFetching}
             error={publishedList.isError}
@@ -545,6 +577,27 @@ export default function AdminPropertiesPage() {
           />
         )}
       </ConfirmDialog>
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="حذف الإعلان"
+        description={
+          <>
+            <Typography component="span" sx={{ display: "block", mb: 1 }}>
+              سيُحذف الإعلان المنشور «{deleteTarget?.title}» نهائيًا مع صوره وتعليقاته واستفساراته، ويُزال من
+              المفضلة ومن قائمة الوكالة. لا يمكن التراجع عن ذلك.
+            </Typography>
+            <Typography component="span" sx={{ display: "block" }}>
+              لن يصل إلى المعلن أي بريد بالحذف.
+            </Typography>
+          </>
+        }
+        confirmLabel="حذف الإعلان"
+        loadingLabel="جارٍ الحذف…"
+        loading={deleting}
+        onConfirm={deletePublished}
+        onClose={closeDelete}
+      />
     </>
   );
 }
